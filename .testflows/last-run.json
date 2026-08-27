@@ -1,0 +1,35 @@
+{
+  "failed" : 0,
+  "failed_names" : [
+
+  ],
+  "generated_at" : "2026-08-27T14:00:24Z",
+  "passed" : 2,
+  "results" : [
+    {
+      "display_name" : "application-realization",
+      "duration_seconds" : 0.0013250112533569336,
+      "name" : "application-realization",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "application",
+        "realization"
+      ]
+    },
+    {
+      "display_name" : "host-parity",
+      "duration_seconds" : 0.002980947494506836,
+      "name" : "host-parity",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "host",
+        "parity"
+      ]
+    }
+  ],
+  "skipped" : 0,
+  "title" : "AgenticRuntime flow tests",
+  "total" : 2
+}

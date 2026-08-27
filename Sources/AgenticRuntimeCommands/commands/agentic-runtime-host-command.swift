@@ -1,0 +1,188 @@
+import Agentic
+import AgenticInterfaces
+import AgenticRuntime
+import Arguments
+import Clipboard
+import Foundation
+import Terminal
+
+public enum AgenticRuntimeHostCommand<
+    Application: AgenticApplicationProviding
+>:
+    ArgumentCommand
+{
+    public static var name: String {
+        "host"
+    }
+
+    public static var defaultChild: ArgumentCommandType? {
+        Help.self
+    }
+
+    public static var children: [ArgumentCommandType] {
+        [
+            Help.self,
+            Manifest.self,
+            Bridge.self,
+        ]
+    }
+
+    static func runtime() async throws -> AgenticRuntime {
+        try await .resolve(
+            Application.self
+        )
+    }
+
+    public enum Help:
+        RunnableArgumentCommand
+    {
+        public static var name: String {
+            "help"
+        }
+
+        public static func run(
+            _ invocation: ParsedInvocation
+        ) async throws {
+            _ = invocation
+
+            print(
+                ArgumentHelpRenderer().render(
+                    command:
+                        try AgenticRuntimeHostCommand<Application>.spec()
+                )
+            )
+        }
+    }
+
+    public enum Manifest:
+        ParsedArgumentCommand
+    {
+        public typealias Options =
+            AgenticRuntimeHostManifestOptions
+
+        public static var name: String {
+            "manifest"
+        }
+
+        public static func run(
+            _ options: Options,
+            invocation: ParsedInvocation
+        ) async throws {
+            _ = invocation
+
+            let runtime = try await AgenticRuntimeHostCommand<Application>
+                .runtime()
+            let host = try runtime.host(
+                workspacePath: options.workspace,
+                sessionID: options.sessionID
+            )
+            let text = try host
+                .capabilityManifestText()
+
+            if options.copy {
+                guard Clipboard.system.write(
+                    text
+                ) else {
+                    throw AgenticRuntimeCommandError
+                        .clipboardWriteFailed
+                }
+
+                return
+            }
+
+            print(
+                text
+            )
+        }
+    }
+
+    public enum Bridge:
+        ParsedArgumentCommand
+    {
+        public typealias Options =
+            AgenticRuntimeHostBridgeOptions
+
+        public static var name: String {
+            "bridge"
+        }
+
+        public static func run(
+            _ options: Options,
+            invocation: ParsedInvocation
+        ) async throws {
+            _ = invocation
+
+            let request: AgenticToolHostRequest
+
+            if options.standardInput {
+                request = try AgenticRuntimeCommandIO
+                    .decodeHostRequest(
+                        AgenticRuntimeCommandIO
+                            .readStandardInput()
+                    )
+            } else {
+                guard let text = Clipboard.system.read(),
+                      !text.trimmingCharacters(
+                        in: .whitespacesAndNewlines
+                      ).isEmpty
+                else {
+                    throw AgenticRuntimeCommandError
+                        .missingClipboardInput
+                }
+
+                request = try AgenticRuntimeCommandIO
+                    .decodeHostRequest(
+                        Data(text.utf8)
+                    )
+            }
+
+            let approvalPicker: TerminalApprovalPicker?
+
+            if Terminal.io.stdin.reconnect(
+                to: .terminal
+            ) {
+                approvalPicker = TerminalApprovalPicker()
+            } else {
+                approvalPicker = nil
+            }
+
+            let runtime = try await AgenticRuntimeHostCommand<Application>
+                .runtime()
+            let host = try runtime.host(
+                workspacePath: options.workspace,
+                sessionID: options.sessionID,
+                approvalHandler: approvalPicker
+            )
+            let envelope = try await host.execute(
+                request
+            )
+
+            if options.standardInput {
+                try AgenticRuntimeCommandIO.write(
+                    envelope
+                )
+
+                return
+            }
+
+            let text = try AgenticRuntimeCommandIO.text(
+                envelope
+            )
+
+            guard Clipboard.system.write(
+                text
+            ) else {
+                throw AgenticRuntimeCommandError
+                    .clipboardWriteFailed
+            }
+
+            print(
+                TerminalToolHostReceiptRenderer()
+                    .render(
+                        envelope,
+                        copiedToClipboard: true
+                    )
+            )
+        }
+    }
+}
