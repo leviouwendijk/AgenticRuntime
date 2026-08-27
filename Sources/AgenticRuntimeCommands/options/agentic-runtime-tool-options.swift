@@ -28,11 +28,10 @@ public struct AgenticRuntimeToolDescribeOptions:
     public struct Payload:
         ArgumentGroup
     {
-        @Opt(
+        @Arg(
             "name",
-            short: "n",
-            default: "",
-            help: "Registered Agentic tool name."
+            help: "Registered Agentic tool name.",
+            default: ""
         )
         public var name: String
 
