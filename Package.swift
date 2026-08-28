@@ -218,6 +218,14 @@ let package = Package(
                     package: "AgenticInterfaces"
                 ),
                 .product(
+                    name: "AgenticExecution",
+                    package: "AgenticExecution"
+                ),
+                .product(
+                    name: "AgenticIO",
+                    package: "AgenticIO"
+                ),
+                .product(
                     name: "TestFlows",
                     package: "TestFlows"
                 ),

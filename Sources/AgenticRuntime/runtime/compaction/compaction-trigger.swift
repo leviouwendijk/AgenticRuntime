@@ -55,6 +55,13 @@ public extension CompactionTrigger {
             case .text(let value):
                 partial += value.count
 
+            case .resource(let value):
+                partial += 64
+                partial += value.source.value.count
+                partial += value.contentType?.count ?? 0
+                partial += value.metadata.title?.count ?? 0
+                partial += value.metadata.filename?.count ?? 0
+
             case .tool_call(let value):
                 partial += 64 + value.name.count
 

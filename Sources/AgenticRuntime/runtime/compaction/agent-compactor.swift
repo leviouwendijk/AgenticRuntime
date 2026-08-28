@@ -228,6 +228,17 @@ private extension AgentCompactor {
 
                 return normalized
 
+            case .resource(let value):
+                let label = value.metadata.title
+                    ?? value.metadata.filename
+                    ?? value.contentType
+
+                if let label {
+                    return "resource \(value.modality.rawValue) \(label)"
+                }
+
+                return "resource \(value.modality.rawValue)"
+
             case .tool_call(let value):
                 return "tool call \(value.name)"
 
