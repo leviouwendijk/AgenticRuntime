@@ -37,3 +37,16 @@ public extension AgenticRunPresentation {
         )
     }
 }
+
+
+public extension AgenticRunPresenter {
+    func present(
+        _ result: AgentRunResult
+    ) async throws {
+        try await present(
+            AgenticRunPresentation(
+                result
+            )
+        )
+    }
+}

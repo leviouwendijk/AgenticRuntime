@@ -26,6 +26,12 @@ let package = Package(
                 "AgenticRuntimeTestFlows",
             ]
         ),
+        .executable(
+            name: "aginttest",
+            targets: [
+                "AgenticRuntimeIntegrationTestFlows",
+            ]
+        ),
     ],
     dependencies: [
         .package(
@@ -78,6 +84,18 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/leviouwendijk/AgenticInterfaces.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/AgenticAdapters.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/AWSConnector.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/Difference.git",
             branch: "master"
         ),
         .package(
@@ -224,6 +242,69 @@ let package = Package(
                 .product(
                     name: "AgenticIO",
                     package: "AgenticIO"
+                ),
+                .product(
+                    name: "TestFlows",
+                    package: "TestFlows"
+                ),
+            ]
+        ),
+        .executableTarget(
+            name: "AgenticRuntimeIntegrationTestFlows",
+            dependencies: [
+                "AgenticRuntime",
+                "AgenticRuntimeCommands",
+                .product(
+                    name: "Agentic",
+                    package: "Agentic"
+                ),
+                .product(
+                    name: "AgenticExecution",
+                    package: "AgenticExecution"
+                ),
+                .product(
+                    name: "AgenticWorkspace",
+                    package: "AgenticWorkspace"
+                ),
+                .product(
+                    name: "AgenticModels",
+                    package: "AgenticModels"
+                ),
+                .product(
+                    name: "AgenticIO",
+                    package: "AgenticIO"
+                ),
+                .product(
+                    name: "AgenticTools",
+                    package: "AgenticTools"
+                ),
+                .product(
+                    name: "AgenticInterfaces",
+                    package: "AgenticInterfaces"
+                ),
+                .product(
+                    name: "AgenticApple",
+                    package: "AgenticAdapters"
+                ),
+                .product(
+                    name: "AgenticAWS",
+                    package: "AgenticAdapters"
+                ),
+                .product(
+                    name: "AWSConnector",
+                    package: "AWSConnector"
+                ),
+                .product(
+                    name: "Primitives",
+                    package: "Primitives"
+                ),
+                .product(
+                    name: "Difference",
+                    package: "Difference"
+                ),
+                .product(
+                    name: "Terminal",
+                    package: "Terminal"
                 ),
                 .product(
                     name: "TestFlows",

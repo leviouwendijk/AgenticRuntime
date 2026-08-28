@@ -3,12 +3,12 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-08-28T18:14:31Z",
+  "generated_at" : "2026-08-28T18:42:12Z",
   "passed" : 3,
   "results" : [
     {
       "display_name" : "application-realization",
-      "duration_seconds" : 0.001896977424621582,
+      "duration_seconds" : 0.001230001449584961,
       "name" : "application-realization",
       "status" : "passed",
       "tags" : [
@@ -19,7 +19,7 @@
     },
     {
       "display_name" : "host-parity",
-      "duration_seconds" : 0.0030820369720458984,
+      "duration_seconds" : 0.0034999847412109375,
       "name" : "host-parity",
       "status" : "passed",
       "tags" : [
@@ -30,7 +30,7 @@
     },
     {
       "display_name" : "workspace-resource-resolution",
-      "duration_seconds" : 0.007706046104431152,
+      "duration_seconds" : 0.00845193862915039,
       "name" : "workspace-resource-resolution",
       "status" : "passed",
       "tags" : [
