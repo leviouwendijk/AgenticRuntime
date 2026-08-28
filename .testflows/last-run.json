@@ -3,12 +3,12 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-08-27T14:10:33Z",
-  "passed" : 2,
+  "generated_at" : "2026-08-28T18:14:31Z",
+  "passed" : 3,
   "results" : [
     {
       "display_name" : "application-realization",
-      "duration_seconds" : 0.009329915046691895,
+      "duration_seconds" : 0.001896977424621582,
       "name" : "application-realization",
       "status" : "passed",
       "tags" : [
@@ -19,7 +19,7 @@
     },
     {
       "display_name" : "host-parity",
-      "duration_seconds" : 0.013763070106506348,
+      "duration_seconds" : 0.0030820369720458984,
       "name" : "host-parity",
       "status" : "passed",
       "tags" : [
@@ -27,9 +27,21 @@
         "host",
         "parity"
       ]
+    },
+    {
+      "display_name" : "workspace-resource-resolution",
+      "duration_seconds" : 0.007706046104431152,
+      "name" : "workspace-resource-resolution",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "resolution",
+        "resource",
+        "workspace"
+      ]
     }
   ],
   "skipped" : 0,
   "title" : "AgenticRuntime flow tests",
-  "total" : 2
+  "total" : 3
 }

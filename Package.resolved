@@ -1,5 +1,5 @@
 {
-  "originHash" : "5cfe363181b79d0ded9501653de947d508c1f5d54c776c84b228457cdecce7ec",
+  "originHash" : "075b702af47016860f4187c27ec82ed0c76d75619f18c4bc5d13354c05112240",
   "pins" : [
     {
       "identity" : "agentic",
@@ -7,7 +7,7 @@
       "location" : "https://github.com/leviouwendijk/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "c2a33c78e2348a982a45dbbda7170ec5890fff90"
+        "revision" : "b8cb0d1746dc2e2a40d64a91dd6c84967be08dcd"
       }
     },
     {
@@ -25,7 +25,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticExecution.git",
       "state" : {
         "branch" : "master",
-        "revision" : "41ba0a05e9a3672454f1cef645c17216acc3bdd4"
+        "revision" : "5df3dd46aba572534c59fb1b3ff87cce4d6f82aa"
       }
     },
     {
@@ -43,7 +43,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticIO.git",
       "state" : {
         "branch" : "master",
-        "revision" : "6b9853788f5f731f72dc95d9427aea230e34820d"
+        "revision" : "d629002e0a7f7fdb4c9af4f92529ae12ae074328"
       }
     },
     {
@@ -79,7 +79,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticWorkspace.git",
       "state" : {
         "branch" : "master",
-        "revision" : "cbeee5c224668fda39dcf451d6602046ca088c3f"
+        "revision" : "49fa47b13403ae7e9eb1653ac5e730f17c2ca1b3"
       }
     },
     {
@@ -124,7 +124,7 @@
       "location" : "https://github.com/leviouwendijk/Concatenation.git",
       "state" : {
         "branch" : "master",
-        "revision" : "41a71aedb651479f2cd44fe7899ae9ceb6ed0c75"
+        "revision" : "ab09b010a6921836f54ffe756ac989c67782697a"
       }
     },
     {
@@ -241,7 +241,7 @@
       "location" : "https://github.com/leviouwendijk/Path.git",
       "state" : {
         "branch" : "master",
-        "revision" : "251aee2c44ffac5c66dd60e303ff73643d38b7ee"
+        "revision" : "8f99bc23b206ce37b81dcedf86142e795932cb19"
       }
     },
     {
@@ -358,7 +358,7 @@
       "location" : "https://github.com/leviouwendijk/Writers.git",
       "state" : {
         "branch" : "master",
-        "revision" : "5c0206d318a4d0b0aff7a77c353d39c5d4d2f50b"
+        "revision" : "c7ff138fa30f6daf3570a03540ab55bfae5767a3"
       }
     }
   ],

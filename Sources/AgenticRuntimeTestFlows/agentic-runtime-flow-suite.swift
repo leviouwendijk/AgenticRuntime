@@ -26,5 +26,17 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticRuntimeFlowTesting
                 .runHostParity()
         },
+        TestFlow(
+            "workspace-resource-resolution",
+            tags: [
+                "agentic-runtime",
+                "resource",
+                "resolution",
+                "workspace",
+            ]
+        ) {
+            try await AgenticRuntimeFlowTesting
+                .runWorkspaceResourceResolution()
+        },
     ]
 }
