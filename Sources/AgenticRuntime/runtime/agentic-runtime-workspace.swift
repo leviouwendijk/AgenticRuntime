@@ -1,4 +1,5 @@
 import Agentic
+import AgenticWorkspace
 import Foundation
 
 public enum AgenticRuntimeWorkspace {

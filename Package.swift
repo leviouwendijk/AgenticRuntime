@@ -33,6 +33,50 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/leviouwendijk/AgenticExecution.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/AgenticWorkspace.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/AgenticModels.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/AgenticUsage.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/Primitives.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/Path.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/Milieu.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/AgenticIO.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/AgenticTools.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/Concatenation.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/Selection.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/leviouwendijk/AgenticInterfaces.git",
             branch: "master"
         ),
@@ -62,6 +106,58 @@ let package = Package(
                     package: "Agentic"
                 ),
                 .product(
+                    name: "AgenticExecution",
+                    package: "AgenticExecution"
+                ),
+                .product(
+                    name: "AgenticWorkspace",
+                    package: "AgenticWorkspace"
+                ),
+                .product(
+                    name: "AgenticModels",
+                    package: "AgenticModels"
+                ),
+                .product(
+                    name: "AgenticUsage",
+                    package: "AgenticUsage"
+                ),
+                .product(
+                    name: "AgenticIO",
+                    package: "AgenticIO"
+                ),
+                .product(
+                    name: "AgenticTools",
+                    package: "AgenticTools"
+                ),
+                .product(
+                    name: "Primitives",
+                    package: "Primitives"
+                ),
+                .product(
+                    name: "Path",
+                    package: "Path"
+                ),
+                .product(
+                    name: "PathParsing",
+                    package: "Path"
+                ),
+                .product(
+                    name: "Concatenation",
+                    package: "Concatenation"
+                ),
+                .product(
+                    name: "Selection",
+                    package: "Selection"
+                ),
+                .product(
+                    name: "SelectionParsing",
+                    package: "Selection"
+                ),
+                .product(
+                    name: "Milieu",
+                    package: "Milieu"
+                ),
+                .product(
                     name: "AgenticInterfaces",
                     package: "AgenticInterfaces"
                 ),
@@ -71,6 +167,22 @@ let package = Package(
             name: "AgenticRuntimeCommands",
             dependencies: [
                 "AgenticRuntime",
+                .product(
+                    name: "AgenticExecution",
+                    package: "AgenticExecution"
+                ),
+                .product(
+                    name: "AgenticWorkspace",
+                    package: "AgenticWorkspace"
+                ),
+                .product(
+                    name: "AgenticModels",
+                    package: "AgenticModels"
+                ),
+                .product(
+                    name: "AgenticUsage",
+                    package: "AgenticUsage"
+                ),
                 .product(
                     name: "Agentic",
                     package: "Agentic"

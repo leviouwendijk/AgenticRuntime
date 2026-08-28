@@ -1,5 +1,7 @@
 import Agentic
+import AgenticExecution
 import AgenticInterfaces
+import AgenticWorkspace
 
 public extension AgenticRuntime {
     func host(
