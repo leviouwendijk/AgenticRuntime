@@ -4,6 +4,7 @@ import Agentic
 import AgenticInterfaces
 import Foundation
 import Primitives
+import Schema
 import TestFlows
 
 enum ToolHostTestCase {
@@ -118,66 +119,63 @@ private extension ToolHostTestCase {
         try Expect.equal(
             manifest.definitions,
             host.registry.definitions,
-            "manifest definitions are exactly the canonical registry definitions"
-        )
-
-        let protocolCapabilities =
-            manifest.protocolCapabilities
-
-        try Expect.equal(
-            protocolCapabilities.invocationForms,
-            [
-                .call,
-                .batch,
-                .plan,
-            ],
-            "manifest exposes all supported invocation payload forms"
-        )
-
-        try Expect.equal(
-            protocolCapabilities.normalInvocationPerformsPreflight,
-            true,
-            "normal invocation performs governed preflight"
-        )
-
-        try Expect.equal(
-            protocolCapabilities.explicitPreflightExecutes,
-            false,
-            "explicit preflight remains inspection without execution"
-        )
-
-        try Expect.equal(
-            protocolCapabilities.sequenceStopsOnNonSuccess,
-            true,
-            "manifest describes sequence success gating"
-        )
-
-        try Expect.equal(
-            protocolCapabilities.supportsOutcomeBranches,
-            true,
-            "manifest describes outcome branch support"
+            "manifest definitions are projected from the exact registry capabilities"
         )
 
         guard
-            manifest.definitions.count == 1,
-            let definition =
-                manifest.definitions.first
+            manifest.capabilities.count == 1,
+            let capability =
+                manifest.capabilities.first
         else {
             throw toolHostAssertionFailure(
-                "Expected exactly one tool definition in capability manifest fixture."
+                "Expected exactly one tool capability in capability manifest fixture."
             )
         }
 
         try Expect.equal(
-            definition.identifier.rawValue,
+            capability.definition.identifier.rawValue,
             "tool_host_probe",
             "manifest retains registered tool identifier"
         )
 
         try Expect.equal(
-            definition.risk,
+            capability.definition.risk,
             ActionRisk.privileged,
             "manifest retains canonical tool risk"
+        )
+
+        try Expect.equal(
+            capability.supportsWorkspaceTargeting,
+            true,
+            "manifest projects workspace targeting from the concrete registered tool"
+        )
+
+        guard
+            let example = manifest.canonicalPlanExample,
+            let exampleNode = example.root.children.first,
+            let exampleCall = exampleNode.call
+        else {
+            throw toolHostAssertionFailure(
+                "Expected capability manifest to generate one canonical AgentToolPlan example."
+            )
+        }
+
+        try Expect.equal(
+            example.root.kind,
+            .sequence,
+            "canonical manifest example uses AgentToolPlan sequence"
+        )
+
+        try Expect.equal(
+            exampleCall.name,
+            "tool_host_probe",
+            "canonical manifest example derives its tool name from the live registry"
+        )
+
+        try Expect.equal(
+            exampleNode.execution != nil,
+            true,
+            "canonical manifest example demonstrates workspace targeting for a targetable tool"
         )
 
         let rendered =
@@ -185,21 +183,26 @@ private extension ToolHostTestCase {
 
         let required = [
             "AGENTIC CAPABILITY MANIFEST",
+            "Workspace authority root:",
             "Session:",
             "    tool-host-session",
             "Available tools (1):",
             "tool_host_probe",
             "    risk: privileged",
-            "    input_schema:",
-            "Protocol:",
-            "Treat the declared tools and schemas as the authoritative local tool surface for this session.",
-            "Do not assume undeclared tools exist.",
-            "Supported invocation payloads: AgentToolCall, non-empty AgentToolCall array, AgentToolPlan.",
-            "Prefer a declared typed Agentic tool over an equivalent shell or process operation.",
-            "Normal invocation performs governed preflight, policy evaluation, and approval handling before execution; do not issue a separate preflight by default.",
-            "Use explicit preflight only when a tool call should be inspected or reviewed without executing it.",
-            "Use sequence for ordered success-gated dependencies; sequence stops after the first non-success and skips remaining siblings.",
-            "Use onSuccess, onFailure, and onDenied when subsequent work differs by call outcome.",
+            "    workspace_targeting: supported",
+            "Invocation schema:",
+            "Canonical AgentToolPlan example:",
+            "Protocol guidance:",
+            "\"$defs\"",
+            "\"oneOf\"",
+            "\"const\"",
+            "\"subpath\"",
+            "DependentPackage",
+            "Treat the Invocation schema as the authoritative local host-call grammar",
+            "Do not invent action/request/tool_call/tool_calls wrappers",
+            "For multi-step or dependent work, prefer one AgentToolPlan",
+            "swift_package_update",
+            "Use execution.workspace.subpath only on tool variants whose Invocation schema advertises execution.",
             "Treat Agentic invocation and AgentToolPlan results as authoritative execution state.",
         ]
 
@@ -345,7 +348,33 @@ private extension ToolHostTestCase {
             Optional(
                 first
             ),
-            "bare AgentToolCall decodes as invoke call"
+            "bare AgentToolCall decodes as canonical direct invocation"
+        )
+
+        let targeted = AgenticToolHostDirectInvocation(
+            id: first.id,
+            name: first.name,
+            input: first.input,
+            execution: .init(
+                workspace: .init(
+                    subpath: "AgenticRuntime"
+                )
+            )
+        )
+        let targetedData = try JSONEncoder().encode(
+            targeted
+        )
+        let targetedRequest = try AgenticToolHostJSON
+            .decodeInvocationRequest(
+                targetedData
+            )
+
+        try Expect.equal(
+            targetedRequest.execution?.workspace?.subpath,
+            Optional(
+                "AgenticRuntime"
+            ),
+            "canonical direct invocation preserves execution.workspace.subpath"
         )
 
         let calls = [
@@ -365,7 +394,7 @@ private extension ToolHostTestCase {
             Optional(
                 calls
             ),
-            "AgentToolCall array decodes as invoke batch"
+            "AgentToolCall array decodes as canonical invoke batch"
         )
 
         let plan = AgentToolPlan(
@@ -391,8 +420,28 @@ private extension ToolHostTestCase {
             Optional(
                 plan
             ),
-            "AgentToolPlan decodes as invoke plan"
+            "AgentToolPlan decodes through the canonical plan wire representation"
         )
+
+        let wrapped = AgenticToolHostRequest(
+            action: .invoke,
+            call: first
+        )
+        let wrappedData = try AgenticToolHostJSON.encode(
+            wrapped
+        )
+
+        do {
+            _ = try AgenticToolHostJSON.decodeInvocationRequest(
+                wrappedData
+            )
+
+            throw toolHostAssertionFailure(
+                "Canonical invocation decoding must reject legacy action/invoke wrappers."
+            )
+        } catch AgenticToolHostJSONError.invalidInvocationRequest {
+            // Expected: the manifest grammar is now the only canonical invocation envelope.
+        }
     }
 
     static func runInvokeBatch() async throws {
@@ -711,7 +760,11 @@ private actor ToolHostProbe {
     }
 }
 
-private struct ToolHostProbeTool: AgentTool {
+private struct ToolHostProbeTool:
+    TypedInstanceAgentTool,
+    WorkspaceTargetableTool
+{
+    typealias Input = ToolHostProbeInput
     let identifier: AgentToolIdentifier = "tool_host_probe"
     let description = "Records one interface-hosted Agentic tool call."
     let risk: ActionRisk
@@ -764,6 +817,7 @@ private struct ToolHostProbeTool: AgentTool {
     }
 }
 
+@JSONSchema
 private struct ToolHostProbeInput: Sendable, Codable, Hashable {
     let marker: String
 }
