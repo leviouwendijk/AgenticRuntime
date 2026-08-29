@@ -11,8 +11,8 @@ enum AgenticRuntimeToolPlanRecoveryChoice:
 {
     case retry
     case skip
-    case continueRun = "continue_run"
-    case stopRun = "stop_run"
+    case continue_run
+    case stop_run
 
     var title: String {
         switch self {
@@ -22,10 +22,10 @@ enum AgenticRuntimeToolPlanRecoveryChoice:
         case .skip:
             return "Skip failed step"
 
-        case .continueRun:
+        case .continue_run:
             return "Continue parent plan"
 
-        case .stopRun:
+        case .stop_run:
             return "Stop run"
         }
     }
@@ -38,10 +38,10 @@ enum AgenticRuntimeToolPlanRecoveryChoice:
         case .skip:
             return "Resolve this node without executing it again."
 
-        case .continueRun:
+        case .continue_run:
             return "Resume only the untouched parent-plan suffix."
 
-        case .stopRun:
+        case .stop_run:
             return "Leave this ToolPlan suspended and return."
         }
     }
@@ -55,7 +55,7 @@ struct AgenticRuntimeToolPlanRecoveryPicker {
         _ run: AgentToolPlanRun
     ) throws -> AgenticRuntimeToolPlanRecoveryChoice {
         guard case .suspended(let suspension) = run.state else {
-            return .stopRun
+            return .stop_run
         }
 
         let choices: [AgenticRuntimeToolPlanRecoveryChoice]
@@ -66,7 +66,7 @@ struct AgenticRuntimeToolPlanRecoveryPicker {
             choices = [
                 .retry,
                 .skip,
-                .stopRun,
+                .stop_run,
             ]
             instructions =
                 errorDescription
@@ -76,15 +76,15 @@ struct AgenticRuntimeToolPlanRecoveryPicker {
             choices = [
                 .retry,
                 .skip,
-                .stopRun,
+                .stop_run,
             ]
             instructions =
                 "The ToolPlan is suspended for human review."
 
         case .continuation_required:
             choices = [
-                .continueRun,
-                .stopRun,
+                .continue_run,
+                .stop_run,
             ]
             instructions =
                 "The interrupted node is resolved. Continue only if the untouched suffix should execute."
@@ -139,7 +139,7 @@ struct AgenticRuntimeToolPlanRecoveryPicker {
             return item
 
         case .cancelled:
-            return .stopRun
+            return .stop_run
         }
     }
 }
@@ -193,13 +193,13 @@ enum AgenticRuntimeBridgeRecovery {
                     expectedRevision: run.revision
                 )
 
-            case .continueRun:
+            case .continue_run:
                 run = try await coordinator.resume(
                     runID: run.id,
                     expectedRevision: run.revision
                 )
 
-            case .stopRun:
+            case .stop_run:
                 return envelope(
                     for: run
                 )
