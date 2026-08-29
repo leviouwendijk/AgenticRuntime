@@ -5,6 +5,7 @@ import AgenticInterfaces
 import Foundation
 import Primitives
 import Schema
+import SchemaMacros
 import TestFlows
 
 enum ToolHostTestCase {
@@ -328,6 +329,12 @@ private extension ToolHostTestCase {
     }
 
     static func runInvocationInputDecoding() async throws {
+        let host = makeHost(
+            risk: .observe,
+            autonomyMode: .auto_observe,
+            probe: ToolHostProbe()
+        )
+
         let first = try makeCall(
             marker: "decode-first"
         )
@@ -338,7 +345,7 @@ private extension ToolHostTestCase {
         let callData = try JSONEncoder().encode(
             first
         )
-        let callRequest = try AgenticToolHostJSON
+        let callRequest = try host
             .decodeInvocationRequest(
                 callData
             )
@@ -364,7 +371,7 @@ private extension ToolHostTestCase {
         let targetedData = try JSONEncoder().encode(
             targeted
         )
-        let targetedRequest = try AgenticToolHostJSON
+        let targetedRequest = try host
             .decodeInvocationRequest(
                 targetedData
             )
@@ -384,7 +391,7 @@ private extension ToolHostTestCase {
         let callsData = try JSONEncoder().encode(
             calls
         )
-        let callsRequest = try AgenticToolHostJSON
+        let callsRequest = try host
             .decodeInvocationRequest(
                 callsData
             )
@@ -410,7 +417,7 @@ private extension ToolHostTestCase {
         let planData = try JSONEncoder().encode(
             plan
         )
-        let planRequest = try AgenticToolHostJSON
+        let planRequest = try host
             .decodeInvocationRequest(
                 planData
             )
@@ -432,7 +439,7 @@ private extension ToolHostTestCase {
         )
 
         do {
-            _ = try AgenticToolHostJSON.decodeInvocationRequest(
+            _ = try host.decodeInvocationRequest(
                 wrappedData
             )
 

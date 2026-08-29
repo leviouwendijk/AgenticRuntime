@@ -22,15 +22,6 @@ public enum AgenticRuntimeCommandIO {
         )
     }
 
-    public static func decodeHostRequest(
-        _ data: Data
-    ) throws -> AgenticToolHostRequest {
-        try AgenticToolHostJSON
-            .decodeInvocationRequest(
-                data
-            )
-    }
-
     public static func write(
         _ envelope: AgenticToolHostEnvelope
     ) throws {

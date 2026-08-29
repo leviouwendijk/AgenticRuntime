@@ -38,5 +38,31 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticRuntimeFlowTesting
                 .runWorkspaceResourceResolution()
         },
+        TestFlow(
+            "tool-plan-recovery-retry",
+            tags: [
+                "agentic-runtime",
+                "tool-plan",
+                "recovery",
+                "retry",
+                "memory",
+            ]
+        ) {
+            try await AgenticRuntimeToolPlanFlowTesting
+                .runRecoveryThenRetry()
+        },
+        TestFlow(
+            "tool-plan-recovery-skip",
+            tags: [
+                "agentic-runtime",
+                "tool-plan",
+                "recovery",
+                "skip",
+                "memory",
+            ]
+        ) {
+            try await AgenticRuntimeToolPlanFlowTesting
+                .runRecoveryThenSkip()
+        },
     ]
 }

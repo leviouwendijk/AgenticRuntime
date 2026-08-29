@@ -112,14 +112,12 @@ public enum AgenticRuntimeHostCommand<
         ) async throws {
             _ = invocation
 
-            let request: AgenticToolHostRequest
+            let inputData: Data
 
             if options.standardInput {
-                request = try AgenticRuntimeCommandIO
-                    .decodeHostRequest(
-                        AgenticRuntimeCommandIO
-                            .readStandardInput()
-                    )
+                inputData =
+                    try AgenticRuntimeCommandIO
+                        .readStandardInput()
             } else {
                 guard let text = Clipboard.system.read(),
                       !text.trimmingCharacters(
@@ -130,9 +128,9 @@ public enum AgenticRuntimeHostCommand<
                         .missingClipboardInput
                 }
 
-                request = try AgenticRuntimeCommandIO
-                    .decodeHostRequest(
-                        Data(text.utf8)
+                inputData =
+                    Data(
+                        text.utf8
                     )
             }
 
@@ -153,6 +151,10 @@ public enum AgenticRuntimeHostCommand<
                 sessionID: options.sessionID,
                 approvalHandler: approvalPicker
             )
+            let request =
+                try host.decodeInvocationRequest(
+                    inputData
+                )
             let envelope = try await host.execute(
                 request
             )
