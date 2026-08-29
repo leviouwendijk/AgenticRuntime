@@ -238,15 +238,34 @@ enum AWSMutateRefactorApprovalTestCase {
                 resumed
             )
 
-        case .stopRun:
+        case .skip:
+            try await presenter.present(
+                .approvalDecision(
+                    .skipped
+                )
+            )
+
+            let resumed = try await runner.resume(
+                sessionID: initialResult.sessionID,
+                approvalDecision: .skipped,
+                metadata: [
+                    "summary": "skipped AWS mutate_files refactor from aginttest terminal interface"
+                ]
+            )
+
+            try await presenter.present(
+                resumed
+            )
+
+        case .stop_run:
             try await presenter.present(
                 .runStopped(
                     reason: "User stopped the AWS mutate_files refactor run from the approval picker."
                 )
             )
 
-        case .inspectDetails,
-             .showDiff:
+        case .inspect_details,
+             .show_diff:
             try await presenter.present(
                 .runStopped(
                     reason: "Unexpected non-terminal picker choice escaped picker loop."

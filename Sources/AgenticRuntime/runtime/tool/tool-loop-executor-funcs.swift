@@ -133,6 +133,25 @@ extension ToolLoopExecutor {
         )
     }
 
+    func makeSkippedToolResult(
+        for toolCall: AgentToolCall,
+        summary: String = "Skipped explicitly by the operator."
+    ) -> AgentToolResult {
+        let payload = ToolSkipPayload(
+            kind: "tool_skipped",
+            toolCallID: toolCall.id,
+            toolName: toolCall.name,
+            summary: summary
+        )
+
+        return AgentToolResult(
+            toolCallID: toolCall.id,
+            name: toolCall.name,
+            output: try! JSONToolBridge.encode(payload),
+            isError: false
+        )
+    }
+
     func makeToolErrorResult(
         for toolCall: AgentToolCall,
         error: Error

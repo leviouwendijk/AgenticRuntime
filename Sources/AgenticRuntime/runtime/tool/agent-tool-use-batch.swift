@@ -17,6 +17,7 @@ public enum AgentToolUseDisposition: String, Sendable, Codable, Hashable, CaseIt
     case suspended_for_user_input
     case skipped_after_mutation
     case skipped_after_denial
+    case skipped_by_user
     case skipped_after_user_input
     case failed_preflight
     case failed_execution
@@ -62,6 +63,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
              .executed,
              .skipped_after_mutation,
              .skipped_after_denial,
+             .skipped_by_user,
              .skipped_after_user_input,
              .failed_preflight,
              .failed_execution:

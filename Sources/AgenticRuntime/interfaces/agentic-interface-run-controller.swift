@@ -142,7 +142,8 @@ public struct AgenticInterfaceRunController: Sendable {
 
         switch resolution {
         case .approved,
-             .denied:
+             .denied,
+             .skipped:
             guard let approvalDecision = resolution.approvalDecision else {
                 preconditionFailure("Approval resolution without approval decision.")
             }

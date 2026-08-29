@@ -69,6 +69,10 @@ public extension AgentApprovalEvent {
             kind = .approval_decision
             decision = .denied
 
+        case .tool_skipped:
+            kind = .approval_decision
+            decision = .skipped
+
         case .assistant_response,
              .compaction,
              .model_stream_started,

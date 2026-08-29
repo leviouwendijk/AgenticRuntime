@@ -111,6 +111,42 @@ public extension ToolLoopExecutor {
                 from: checkpoint
             )
 
+        case .skipped:
+            let result = makeSkippedToolResult(
+                for: pendingApproval.toolCall,
+                summary: metadata["summary"] ?? "skipped after suspended review"
+            )
+
+            try await appendToolResult(
+                result,
+                for: pendingApproval.toolCall,
+                disposition: .skipped_by_user,
+                to: &checkpoint,
+                summary: metadata["summary"] ?? "skipped after suspended review"
+            )
+
+            try await appendRunEvent(
+                .init(
+                    kind: .tool_skipped,
+                    iteration: checkpoint.state.iteration,
+                    toolCallID: pendingApproval.toolCall.id,
+                    toolName: pendingApproval.toolCall.name,
+                    summary: metadata["summary"] ?? "skipped after suspended review"
+                ),
+                to: &checkpoint
+            )
+
+            checkpoint.clearSuspension()
+            checkpoint.phase = .processing_tool_calls
+
+            try await saveCheckpoint(
+                &checkpoint
+            )
+
+            return try await runLoop(
+                from: checkpoint
+            )
+
         case .needshuman:
             return try suspendedResult(
                 from: checkpoint

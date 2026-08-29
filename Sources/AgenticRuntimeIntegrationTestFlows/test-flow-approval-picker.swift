@@ -39,19 +39,20 @@ struct TestFlowApprovalPicker: Sendable {
             )
 
             switch choice {
-            case .inspectDetails:
+            case .inspect_details:
                 renderDetails(
                     prompt
                 )
 
-            case .showDiff:
+            case .show_diff:
                 renderDiff(
                     prompt
                 )
 
             case .approve,
                  .deny,
-                 .stopRun:
+                 .skip,
+                 .stop_run:
                 return choice
             }
         }
@@ -82,7 +83,7 @@ private extension TestFlowApprovalPicker {
             )
         } catch let error as TestFlowInteractionError {
             if case .cancelled = error {
-                return .stopRun
+                return .stop_run
             }
 
             throw error

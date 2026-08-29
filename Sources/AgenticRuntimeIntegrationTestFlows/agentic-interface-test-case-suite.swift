@@ -57,6 +57,7 @@ struct AgenticInterfaceTestCatalog: Sendable {
 
                 ModeAwareControllerTestCase.makeApprove(),
                 ModeAwareControllerTestCase.makeDeny(),
+                ModeAwareControllerTestCase.makeSkip(),
                 ModeAwareControllerTestCase.makeStop(),
 
                 ModeCommandArgumentsTestCase.makeDefaultsToCoder(),

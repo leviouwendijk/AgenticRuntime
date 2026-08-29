@@ -112,6 +112,13 @@ extension ToolLoopExecutor {
         let message: String
     }
 
+    struct ToolSkipPayload: Encodable, Sendable {
+        let kind: String
+        let toolCallID: String
+        let toolName: String
+        let summary: String
+    }
+
     struct UserInputResumePayload: Encodable, Sendable {
         let kind: String
         let prompt: String

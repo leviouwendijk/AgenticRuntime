@@ -30,6 +30,17 @@ enum ModeAwareControllerTestCase {
         }
     }
 
+    static func makeSkip() -> AgenticInterfaceTestCase {
+        .init(
+            id: "mode-aware-controller-skip",
+            summary: "Run a mode preparation through AgenticInterfaceRunController and explicitly skip the pending mutation."
+        ) { _ in
+            try await run(
+                resolution: .skipped
+            )
+        }
+    }
+
     static func makeStop() -> AgenticInterfaceTestCase {
         .init(
             id: "mode-aware-controller-stop",
@@ -90,6 +101,12 @@ enum ModeAwareControllerTestCase {
 
         case .denied:
             try checksDeniedResult(
+                fixture,
+                result: result
+            )
+
+        case .skipped:
+            try checksSkippedResult(
                 fixture,
                 result: result
             )
@@ -333,6 +350,29 @@ private extension ModeAwareControllerTestCase {
         )
     }
 
+    static func checksSkippedResult(
+        _ fixture: Fixture,
+        result: AgenticInterfaceRunControllerResult
+    ) throws {
+        try Expect.equal(
+            result.isCompleted,
+            true,
+            "controller skipped run completes"
+        )
+
+        try ScriptedMutateFilesFixture.assertUnchanged(
+            workspaceRoot: fixture.workspaceRoot,
+            originalSnapshot: fixture.originalSnapshot
+        )
+
+        let responseText = result.finalResult?.response?.message.content.text ?? ""
+
+        try Expect.true(
+            responseText.contains("controller mutate_files skipped"),
+            "controller skipped final response"
+        )
+    }
+
     static func checksStoppedResult(
         _ fixture: Fixture,
         result: AgenticInterfaceRunControllerResult,
@@ -380,7 +420,8 @@ private extension ModeAwareControllerTestCase {
 
         switch resolution {
         case .approved,
-             .denied:
+             .denied,
+             .skipped:
             try Expect.true(
                 events.containsApprovalDecision,
                 "controller records approval decision"
@@ -541,7 +582,32 @@ private struct ControllerScriptedModelResponseProvider: AgentModelResponseProvid
             return "controller mutate_files denied or failed."
         }
 
+        if encodedOutputText(
+            from: toolResult
+        ).contains("\"kind\":\"tool_skipped\"") {
+            return "controller mutate_files skipped."
+        }
+
         return "controller mutate_files completed through scripted approval."
+    }
+
+    private func encodedOutputText(
+        from toolResult: AgentToolResult
+    ) -> String {
+        do {
+            let data = try JSONEncoder().encode(
+                toolResult.output
+            )
+
+            return String(
+                decoding: data,
+                as: UTF8.self
+            )
+        } catch {
+            return String(
+                describing: toolResult.output
+            )
+        }
     }
 }
 

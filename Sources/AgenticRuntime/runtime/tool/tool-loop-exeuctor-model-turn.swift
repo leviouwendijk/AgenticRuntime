@@ -304,6 +304,36 @@ extension ToolLoopExecutor {
 
                     return .continueLoop(checkpoint)
 
+                case .skipped:
+                    let result = makeSkippedToolResult(
+                        for: toolCall
+                    )
+
+                    try await appendToolResult(
+                        result,
+                        for: toolCall,
+                        disposition: .skipped_by_user,
+                        to: &checkpoint,
+                        summary: "skipped after review"
+                    )
+
+                    try await appendRunEvent(
+                        .init(
+                            kind: .tool_skipped,
+                            iteration: checkpoint.state.iteration,
+                            toolCallID: toolCall.id,
+                            toolName: toolCall.name,
+                            summary: "skipped after review"
+                        ),
+                        to: &checkpoint
+                    )
+
+                    try await saveCheckpoint(
+                        &checkpoint
+                    )
+
+                    batch = checkpoint.toolBatch ?? batch
+
                 case .needshuman:
                     let pendingApproval = PendingApproval(
                         toolCall: toolCall,
