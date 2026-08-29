@@ -155,9 +155,21 @@ public enum AgenticRuntimeHostCommand<
                 try host.decodeInvocationRequest(
                     inputData
                 )
-            let envelope = try await host.execute(
-                request
-            )
+            let recoveryPicker: AgenticRuntimeToolPlanRecoveryPicker?
+
+            if approvalPicker == nil {
+                recoveryPicker = nil
+            } else {
+                recoveryPicker =
+                    AgenticRuntimeToolPlanRecoveryPicker()
+            }
+
+            let envelope =
+                try await AgenticRuntimeBridgeRecovery.execute(
+                    request,
+                    host: host,
+                    picker: recoveryPicker
+                )
 
             if options.standardInput {
                 try AgenticRuntimeCommandIO.write(
