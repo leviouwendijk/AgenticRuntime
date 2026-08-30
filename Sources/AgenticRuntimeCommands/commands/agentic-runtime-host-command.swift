@@ -16,11 +16,12 @@ public enum AgenticRuntimeHostCommand<
     }
 
     public static var defaultChild: ArgumentCommandType? {
-        Help.self
+        Console.self
     }
 
     public static var children: [ArgumentCommandType] {
         [
+            Console.self,
             Help.self,
             Manifest.self,
             Bridge.self,
@@ -31,6 +32,35 @@ public enum AgenticRuntimeHostCommand<
         try await .resolve(
             Application.self
         )
+    }
+
+    public enum Console:
+        ParsedArgumentCommand
+    {
+        public typealias Options = HostOptions
+
+        public static var name: String {
+            "console"
+        }
+
+        public static func run(
+            _ options: Options,
+            invocation: ParsedInvocation
+        ) async throws {
+            _ = invocation
+
+            let runtime = try await AgenticRuntimeHostCommand<Application>
+                .runtime()
+            let host = try runtime.host(
+                workspacePath: options.workspace,
+                sessionID: options.sessionID
+            )
+
+            try await HostConsole.run(
+                host: host,
+                context: options.workspace
+            )
+        }
     }
 
     public enum Help:

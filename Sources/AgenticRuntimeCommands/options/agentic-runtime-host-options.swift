@@ -1,6 +1,54 @@
 import Arguments
 import Foundation
 
+public struct HostOptions:
+    Sendable,
+    ArgumentParsed
+{
+    public typealias ArgumentPayload = Payload
+
+    public let workspace: String
+    public let sessionID: String?
+
+    public init(
+        arguments: Payload
+    ) throws {
+        self.workspace = arguments.workspace
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+
+        let sessionID = arguments.sessionID?
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+
+        self.sessionID = sessionID.flatMap {
+            $0.isEmpty ? nil : $0
+        }
+    }
+
+    public struct Payload:
+        ArgumentGroup
+    {
+        @Opt(
+            "workspace",
+            short: "w",
+            default: ".",
+            help: "Workspace root used by the persistent host."
+        )
+        public var workspace: String
+
+        @Opt(
+            "session",
+            help: "Optional persistent host session identifier."
+        )
+        public var sessionID: String?
+
+        public init() {}
+    }
+}
+
 public struct AgenticRuntimeHostManifestOptions:
     Sendable,
     ArgumentParsed

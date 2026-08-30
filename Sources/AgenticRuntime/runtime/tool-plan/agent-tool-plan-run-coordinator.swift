@@ -270,6 +270,50 @@ public actor AgentToolPlanRunCoordinator {
         return updated
     }
 
+    public func decide(
+        runID: String,
+        expectedRevision: Int,
+        decision: ApprovalDecision
+    ) async throws -> AgentToolPlanRun {
+        let run = try currentRun(
+            id: runID,
+            expectedRevision: expectedRevision
+        )
+
+        guard case .suspended(let suspension) = run.state,
+              case .human_review = suspension.reason
+        else {
+            throw ApprovalError.notPending(
+                runID
+            )
+        }
+
+        try requireNoActiveRecovery(
+            for: run
+        )
+        try reserveExistingRun(
+            runID
+        )
+        defer {
+            busyRunIDs.remove(
+                runID
+            )
+        }
+
+        let updated = try await executor.retry(
+            run,
+            context: context,
+            approvalHandler: FixedApproval(
+                decision: decision
+            )
+        )
+
+        replace(
+            updated
+        )
+        return updated
+    }
+
     public func skip(
         runID: String,
         expectedRevision: Int
@@ -329,6 +373,37 @@ public actor AgentToolPlanRunCoordinator {
         )
 
         return updated
+    }
+}
+
+private struct FixedApproval: ToolApprovalHandler {
+    let decision: ApprovalDecision
+
+    func decide(
+        on preflight: ToolPreflight,
+        requirement: ApprovalRequirement
+    ) async throws -> ApprovalDecision {
+        decision
+    }
+
+    func decide(
+        on review: ToolInvocation.Review
+    ) async throws -> ApprovalDecision {
+        decision
+    }
+}
+
+private enum ApprovalError:
+    Error,
+    LocalizedError
+{
+    case notPending(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .notPending(let runID):
+            return "AgentToolPlanRun '\(runID)' is not awaiting approval."
+        }
     }
 }
 

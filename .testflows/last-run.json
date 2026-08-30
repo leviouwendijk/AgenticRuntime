@@ -3,12 +3,12 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-08-30T21:55:32Z",
+  "generated_at" : "2026-08-30T23:28:32Z",
   "passed" : 6,
   "results" : [
     {
       "display_name" : "application-realization",
-      "duration_seconds" : 0.00433802604675293,
+      "duration_seconds" : 0.004155993461608887,
       "name" : "application-realization",
       "status" : "passed",
       "tags" : [
@@ -19,7 +19,7 @@
     },
     {
       "display_name" : "host-parity",
-      "duration_seconds" : 0.011680960655212402,
+      "duration_seconds" : 0.007980942726135254,
       "name" : "host-parity",
       "status" : "passed",
       "tags" : [
@@ -30,7 +30,7 @@
     },
     {
       "display_name" : "workspace-resource-resolution",
-      "duration_seconds" : 0.013979077339172363,
+      "duration_seconds" : 0.025045037269592285,
       "name" : "workspace-resource-resolution",
       "status" : "passed",
       "tags" : [
@@ -42,7 +42,7 @@
     },
     {
       "display_name" : "tool-plan-recovery-retry",
-      "duration_seconds" : 0.0008920431137084961,
+      "duration_seconds" : 0.0018219947814941406,
       "name" : "tool-plan-recovery-retry",
       "status" : "passed",
       "tags" : [
@@ -55,7 +55,7 @@
     },
     {
       "display_name" : "tool-plan-recovery-skip",
-      "duration_seconds" : 0.00012195110321044922,
+      "duration_seconds" : 0.0002790689468383789,
       "name" : "tool-plan-recovery-skip",
       "status" : "passed",
       "tags" : [
@@ -68,7 +68,7 @@
     },
     {
       "display_name" : "tool-plan-recovery-hierarchy",
-      "duration_seconds" : 0.00018095970153808594,
+      "duration_seconds" : 0.00020301342010498047,
       "name" : "tool-plan-recovery-hierarchy",
       "status" : "passed",
       "tags" : [

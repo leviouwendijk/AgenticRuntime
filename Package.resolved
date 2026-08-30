@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "a2511696e33fd8e2287a32df0c7291352db0be88"
+        "revision" : "a31f6d3d123daa34a17cd9e597c9d73205521477"
       }
     },
     {
@@ -259,7 +259,7 @@
       "location" : "https://github.com/leviouwendijk/Primitives.git",
       "state" : {
         "branch" : "master",
-        "revision" : "685ba8ee4bc678c957502e7dde25c59d0c192d4a"
+        "revision" : "7b53326bba4229c0b8c62529dfe0934f6ddedf6c"
       }
     },
     {
@@ -295,7 +295,7 @@
       "location" : "https://github.com/leviouwendijk/Schema.git",
       "state" : {
         "branch" : "master",
-        "revision" : "c1b0f99a0b7ffdda0e2a566b656709996a4a3ae3"
+        "revision" : "f23bd9c256f0d7b428c30db68bcd097a3a19c63a"
       }
     },
     {
@@ -349,7 +349,7 @@
       "location" : "https://github.com/leviouwendijk/Terminal.git",
       "state" : {
         "branch" : "master",
-        "revision" : "d7da2167d926520a6948d82b390cb0f12618d85b"
+        "revision" : "84324d8ed19685f5a706e84377463ee09694849c"
       }
     },
     {
