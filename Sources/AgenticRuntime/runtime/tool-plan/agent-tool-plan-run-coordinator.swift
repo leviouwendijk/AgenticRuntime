@@ -18,6 +18,8 @@ public enum AgentToolPlanRunCoordinatorError:
     )
     case recoveryParentNotSuspended(String)
     case recoveryParentAlreadyResolved(String)
+    case activeRecoveryChild(parentRunID: String, childRunID: String)
+    case maximumRecoveryDepthExceeded(parentRunID: String, maximumDepth: Int)
 
     public var errorDescription: String? {
         switch self {
@@ -42,6 +44,12 @@ public enum AgentToolPlanRunCoordinatorError:
 
         case .recoveryParentAlreadyResolved(let runID):
             return "AgentToolPlanRun '\(runID)' has already resolved its interruption and is awaiting continuation."
+
+        case .activeRecoveryChild(let parentRunID, let childRunID):
+            return "AgentToolPlanRun '\(parentRunID)' has active recovery child '\(childRunID)' for its current suspension."
+
+        case .maximumRecoveryDepthExceeded(let parentRunID, let maximumDepth):
+            return "AgentToolPlanRun '\(parentRunID)' cannot create another recovery because the maximum recovery depth is \(maximumDepth)."
         }
     }
 }
@@ -56,21 +64,25 @@ public actor AgentToolPlanRunCoordinator {
     public let executor: AgentToolPlanRunExecutor
     public let context: AgentToolExecutionContext
     public let approvalHandler: (any ToolApprovalHandler)?
+    public let maximumRecoveryDepth: Int
 
     private var runsByID: [String: AgentToolPlanRun] = [:]
     private var runOrder: [String] = []
     private var busyRunIDs: Set<String> = []
+    private var recoveryParentRevisionsByRunID: [String: Int] = [:]
 
     public init(
         invoker: ToolInvoker,
         context: AgentToolExecutionContext = .init(),
-        approvalHandler: (any ToolApprovalHandler)? = nil
+        approvalHandler: (any ToolApprovalHandler)? = nil,
+        maximumRecoveryDepth: Int = 4
     ) {
         self.executor = AgentToolPlanRunExecutor(
             invoker: invoker
         )
         self.context = context
         self.approvalHandler = approvalHandler
+        self.maximumRecoveryDepth = max(0, maximumRecoveryDepth)
     }
 
     public func start(
@@ -121,6 +133,8 @@ public actor AgentToolPlanRunCoordinator {
         try requireRecoverableParent(
             parent
         )
+        try requireNoActiveRecovery(for: parent)
+        try requireRecoveryDepthAvailable(for: parent)
 
         try reserveExistingRun(
             parentRunID
@@ -159,6 +173,7 @@ public actor AgentToolPlanRunCoordinator {
         storeNew(
             recovery
         )
+        recoveryParentRevisionsByRunID[recovery.id] = parent.revision
 
         return recovery
     }
@@ -195,6 +210,26 @@ public actor AgentToolPlanRunCoordinator {
         }
     }
 
+    public func recoveryDepth(
+        of runID: String
+    ) throws -> Int {
+        var depth = 0
+        var candidate = try requiredRun(id: runID)
+
+        while case .recovery(parentRunID: let parentRunID) = candidate.relationship {
+            depth += 1
+            candidate = try requiredRun(id: parentRunID)
+        }
+
+        return depth
+    }
+
+    public func activeRecovery(
+        of parentRunID: String
+    ) throws -> AgentToolPlanRun? {
+        activeRecovery(for: try requiredRun(id: parentRunID))
+    }
+
     public func isBusy(
         runID: String
     ) -> Bool {
@@ -212,6 +247,7 @@ public actor AgentToolPlanRunCoordinator {
             expectedRevision: expectedRevision
         )
 
+        try requireNoActiveRecovery(for: run)
         try reserveExistingRun(
             runID
         )
@@ -242,6 +278,8 @@ public actor AgentToolPlanRunCoordinator {
             id: runID,
             expectedRevision: expectedRevision
         )
+
+        try requireNoActiveRecovery(for: run)
 
         guard !busyRunIDs.contains(runID) else {
             throw AgentToolPlanRunCoordinatorError.runBusy(
@@ -278,6 +316,8 @@ public actor AgentToolPlanRunCoordinator {
             )
         }
 
+        try requireNoActiveRecovery(for: run)
+
         let updated = try await executor.resume(
             run,
             context: context,
@@ -293,15 +333,18 @@ public actor AgentToolPlanRunCoordinator {
 }
 
 private extension AgentToolPlanRunCoordinator {
+    func requiredRun(id: String) throws -> AgentToolPlanRun {
+        guard let run = runsByID[id] else {
+            throw AgentToolPlanRunCoordinatorError.missingRun(id)
+        }
+        return run
+    }
+
     func currentRun(
         id: String,
         expectedRevision: Int
     ) throws -> AgentToolPlanRun {
-        guard let run = runsByID[id] else {
-            throw AgentToolPlanRunCoordinatorError.missingRun(
-                id
-            )
-        }
+        let run = try requiredRun(id: id)
 
         guard run.revision == expectedRevision else {
             throw AgentToolPlanRunCoordinatorError.staleRevision(
@@ -312,6 +355,49 @@ private extension AgentToolPlanRunCoordinator {
         }
 
         return run
+    }
+
+    func activeRecovery(for parent: AgentToolPlanRun) -> AgentToolPlanRun? {
+        for runID in runOrder.reversed() {
+            guard recoveryParentRevisionsByRunID[runID] == parent.revision,
+                  let run = runsByID[runID],
+                  case .recovery(
+                    parentRunID: let candidateParentRunID
+                  ) = run.relationship,
+                  candidateParentRunID == parent.id,
+                  !isTerminal(run)
+            else {
+                continue
+            }
+            return run
+        }
+        return nil
+    }
+
+    func requireNoActiveRecovery(for parent: AgentToolPlanRun) throws {
+        guard let child = activeRecovery(for: parent) else { return }
+        throw AgentToolPlanRunCoordinatorError.activeRecoveryChild(
+            parentRunID: parent.id,
+            childRunID: child.id
+        )
+    }
+
+    func requireRecoveryDepthAvailable(for parent: AgentToolPlanRun) throws {
+        guard try recoveryDepth(of: parent.id) + 1 <= maximumRecoveryDepth else {
+            throw AgentToolPlanRunCoordinatorError.maximumRecoveryDepthExceeded(
+                parentRunID: parent.id,
+                maximumDepth: maximumRecoveryDepth
+            )
+        }
+    }
+
+    func isTerminal(_ run: AgentToolPlanRun) -> Bool {
+        switch run.state {
+        case .completed, .stopped:
+            return true
+        case .suspended:
+            return false
+        }
     }
 
     func requireRecoverableParent(

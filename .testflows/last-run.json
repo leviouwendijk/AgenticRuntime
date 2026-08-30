@@ -3,12 +3,12 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-08-29T22:37:45Z",
-  "passed" : 5,
+  "generated_at" : "2026-08-30T21:55:32Z",
+  "passed" : 6,
   "results" : [
     {
       "display_name" : "application-realization",
-      "duration_seconds" : 0.013713955879211426,
+      "duration_seconds" : 0.00433802604675293,
       "name" : "application-realization",
       "status" : "passed",
       "tags" : [
@@ -19,7 +19,7 @@
     },
     {
       "display_name" : "host-parity",
-      "duration_seconds" : 0.017009973526000977,
+      "duration_seconds" : 0.011680960655212402,
       "name" : "host-parity",
       "status" : "passed",
       "tags" : [
@@ -30,7 +30,7 @@
     },
     {
       "display_name" : "workspace-resource-resolution",
-      "duration_seconds" : 0.01724398136138916,
+      "duration_seconds" : 0.013979077339172363,
       "name" : "workspace-resource-resolution",
       "status" : "passed",
       "tags" : [
@@ -42,7 +42,7 @@
     },
     {
       "display_name" : "tool-plan-recovery-retry",
-      "duration_seconds" : 0.0017470121383666992,
+      "duration_seconds" : 0.0008920431137084961,
       "name" : "tool-plan-recovery-retry",
       "status" : "passed",
       "tags" : [
@@ -55,7 +55,7 @@
     },
     {
       "display_name" : "tool-plan-recovery-skip",
-      "duration_seconds" : 0.00010800361633300781,
+      "duration_seconds" : 0.00012195110321044922,
       "name" : "tool-plan-recovery-skip",
       "status" : "passed",
       "tags" : [
@@ -65,9 +65,22 @@
         "skip",
         "tool-plan"
       ]
+    },
+    {
+      "display_name" : "tool-plan-recovery-hierarchy",
+      "duration_seconds" : 0.00018095970153808594,
+      "name" : "tool-plan-recovery-hierarchy",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "gating",
+        "hierarchy",
+        "recovery",
+        "tool-plan"
+      ]
     }
   ],
   "skipped" : 0,
   "title" : "AgenticRuntime flow tests",
-  "total" : 5
+  "total" : 6
 }

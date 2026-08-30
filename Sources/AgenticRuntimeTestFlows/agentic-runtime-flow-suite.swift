@@ -64,5 +64,18 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticRuntimeToolPlanFlowTesting
                 .runRecoveryThenSkip()
         },
+        TestFlow(
+            "tool-plan-recovery-hierarchy",
+            tags: [
+                "agentic-runtime",
+                "tool-plan",
+                "recovery",
+                "hierarchy",
+                "gating",
+            ]
+        ) {
+            try await AgenticRuntimeToolPlanFlowTesting
+                .runRecoveryHierarchyAndGating()
+        },
     ]
 }
