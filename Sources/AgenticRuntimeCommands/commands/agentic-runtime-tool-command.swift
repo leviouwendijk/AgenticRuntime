@@ -12,7 +12,7 @@ public enum AgenticRuntimeToolCommand<
         "tool"
     }
 
-    public static var defaultChild: ArgumentCommandType? {
+    public static var defaultChild: Help.Type {
         Help.self
     }
 

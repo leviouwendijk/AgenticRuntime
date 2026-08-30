@@ -15,7 +15,7 @@ public enum AgenticRuntimeHostCommand<
         "host"
     }
 
-    public static var defaultChild: ArgumentCommandType? {
+    public static var defaultChild: Console.Type {
         Console.self
     }
 
