@@ -33,6 +33,8 @@ public struct CoreToolSet: AgentToolSet {
     ) throws {
         try registry.register {
             CoreFileToolSet()
+            CoreWorkspaceToolSet()
+
             // CoreFileToolSet(
             //     fileMutationRecorder: fileMutationRecorder
             // )
