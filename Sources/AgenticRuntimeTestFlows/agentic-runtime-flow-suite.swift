@@ -39,6 +39,20 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runWorkspaceResourceResolution()
         },
         TestFlow(
+            "tool-plan-deferred-pause",
+            tags: [
+                "agentic-runtime",
+                "tool-plan",
+                "execution-policy",
+                "continuous",
+                "pause",
+                "boundary",
+            ]
+        ) {
+            try await AgenticRuntimeToolPlanFlowTesting
+                .runDeferredPause()
+        },
+        TestFlow(
             "tool-plan-recovery-retry",
             tags: [
                 "agentic-runtime",

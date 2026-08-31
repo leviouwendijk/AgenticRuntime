@@ -54,6 +54,8 @@ enum HostConsole {
             for: stream
         )
         var note = "p load clipboard ToolPlan"
+        let work = HostWork()
+        var activityFrame = 0
         var console = AgenticHostConsoleWorkflowControl(
             snapshot: HostProjection.snapshot(
                 runs: [],
@@ -89,12 +91,46 @@ enum HostConsole {
             )
 
             if events.isEmpty {
+                var needsRender = false
                 let currentSize = Terminal.size(
                     for: stream
                 )
 
                 if currentSize != size {
                     size = currentSize
+                    needsRender = true
+                }
+
+                if let completion = await work.takeCompletion() {
+                    note = completion
+                    activityFrame = 0
+                    console.update(
+                        HostProjection.snapshot(
+                            runs: await coordinator.runs(),
+                            context: context,
+                            note: note
+                        )
+                    )
+                    needsRender = true
+                } else if let activity = await work.current() {
+                    note = activity.note(
+                        frame: activityFrame
+                    )
+                    activityFrame += 1
+
+                    console.update(
+                        activity.project(
+                            HostProjection.snapshot(
+                                runs: await coordinator.runs(),
+                                context: context,
+                                note: note
+                            )
+                        )
+                    )
+                    needsRender = true
+                }
+
+                if needsRender {
                     render()
                 }
 
@@ -110,23 +146,67 @@ enum HostConsole {
 
                 if key == .char("p"),
                    console.focus.current == .base {
-                    do {
-                        try await load(
-                            host: host,
-                            coordinator: coordinator
-                        )
-                        note = "ToolPlan loaded"
-                    } catch {
-                        note = error.localizedDescription
-                    }
+                    let activity = HostActivity.load
 
-                    console.update(
-                        HostProjection.snapshot(
+                    if await work.begin(
+                        activity
+                    ) {
+                        note = activity.note(
+                            frame: activityFrame
+                        )
+                        activityFrame += 1
+
+                        console.update(
+                            activity.project(
+                                HostProjection.snapshot(
+                                    runs: await coordinator.runs(),
+                                    context: context,
+                                    note: note
+                                )
+                            )
+                        )
+
+                        do {
+                            let plan = try plan(
+                                host: host
+                            )
+
+                            Task {
+                                do {
+                                    try await load(
+                                        plan: plan,
+                                        coordinator: coordinator
+                                    )
+                                    await work.finish(
+                                        "ToolPlan loaded"
+                                    )
+                                } catch {
+                                    await work.finish(
+                                        error.localizedDescription
+                                    )
+                                }
+                            }
+                        } catch {
+                            await work.finish(
+                                error.localizedDescription
+                            )
+                        }
+                    } else {
+                        note = "host execution already in progress"
+
+                        let snapshot = HostProjection.snapshot(
                             runs: await coordinator.runs(),
                             context: context,
                             note: note
                         )
-                    )
+
+                        console.update(
+                            await work.current()?.project(
+                                snapshot
+                            ) ?? snapshot
+                        )
+                    }
+
                     continue
                 }
 
@@ -141,28 +221,81 @@ enum HostConsole {
                     if case .actionRequested(
                         interruptionID: _,
                         runID: let runID,
-                        stepID: _,
+                        stepID: let stepID,
                         action: let action
                     ) = event {
-                        do {
-                            try await apply(
-                                action,
-                                runID: runID,
-                                host: host,
-                                coordinator: coordinator
-                            )
-                            note = "Action applied"
-                        } catch {
-                            note = error.localizedDescription
-                        }
+                        let activity = HostActivity.action(
+                            action,
+                            runID: runID,
+                            stepID: stepID
+                        )
 
-                        console.update(
-                            HostProjection.snapshot(
+                        if await work.begin(
+                            activity
+                        ) {
+                            note = activity.note(
+                                frame: activityFrame
+                            )
+                            activityFrame += 1
+
+                            console.update(
+                                activity.project(
+                                    HostProjection.snapshot(
+                                        runs: await coordinator.runs(),
+                                        context: context,
+                                        note: note
+                                    )
+                                )
+                            )
+
+                            do {
+                                let recoveryPlan: AgentToolPlan?
+
+                                if action == .createFixBranch {
+                                    recoveryPlan = try plan(
+                                        host: host
+                                    )
+                                } else {
+                                    recoveryPlan = nil
+                                }
+
+                                Task {
+                                    do {
+                                        try await apply(
+                                            action,
+                                            runID: runID,
+                                            recoveryPlan: recoveryPlan,
+                                            coordinator: coordinator
+                                        )
+                                        await work.finish(
+                                            "Action applied"
+                                        )
+                                    } catch {
+                                        await work.finish(
+                                            error.localizedDescription
+                                        )
+                                    }
+                                }
+                            } catch {
+                                await work.finish(
+                                    error.localizedDescription
+                                )
+                            }
+                        } else {
+                            note = "host execution already in progress"
+
+                            let snapshot = HostProjection.snapshot(
                                 runs: await coordinator.runs(),
                                 context: context,
                                 note: note
                             )
-                        )
+
+                            console.update(
+                                await work.current()?.project(
+                                    snapshot
+                                ) ?? snapshot
+                            )
+                        }
                     }
                 }
             }
@@ -181,20 +314,18 @@ enum HostConsole {
 
 private extension HostConsole {
     static func load(
-        host: AgenticToolHost,
+        plan: AgentToolPlan,
         coordinator: AgentToolPlanRunCoordinator
     ) async throws {
         _ = try await coordinator.start(
-            plan(
-                host: host
-            )
+            plan
         )
     }
 
     static func apply(
         _ action: AgenticHostConsoleAction,
         runID: String,
-        host: AgenticToolHost,
+        recoveryPlan: AgentToolPlan?,
         coordinator: AgentToolPlanRunCoordinator
     ) async throws {
         guard let run = await coordinator.runs().first(
@@ -241,12 +372,14 @@ private extension HostConsole {
             )
 
         case .createFixBranch:
+            guard let recoveryPlan else {
+                throw HostConsoleError.toolPlanRequired
+            }
+
             _ = try await coordinator.recover(
                 parentRunID: runID,
                 expectedParentRevision: run.revision,
-                plan: plan(
-                    host: host
-                )
+                plan: recoveryPlan
             )
 
         case .stopRun:

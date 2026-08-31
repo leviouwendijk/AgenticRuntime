@@ -5,6 +5,119 @@ import Primitives
 import TestFlows
 
 enum AgenticRuntimeToolPlanFlowTesting {
+    static func runDeferredPause() async throws -> [TestFlowDiagnostic] {
+        let fixture = try makeFixture()
+        let runID = "runtime-deferred-pause"
+        let plan = AgentToolPlan(
+            id: "runtime-deferred-pause-plan",
+            root: .sequence(
+                [
+                    .call(
+                        try call(
+                            id: "first",
+                            marker: "first"
+                        )
+                    ),
+                    .call(
+                        try call(
+                            id: "hold",
+                            marker: "hold"
+                        )
+                    ),
+                    .call(
+                        try call(
+                            id: "third",
+                            marker: "third"
+                        )
+                    ),
+                ]
+            )
+        )
+
+        let execution = Task {
+            try await fixture.coordinator.start(
+                plan,
+                runID: runID,
+                executionPolicy: .continuous
+            )
+        }
+
+        while !(await fixture.probe.hasInvoked(
+            "hold"
+        )) {
+            await Task.yield()
+        }
+
+        let pauseAccepted = await fixture.coordinator.requestPause(
+            runID: runID
+        )
+
+        try Expect.equal(
+            pauseAccepted,
+            true,
+            "continuous run accepts pause while current tool is executing"
+        )
+
+        await fixture.probe.releaseHold()
+
+        let paused = try await execution.value
+
+        guard case .paused(let pause) = paused.state,
+              pause.afterPath == "root.sequence[1]",
+              pause.afterCallID == "hold",
+              pause.attemptNumber == 2,
+              pause.reason == .requested else {
+            throw RuntimeToolPlanFlowError.unexpectedRunState
+        }
+
+        try Expect.equal(
+            await fixture.probe.invocationLog(),
+            "first,hold",
+            "deferred pause finishes current call and does not start following call"
+        )
+
+        let completed = try await fixture.coordinator.resume(
+            runID: paused.id,
+            expectedRevision: paused.revision,
+            executionPolicy: .continuous
+        )
+
+        guard case .completed = completed.state else {
+            throw RuntimeToolPlanFlowError.unexpectedRunState
+        }
+
+        try Expect.equal(
+            await fixture.probe.invocationLog(),
+            "first,hold,third",
+            "continuous resume executes untouched suffix after requested pause"
+        )
+
+        try Expect.equal(
+            completed.revision,
+            3,
+            "three executed authored calls advance the run to revision three"
+        )
+
+        return [
+            .field(
+                "paused-after",
+                pause.afterCallID
+            ),
+            .field(
+                "pause-reason",
+                pause.reason.rawValue
+            ),
+            .field(
+                "executed",
+                await fixture.probe.invocationLog()
+            ),
+            .field(
+                "revision",
+                "\(completed.revision)"
+            ),
+        ]
+    }
+
     static func runRecoveryThenRetry() async throws -> [TestFlowDiagnostic] {
         let fixture = try makeFixture()
         let parent = try await fixture.coordinator.start(
@@ -80,35 +193,20 @@ enum AgenticRuntimeToolPlanFlowTesting {
             expectedRevision: unchangedParent.revision
         )
 
-        try requireContinuationRequired(
-            retried
-        )
-
-        try Expect.equal(
-            await fixture.probe.invocationLog(),
-            "prefix,repair,fix,repair",
-            "post-fix retry executes only failed node"
-        )
-
-        let resumed = try await fixture.coordinator.resume(
-            runID: parent.id,
-            expectedRevision: retried.revision
-        )
-
-        guard case .completed = resumed.state else {
+        guard case .completed = retried.state else {
             throw RuntimeToolPlanFlowError.unexpectedRunState
         }
 
         try Expect.equal(
             await fixture.probe.invocationLog(),
             "prefix,repair,fix,repair,suffix",
-            "explicit resume executes untouched suffix only"
+            "post-fix retry continues untouched suffix"
         )
 
         return [
             .field(
                 "parent",
-                resumed.id
+                retried.id
             ),
             .field(
                 "recovery",
@@ -116,7 +214,7 @@ enum AgenticRuntimeToolPlanFlowTesting {
             ),
             .field(
                 "revision",
-                "\(resumed.revision)"
+                "\(retried.revision)"
             ),
         ]
     }
@@ -156,14 +254,14 @@ enum AgenticRuntimeToolPlanFlowTesting {
             expectedRevision: unchangedParent.revision
         )
 
-        try requireContinuationRequired(
-            skipped
-        )
+        guard case .completed = skipped.state else {
+            throw RuntimeToolPlanFlowError.unexpectedRunState
+        }
 
         try Expect.equal(
             await fixture.probe.invocationLog(),
-            "prefix,repair,fix",
-            "skip does not replay externally repaired node"
+            "prefix,repair,fix,suffix",
+            "skip avoids replaying repaired node and continues untouched suffix"
         )
 
         do {
@@ -199,25 +297,10 @@ enum AgenticRuntimeToolPlanFlowTesting {
             )
         }
 
-        let resumed = try await fixture.coordinator.resume(
-            runID: parent.id,
-            expectedRevision: skipped.revision
-        )
-
-        guard case .completed = resumed.state else {
-            throw RuntimeToolPlanFlowError.unexpectedRunState
-        }
-
-        try Expect.equal(
-            await fixture.probe.invocationLog(),
-            "prefix,repair,fix,suffix",
-            "skip plus explicit resume executes suffix only"
-        )
-
         return [
             .field(
                 "parent",
-                resumed.id
+                skipped.id
             ),
             .field(
                 "resolution",
@@ -225,7 +308,7 @@ enum AgenticRuntimeToolPlanFlowTesting {
             ),
             .field(
                 "revision",
-                "\(resumed.revision)"
+                "\(skipped.revision)"
             ),
         ]
     }
@@ -486,10 +569,11 @@ private extension AgenticRuntimeToolPlanFlowTesting {
 private actor RuntimeToolPlanProbe {
     private var invocations: [String] = []
     private var failedMarkers: Set<String> = []
+    private var holdContinuation: CheckedContinuation<Void, Never>?
 
     func invoke(
         _ value: JSONValue
-    ) throws -> JSONValue {
+    ) async throws -> JSONValue {
         let input = try JSONToolBridge.decode(
             RuntimeToolPlanProbeInput.self,
             from: value
@@ -499,12 +583,31 @@ private actor RuntimeToolPlanProbe {
             input.marker
         )
 
+        if input.marker == "hold" {
+            await withCheckedContinuation { continuation in
+                holdContinuation = continuation
+            }
+        }
+
         if ["repair", "child"].contains(input.marker),
            failedMarkers.insert(input.marker).inserted {
             throw RuntimeToolPlanProbeError.firstRepairAttempt
         }
 
         return value
+    }
+
+    func hasInvoked(
+        _ marker: String
+    ) -> Bool {
+        invocations.contains(
+            marker
+        )
+    }
+
+    func releaseHold() {
+        holdContinuation?.resume()
+        holdContinuation = nil
     }
 
     func invocationLog() -> String {

@@ -122,14 +122,10 @@ private extension HostProjection {
     ) -> AgenticHostConsoleStepPresentation {
         let review = record.invocation?.review
         let targets = review?.preflight.targetPaths ?? []
-        let detail: String
-
-        if let first = targets.first {
-            detail = targets.count > 1
+        let detail = targets.first.map { first in
+            targets.count > 1
                 ? "\(first) (+\(targets.count - 1))"
                 : first
-        } else {
-            detail = record.path
         }
 
         var fields = [
@@ -188,13 +184,6 @@ private extension HostProjection {
                 )
             }
         }
-
-        fields.append(
-            .init(
-                "plan path",
-                record.path
-            )
-        )
 
         if let error = record.errorDescription,
            !error.isEmpty {
@@ -315,6 +304,9 @@ private extension HostProjection {
         switch run.state {
         case .completed:
             return .completed
+
+        case .paused:
+            return .onHold
 
         case .stopped(let outcome):
             switch outcome {

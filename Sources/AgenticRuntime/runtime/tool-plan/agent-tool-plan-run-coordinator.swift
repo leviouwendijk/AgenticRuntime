@@ -70,6 +70,8 @@ public actor AgentToolPlanRunCoordinator {
     private var runOrder: [String] = []
     private var busyRunIDs: Set<String> = []
     private var recoveryParentRevisionsByRunID: [String: Int] = [:]
+    private var executionPoliciesByRunID: [String: AgentToolPlanExecutionPolicy] = [:]
+    private var pauseRequestedRunIDs: Set<String> = []
 
     public init(
         invoker: ToolInvoker,
@@ -111,6 +113,134 @@ public actor AgentToolPlanRunCoordinator {
         )
 
         return run
+    }
+
+    /// Execute a serial ToolPlan under an explicit run execution policy.
+    ///
+    /// This lane deliberately uses AgenticExecution's authored-call stepping
+    /// semantics so Runtime can observe safe boundaries between calls. The
+    /// existing start(_:runID:) remains the general ToolPlan path for plans
+    /// whose batch or outcome-branch structure is not single-step capable yet.
+    public func start(
+        _ plan: AgentToolPlan,
+        runID: String = UUID().uuidString,
+        executionPolicy: AgentToolPlanExecutionPolicy
+    ) async throws -> AgentToolPlanRun {
+        try reserveNewRun(
+            runID
+        )
+        executionPoliciesByRunID[runID] = executionPolicy
+
+        defer {
+            busyRunIDs.remove(
+                runID
+            )
+            executionPoliciesByRunID.removeValue(
+                forKey: runID
+            )
+            pauseRequestedRunIDs.remove(
+                runID
+            )
+        }
+
+        let started = try await executor.start(
+            plan,
+            runID: runID,
+            relationship: .root,
+            executionPolicy: .single_step,
+            context: context,
+            approvalHandler: approvalHandler
+        )
+
+        storeNew(
+            started
+        )
+
+        switch executionPolicy {
+        case .single_step:
+            return started
+
+        case .continuous:
+            return try await continueControlled(
+                started
+            )
+        }
+    }
+
+    /// Request a cooperative pause for a policy-controlled continuous run.
+    ///
+    /// The current tool invocation is never cancelled. If it is already
+    /// executing, this only records intent; the continuous driver observes the
+    /// request after that invocation returns and before starting the next one.
+    @discardableResult
+    public func requestPause(
+        runID: String
+    ) -> Bool {
+        guard busyRunIDs.contains(runID),
+              executionPoliciesByRunID[runID] == .continuous
+        else {
+            return false
+        }
+
+        pauseRequestedRunIDs.insert(
+            runID
+        )
+        return true
+    }
+
+    /// Resume a voluntarily paused serial run under the selected policy.
+    public func resume(
+        runID: String,
+        expectedRevision: Int,
+        executionPolicy: AgentToolPlanExecutionPolicy
+    ) async throws -> AgentToolPlanRun {
+        let run = try currentRun(
+            id: runID,
+            expectedRevision: expectedRevision
+        )
+
+        try reserveExistingRun(
+            runID
+        )
+        executionPoliciesByRunID[runID] = executionPolicy
+
+        defer {
+            busyRunIDs.remove(
+                runID
+            )
+            executionPoliciesByRunID.removeValue(
+                forKey: runID
+            )
+            pauseRequestedRunIDs.remove(
+                runID
+            )
+        }
+
+        try requireNoActiveRecovery(
+            for: run
+        )
+
+        let updated: AgentToolPlanRun
+
+        switch executionPolicy {
+        case .single_step:
+            updated = try await executor.resume(
+                run,
+                executionPolicy: .single_step,
+                context: context,
+                approvalHandler: approvalHandler
+            )
+            replace(
+                updated
+            )
+
+        case .continuous:
+            updated = try await continueControlled(
+                run
+            )
+        }
+
+        return updated
     }
 
     /// Execute a child recovery plan while leaving its parent untouched.
@@ -257,10 +387,13 @@ public actor AgentToolPlanRunCoordinator {
             )
         }
 
-        let updated = try await executor.retry(
+        let retried = try await executor.retry(
             run,
             context: context,
             approvalHandler: approvalHandler
+        )
+        let updated = try await settle(
+            retried
         )
 
         replace(
@@ -300,12 +433,15 @@ public actor AgentToolPlanRunCoordinator {
             )
         }
 
-        let updated = try await executor.retry(
+        let decided = try await executor.retry(
             run,
             context: context,
             approvalHandler: FixedApproval(
                 decision: decision
             )
+        )
+        let updated = try await settle(
+            decided
         )
 
         replace(
@@ -317,22 +453,27 @@ public actor AgentToolPlanRunCoordinator {
     public func skip(
         runID: String,
         expectedRevision: Int
-    ) throws -> AgentToolPlanRun {
+    ) async throws -> AgentToolPlanRun {
         let run = try currentRun(
             id: runID,
             expectedRevision: expectedRevision
         )
 
         try requireNoActiveRecovery(for: run)
-
-        guard !busyRunIDs.contains(runID) else {
-            throw AgentToolPlanRunCoordinatorError.runBusy(
+        try reserveExistingRun(
+            runID
+        )
+        defer {
+            busyRunIDs.remove(
                 runID
             )
         }
 
-        let updated = try executor.skip(
+        let skipped = try executor.skip(
             run
+        )
+        let updated = try await settle(
+            skipped
         )
 
         replace(
@@ -470,7 +611,8 @@ private extension AgentToolPlanRunCoordinator {
         switch run.state {
         case .completed, .stopped:
             return true
-        case .suspended:
+
+        case .paused, .suspended:
             return false
         }
     }
@@ -546,5 +688,62 @@ private extension AgentToolPlanRunCoordinator {
         _ run: AgentToolPlanRun
     ) {
         runsByID[run.id] = run
+    }
+
+    func continueControlled(
+        _ run: AgentToolPlanRun
+    ) async throws -> AgentToolPlanRun {
+        var current = run
+
+        while case .paused = current.state {
+            if pauseRequestedRunIDs.remove(
+                current.id
+            ) != nil {
+                current = requestedPause(
+                    current
+                )
+                replace(
+                    current
+                )
+                return current
+            }
+
+            current = try await executor.resume(
+                current,
+                executionPolicy: .single_step,
+                context: context,
+                approvalHandler: approvalHandler
+            )
+            replace(
+                current
+            )
+        }
+
+        return current
+    }
+
+    func requestedPause(
+        _ run: AgentToolPlanRun
+    ) -> AgentToolPlanRun {
+        guard case .paused(let pause) = run.state else {
+            return run
+        }
+
+        return AgentToolPlanRun(
+            id: run.id,
+            plan: run.plan,
+            relationship: run.relationship,
+            attempts: run.attempts,
+            resolutions: run.resolutions,
+            revision: run.revision,
+            state: .paused(
+                AgentToolPlanPause(
+                    afterPath: pause.afterPath,
+                    afterCallID: pause.afterCallID,
+                    attemptNumber: pause.attemptNumber,
+                    reason: .requested
+                )
+            )
+        )
     }
 }

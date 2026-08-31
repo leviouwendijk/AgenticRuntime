@@ -267,6 +267,9 @@ private extension AgenticRuntimeBridgeRecovery {
         case .completed:
             return .succeeded
 
+        case .paused:
+            return .mixed
+
         case .stopped(let outcome):
             return outcome
 
