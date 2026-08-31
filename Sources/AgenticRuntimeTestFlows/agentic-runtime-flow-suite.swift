@@ -53,6 +53,20 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runDeferredPause()
         },
         TestFlow(
+            "tool-plan-single-step-resolution-policy",
+            tags: [
+                "agentic-runtime",
+                "tool-plan",
+                "execution-policy",
+                "single-step",
+                "recovery",
+                "boundary",
+            ]
+        ) {
+            try await AgenticRuntimeToolPlanFlowTesting
+                .runSingleStepResolutionPolicy()
+        },
+        TestFlow(
             "tool-plan-recovery-retry",
             tags: [
                 "agentic-runtime",

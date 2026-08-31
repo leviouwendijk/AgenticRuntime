@@ -14,14 +14,14 @@ enum AgenticRuntimeToolPlanFlowTesting {
                 [
                     .call(
                         try call(
-                            id: "first",
-                            marker: "first"
+                            id: "hold",
+                            marker: "hold"
                         )
                     ),
                     .call(
                         try call(
-                            id: "hold",
-                            marker: "hold"
+                            id: "second",
+                            marker: "second"
                         )
                     ),
                     .call(
@@ -63,17 +63,17 @@ enum AgenticRuntimeToolPlanFlowTesting {
         let paused = try await execution.value
 
         guard case .paused(let pause) = paused.state,
-              pause.afterPath == "root.sequence[1]",
+              pause.afterPath == "root.sequence[0]",
               pause.afterCallID == "hold",
-              pause.attemptNumber == 2,
+              pause.attemptNumber == 1,
               pause.reason == .requested else {
             throw RuntimeToolPlanFlowError.unexpectedRunState
         }
 
         try Expect.equal(
             await fixture.probe.invocationLog(),
-            "first,hold",
-            "deferred pause finishes current call and does not start following call"
+            "hold",
+            "deferred pause finishes the first current call and does not start following call"
         )
 
         let completed = try await fixture.coordinator.resume(
@@ -88,8 +88,8 @@ enum AgenticRuntimeToolPlanFlowTesting {
 
         try Expect.equal(
             await fixture.probe.invocationLog(),
-            "first,hold,third",
-            "continuous resume executes untouched suffix after requested pause"
+            "hold,second,third",
+            "continuous resume executes untouched suffix after requested first-call pause"
         )
 
         try Expect.equal(
@@ -105,6 +105,108 @@ enum AgenticRuntimeToolPlanFlowTesting {
             ),
             .field(
                 "pause-reason",
+                pause.reason.rawValue
+            ),
+            .field(
+                "executed",
+                await fixture.probe.invocationLog()
+            ),
+            .field(
+                "revision",
+                "\(completed.revision)"
+            ),
+        ]
+    }
+
+    static func runSingleStepResolutionPolicy() async throws -> [TestFlowDiagnostic] {
+        let fixture = try makeFixture()
+        let runID = "runtime-single-step-resolution-policy"
+        let plan = AgentToolPlan(
+            id: "runtime-single-step-resolution-policy-plan",
+            root: .sequence(
+                [
+                    .call(
+                        try call(
+                            id: "repair",
+                            marker: "repair"
+                        )
+                    ),
+                    .call(
+                        try call(
+                            id: "suffix",
+                            marker: "suffix"
+                        )
+                    ),
+                ]
+            )
+        )
+
+        let interrupted = try await fixture.coordinator.start(
+            plan,
+            runID: runID,
+            executionPolicy: .single_step
+        )
+
+        guard case .suspended(let suspension) = interrupted.state,
+              suspension.callID == "repair",
+              case .failure = suspension.reason else {
+            throw RuntimeToolPlanFlowError.unexpectedRunState
+        }
+
+        try Expect.equal(
+            await fixture.probe.invocationLog(),
+            "repair",
+            "single-step run stops at semantic failure"
+        )
+
+        let retried = try await fixture.coordinator.retry(
+            runID: runID,
+            expectedRevision: interrupted.revision
+        )
+
+        guard case .paused(let pause) = retried.state,
+              pause.afterPath == "root.sequence[0]",
+              pause.afterCallID == "repair",
+              pause.attemptNumber == 2,
+              pause.reason == .single_step else {
+            throw RuntimeToolPlanFlowError.unexpectedRunState
+        }
+
+        try Expect.equal(
+            await fixture.probe.invocationLog(),
+            "repair,repair",
+            "successful retry inherits single-step policy and does not execute suffix"
+        )
+
+        let completed = try await fixture.coordinator.resume(
+            runID: runID,
+            expectedRevision: retried.revision,
+            executionPolicy: .continuous
+        )
+
+        guard case .completed = completed.state else {
+            throw RuntimeToolPlanFlowError.unexpectedRunState
+        }
+
+        try Expect.equal(
+            await fixture.probe.invocationLog(),
+            "repair,repair,suffix",
+            "explicit continuous resume executes untouched suffix"
+        )
+
+        try Expect.equal(
+            completed.revision,
+            3,
+            "retry and later suffix execution advance revisions without replay"
+        )
+
+        return [
+            .field(
+                "paused-after",
+                pause.afterCallID
+            ),
+            .field(
+                "policy",
                 pause.reason.rawValue
             ),
             .field(

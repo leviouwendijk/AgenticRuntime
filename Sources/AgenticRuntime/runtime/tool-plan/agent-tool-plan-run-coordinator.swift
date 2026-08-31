@@ -71,6 +71,7 @@ public actor AgentToolPlanRunCoordinator {
     private var busyRunIDs: Set<String> = []
     private var recoveryParentRevisionsByRunID: [String: Int] = [:]
     private var executionPoliciesByRunID: [String: AgentToolPlanExecutionPolicy] = [:]
+    private var pauseEligibleRunIDs: Set<String> = []
     private var pauseRequestedRunIDs: Set<String> = []
 
     public init(
@@ -131,12 +132,27 @@ public actor AgentToolPlanRunCoordinator {
         )
         executionPoliciesByRunID[runID] = executionPolicy
 
+        if executionPolicy == .continuous {
+            pauseEligibleRunIDs.insert(
+                runID
+            )
+        }
+
+        var retainExecutionPolicy = false
+
         defer {
             busyRunIDs.remove(
                 runID
             )
-            executionPoliciesByRunID.removeValue(
-                forKey: runID
+
+            if !retainExecutionPolicy {
+                executionPoliciesByRunID.removeValue(
+                    forKey: runID
+                )
+            }
+
+            pauseEligibleRunIDs.remove(
+                runID
             )
             pauseRequestedRunIDs.remove(
                 runID
@@ -155,6 +171,7 @@ public actor AgentToolPlanRunCoordinator {
         storeNew(
             started
         )
+        retainExecutionPolicy = true
 
         switch executionPolicy {
         case .single_step:
@@ -177,6 +194,7 @@ public actor AgentToolPlanRunCoordinator {
         runID: String
     ) -> Bool {
         guard busyRunIDs.contains(runID),
+              pauseEligibleRunIDs.contains(runID),
               executionPoliciesByRunID[runID] == .continuous
         else {
             return false
@@ -204,12 +222,18 @@ public actor AgentToolPlanRunCoordinator {
         )
         executionPoliciesByRunID[runID] = executionPolicy
 
+        if executionPolicy == .continuous {
+            pauseEligibleRunIDs.insert(
+                runID
+            )
+        }
+
         defer {
             busyRunIDs.remove(
                 runID
             )
-            executionPoliciesByRunID.removeValue(
-                forKey: runID
+            pauseEligibleRunIDs.remove(
+                runID
             )
             pauseRequestedRunIDs.remove(
                 runID
@@ -393,7 +417,9 @@ public actor AgentToolPlanRunCoordinator {
             approvalHandler: approvalHandler
         )
         let updated = try await settle(
-            retried
+            retried,
+            executionPolicy: executionPoliciesByRunID[runID]
+                ?? .continuous
         )
 
         replace(
@@ -441,7 +467,9 @@ public actor AgentToolPlanRunCoordinator {
             )
         )
         let updated = try await settle(
-            decided
+            decided,
+            executionPolicy: executionPoliciesByRunID[runID]
+                ?? .continuous
         )
 
         replace(
@@ -473,7 +501,9 @@ public actor AgentToolPlanRunCoordinator {
             run
         )
         let updated = try await settle(
-            skipped
+            skipped,
+            executionPolicy: executionPoliciesByRunID[runID]
+                ?? .continuous
         )
 
         replace(

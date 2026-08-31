@@ -306,7 +306,7 @@ private extension HostProjection {
             return .completed
 
         case .paused:
-            return .onHold
+            return .paused
 
         case .stopped(let outcome):
             switch outcome {

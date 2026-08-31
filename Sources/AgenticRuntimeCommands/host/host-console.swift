@@ -55,6 +55,7 @@ enum HostConsole {
         )
         var note = "p load clipboard ToolPlan"
         let work = HostWork()
+        let pendingPlans = HostPendingPlans()
         var activityFrame = 0
         var console = AgenticHostConsoleWorkflowControl(
             snapshot: HostProjection.snapshot(
@@ -105,8 +106,9 @@ enum HostConsole {
                     note = completion
                     activityFrame = 0
                     console.update(
-                        HostProjection.snapshot(
-                            runs: await coordinator.runs(),
+                        await snapshot(
+                            coordinator: coordinator,
+                            pendingPlans: pendingPlans,
                             context: context,
                             note: note
                         )
@@ -119,9 +121,10 @@ enum HostConsole {
                     activityFrame += 1
 
                     console.update(
-                        activity.project(
-                            HostProjection.snapshot(
-                                runs: await coordinator.runs(),
+                        await work.project(
+                            await snapshot(
+                                coordinator: coordinator,
+                                pendingPlans: pendingPlans,
                                 context: context,
                                 note: note
                             )
@@ -146,66 +149,31 @@ enum HostConsole {
 
                 if key == .char("p"),
                    console.focus.current == .base {
-                    let activity = HostActivity.load
-
-                    if await work.begin(
-                        activity
-                    ) {
-                        note = activity.note(
-                            frame: activityFrame
+                    do {
+                        let plan = try plan(
+                            host: host
                         )
-                        activityFrame += 1
+                        let runID = UUID().uuidString
 
-                        console.update(
-                            activity.project(
-                                HostProjection.snapshot(
-                                    runs: await coordinator.runs(),
-                                    context: context,
-                                    note: note
-                                )
-                            )
+                        await pendingPlans.insert(
+                            plan,
+                            runID: runID
                         )
-
-                        do {
-                            let plan = try plan(
-                                host: host
-                            )
-
-                            Task {
-                                do {
-                                    try await load(
-                                        plan: plan,
-                                        coordinator: coordinator
-                                    )
-                                    await work.finish(
-                                        "ToolPlan loaded"
-                                    )
-                                } catch {
-                                    await work.finish(
-                                        error.localizedDescription
-                                    )
-                                }
-                            }
-                        } catch {
-                            await work.finish(
-                                error.localizedDescription
-                            )
-                        }
-                    } else {
-                        note = "host execution already in progress"
-
-                        let snapshot = HostProjection.snapshot(
-                            runs: await coordinator.runs(),
-                            context: context,
-                            note: note
-                        )
-
-                        console.update(
-                            await work.current()?.project(
-                                snapshot
-                            ) ?? snapshot
-                        )
+                        note = "ToolPlan ready"
+                    } catch {
+                        note = error.localizedDescription
                     }
+
+                    console.update(
+                        await work.project(
+                            await snapshot(
+                                coordinator: coordinator,
+                                pendingPlans: pendingPlans,
+                                context: context,
+                                note: note
+                            )
+                        )
+                    )
 
                     continue
                 }
@@ -216,6 +184,139 @@ enum HostConsole {
                     if event.requestsExit {
                         shouldExit = true
                         break
+                    }
+
+                    if case .runControlRequested(
+                        runID: let runID,
+                        control: let control
+                    ) = event {
+                        switch control {
+                        case .pause:
+                            if await coordinator.requestPause(
+                                runID: runID
+                            ) {
+                                _ = await work.markPausePending(
+                                    runID: runID
+                                )
+                                note = "pause requested"
+                            } else {
+                                note = "pause unavailable"
+                            }
+
+                            console.update(
+                                await work.project(
+                                    await snapshot(
+                                        coordinator: coordinator,
+                                        pendingPlans: pendingPlans,
+                                        context: context,
+                                        note: note
+                                    )
+                                )
+                            )
+
+                        case .execute_run,
+                             .execute_step_and_wait:
+                            let executionPolicy: AgentToolPlanExecutionPolicy
+                            let label: String
+
+                            switch control {
+                            case .execute_run:
+                                executionPolicy = .continuous
+                                label = "executing run"
+
+                            case .execute_step_and_wait:
+                                executionPolicy = .single_step
+                                label = "executing step"
+
+                            case .pause:
+                                continue
+                            }
+
+                            let pendingPlan = await pendingPlans.plan(
+                                runID: runID
+                            )
+                            let expectedRevision = await coordinator.runs()
+                                .first(
+                                    where: {
+                                        $0.id == runID
+                                    }
+                                )?
+                                .revision
+                            let activity = HostActivity(
+                                runID: runID,
+                                label: label
+                            )
+
+                            if await work.begin(
+                                activity
+                            ) {
+                                note = activity.note(
+                                    frame: activityFrame
+                                )
+                                activityFrame += 1
+
+                                console.update(
+                                    await work.project(
+                                        await snapshot(
+                                            coordinator: coordinator,
+                                            pendingPlans: pendingPlans,
+                                            context: context,
+                                            note: note
+                                        )
+                                    )
+                                )
+
+                                Task {
+                                    do {
+                                        if let pendingPlan {
+                                            _ = try await coordinator.start(
+                                                pendingPlan,
+                                                runID: runID,
+                                                executionPolicy: executionPolicy
+                                            )
+                                            _ = await pendingPlans.take(
+                                                runID: runID
+                                            )
+                                        } else if let expectedRevision {
+                                            _ = try await coordinator.resume(
+                                                runID: runID,
+                                                expectedRevision: expectedRevision,
+                                                executionPolicy: executionPolicy
+                                            )
+                                        } else {
+                                            throw AgentToolPlanRunCoordinatorError.missingRun(
+                                                runID
+                                            )
+                                        }
+
+                                        await work.finish(
+                                            executionPolicy == .continuous
+                                                ? "Run execution finished"
+                                                : "Step execution finished"
+                                        )
+                                    } catch {
+                                        await work.finish(
+                                            error.localizedDescription
+                                        )
+                                    }
+                                }
+                            } else {
+                                note = "host execution already in progress"
+
+                                console.update(
+                                    await work.project(
+                                        await snapshot(
+                                            coordinator: coordinator,
+                                            pendingPlans: pendingPlans,
+                                            context: context,
+                                            note: note
+                                        )
+                                    )
+                                )
+                            }
+                        }
+
+                        continue
                     }
 
                     if case .actionRequested(
@@ -239,9 +340,10 @@ enum HostConsole {
                             activityFrame += 1
 
                             console.update(
-                                activity.project(
-                                    HostProjection.snapshot(
-                                        runs: await coordinator.runs(),
+                                await work.project(
+                                    await snapshot(
+                                        coordinator: coordinator,
+                                        pendingPlans: pendingPlans,
                                         context: context,
                                         note: note
                                     )
@@ -284,16 +386,15 @@ enum HostConsole {
                         } else {
                             note = "host execution already in progress"
 
-                            let snapshot = HostProjection.snapshot(
-                                runs: await coordinator.runs(),
-                                context: context,
-                                note: note
-                            )
-
                             console.update(
-                                await work.current()?.project(
-                                    snapshot
-                                ) ?? snapshot
+                                await work.project(
+                                    await snapshot(
+                                        coordinator: coordinator,
+                                        pendingPlans: pendingPlans,
+                                        context: context,
+                                        note: note
+                                    )
+                                )
                             )
                         }
                     }
@@ -313,13 +414,28 @@ enum HostConsole {
 }
 
 private extension HostConsole {
-    static func load(
-        plan: AgentToolPlan,
-        coordinator: AgentToolPlanRunCoordinator
-    ) async throws {
-        _ = try await coordinator.start(
-            plan
+    static func snapshot(
+        coordinator: AgentToolPlanRunCoordinator,
+        pendingPlans: HostPendingPlans,
+        context: String,
+        note: String
+    ) async -> AgenticHostConsoleSnapshot {
+        var snapshot = HostProjection.snapshot(
+            runs: await coordinator.runs(),
+            context: context,
+            note: note
         )
+        let pending = await pendingPlans.presentations()
+            .filter { pendingRun in
+                !snapshot.runs.contains {
+                    $0.id == pendingRun.id
+                }
+            }
+
+        snapshot.runs.append(
+            contentsOf: pending
+        )
+        return snapshot
     }
 
     static func apply(

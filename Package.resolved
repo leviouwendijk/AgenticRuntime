@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "16e7132e533d6264bbfa8ea77135c4be99cc21e3"
+        "revision" : "e1c7d86b0b368dc3c4a9bee075396e63047e4961"
       }
     },
     {
@@ -196,7 +196,7 @@
       "location" : "https://github.com/leviouwendijk/Matching.git",
       "state" : {
         "branch" : "master",
-        "revision" : "709e8e49edb0e1a1b0fe6242d68c8d24906297fc"
+        "revision" : "5ac7de66e96468fb00a5fb5748fd85101a009968"
       }
     },
     {

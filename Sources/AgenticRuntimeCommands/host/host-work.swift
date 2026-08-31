@@ -117,6 +117,7 @@ struct HostActivity:
 actor HostWork {
     private var activity: HostActivity?
     private var completion: String?
+    private var pausePendingRunIDs: Set<String> = []
 
     func begin(
         _ activity: HostActivity
@@ -134,9 +135,50 @@ actor HostWork {
         activity
     }
 
+    func markPausePending(
+        runID: String
+    ) -> Bool {
+        guard activity?.runID == runID else {
+            return false
+        }
+
+        pausePendingRunIDs.insert(
+            runID
+        )
+        return true
+    }
+
+    func project(
+        _ source: AgenticHostConsoleSnapshot
+    ) -> AgenticHostConsoleSnapshot {
+        var snapshot = activity?.project(
+            source
+        ) ?? source
+
+        for runID in pausePendingRunIDs {
+            guard let runIndex = snapshot.runs.firstIndex(
+                where: {
+                    $0.id == runID
+                }
+            ) else {
+                continue
+            }
+
+            snapshot.runs[runIndex].state = .pause_pending
+        }
+
+        return snapshot
+    }
+
     func finish(
         _ note: String
     ) {
+        if let runID = activity?.runID {
+            pausePendingRunIDs.remove(
+                runID
+            )
+        }
+
         activity = nil
         completion = note
     }
