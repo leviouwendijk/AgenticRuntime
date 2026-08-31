@@ -2,6 +2,7 @@ import Agentic
 import AgenticExecution
 import AgenticInterfaces
 import AgenticRuntime
+import Terminal
 
 enum HostProjection {
     static func snapshot(
@@ -32,6 +33,9 @@ enum HostProjection {
             ),
             interruptions: runs.compactMap(
                 makeInterruption
+            ),
+            documents: runs.flatMap(
+                makeDocs
             )
         )
     }
@@ -116,6 +120,18 @@ private extension HostProjection {
     static func makeStep(
         _ record: AgentToolPlanRecord
     ) -> AgenticHostConsoleStepPresentation {
+        let review = record.invocation?.review
+        let targets = review?.preflight.targetPaths ?? []
+        let detail: String
+
+        if let first = targets.first {
+            detail = targets.count > 1
+                ? "\(first) (+\(targets.count - 1))"
+                : first
+        } else {
+            detail = record.path
+        }
+
         var fields = [
             AgenticHostConsoleField(
                 "outcome",
@@ -124,6 +140,61 @@ private extension HostProjection {
                 )
             ),
         ]
+
+        if let review {
+            let preflight = review.preflight
+
+            fields.append(
+                .init(
+                    "requirement",
+                    review.requirement.rawValue
+                )
+            )
+            fields.append(
+                .init(
+                    "risk",
+                    preflight.risk.rawValue
+                )
+            )
+
+            if !targets.isEmpty {
+                fields.append(
+                    .init(
+                        targets.count == 1
+                            ? "target"
+                            : "targets",
+                        targets.joined(
+                            separator: ", "
+                        )
+                    )
+                )
+            }
+
+            if !preflight.summary.isEmpty {
+                fields.append(
+                    .init(
+                        "summary",
+                        preflight.summary
+                    )
+                )
+            }
+
+            if let preview = preflight.diffPreview {
+                fields.append(
+                    .init(
+                        "changes",
+                        "+\(preview.insertedLineCount) -\(preview.deletedLineCount)"
+                    )
+                )
+            }
+        }
+
+        fields.append(
+            .init(
+                "plan path",
+                record.path
+            )
+        )
 
         if let error = record.errorDescription,
            !error.isEmpty {
@@ -148,12 +219,76 @@ private extension HostProjection {
         return AgenticHostConsoleStepPresentation(
             id: record.call.id,
             title: record.call.name,
-            detail: record.path,
+            detail: detail,
             state: state(
                 record.outcome
             ),
             fields: fields
         )
+    }
+
+    static func makeDocs(
+        _ run: AgentToolPlanRun
+    ) -> [AgenticHostConsoleDocumentPresentation] {
+        records(
+            run
+        ).flatMap { record -> [AgenticHostConsoleDocumentPresentation] in
+            guard let invocation = record.invocation else {
+                return []
+            }
+
+            let review = invocation.review
+            let preflight = review.preflight
+            let inspection = preflight.inspectionDocument(
+                title: "Staged intent details",
+                toolName: record.call.name,
+                toolCallID: record.call.id,
+                requirement: review.requirement
+            )
+            let details = AgenticTerminalInspectionRenderer.render(
+                inspection,
+                stream: .standardError,
+                theme: .agentic,
+                layout: .agentic
+            )
+
+            var docs = [
+                AgenticHostConsoleDocumentPresentation(
+                    id: "\(run.id):\(record.call.id):details",
+                    runID: run.id,
+                    stepID: record.call.id,
+                    kind: .details,
+                    title: "Staged intent details",
+                    body: details
+                ),
+            ]
+
+            if let preview = preflight.diffPreview,
+               !preview.isEmpty {
+                let body: String
+
+                if let layout = preview.layout {
+                    body = TerminalDifferenceRenderer.render(
+                        layout
+                    )
+                } else {
+                    body = preview.text
+                }
+
+                docs.append(
+                    AgenticHostConsoleDocumentPresentation(
+                        id: "\(run.id):\(record.call.id):diff",
+                        runID: run.id,
+                        stepID: record.call.id,
+                        kind: .diff,
+                        title: preview.title ?? "Diff preview",
+                        body: body
+                    )
+                )
+            }
+
+            return docs
+        }
     }
 
     static func summary(
@@ -275,6 +410,7 @@ private extension HostProjection {
                 path: resolution.path,
                 call: record.call,
                 outcome: .skipped,
+                invocation: record.invocation,
                 skipReason: "explicit_run_resolution"
             )
         }
