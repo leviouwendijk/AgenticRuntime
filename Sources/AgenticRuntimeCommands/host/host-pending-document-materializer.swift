@@ -2,6 +2,7 @@ import Primitives
 import Agentic
 import AgenticExecution
 import AgenticInterfaces
+import Foundation
 import Terminal
 
 package enum HostPendingDocumentMaterializer {
@@ -43,7 +44,60 @@ private extension HostPendingDocumentMaterializer {
     static func details(
         _ pending: HostPendingCall
     ) -> AgenticHostConsoleDocumentPresentation {
-        AgenticHostConsoleDocumentPresentation(
+        let inspection = ToolInspectionDocument(
+            title: "ToolPlan call details",
+            sections: [
+                ToolInspectionSection(
+                    title: "Summary",
+                    items: [
+                        .field(
+                            label: "state",
+                            value: "ready"
+                        ),
+                        .field(
+                            label: "tool",
+                            value: pending.call.name
+                        ),
+                        .field(
+                            label: "call id",
+                            value: pending.call.id
+                        ),
+                        .field(
+                            label: "path",
+                            value: pending.path
+                        ),
+                    ]
+                ),
+                ToolInspectionSection(
+                    title: "Input",
+                    items: [
+                        .body(
+                            json(
+                                pending.call.input
+                            )
+                        ),
+                    ]
+                ),
+                ToolInspectionSection(
+                    title: "Execution",
+                    items: [
+                        .body(
+                            json(
+                                pending.execution
+                            )
+                        ),
+                    ]
+                ),
+            ]
+        )
+        let rendered = AgenticTerminalInspectionRenderer.render(
+            inspection,
+            stream: .standardError,
+            theme: .agentic,
+            layout: .agentic
+        )
+
+        return AgenticHostConsoleDocumentPresentation(
             id: documentID(
                 pending,
                 kind: .details
@@ -51,19 +105,8 @@ private extension HostPendingDocumentMaterializer {
             runID: pending.runID,
             stepID: pending.call.id,
             kind: .details,
-            title: "ToolPlan call details",
-            body: """
-            state       ready
-            tool        \(pending.call.name)
-            call id     \(pending.call.id)
-            path        \(pending.path)
-
-            input
-            \(String(describing: pending.call.input))
-
-            execution
-            \(description(pending.execution))
-            """
+            title: inspection.title,
+            body: rendered
         )
     }
 
@@ -144,15 +187,37 @@ private extension HostPendingDocumentMaterializer {
         "\(pending.runID):\(pending.call.id):pending:\(kind.rawValue)"
     }
 
-    static func description(
+    static func json(
+        _ value: JSONValue
+    ) -> String {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [
+                .prettyPrinted,
+                .sortedKeys,
+            ]
+            let data = try encoder.encode(
+                value
+            )
+
+            return String(
+                decoding: data,
+                as: UTF8.self
+            )
+        } catch {
+            return "<unavailable>"
+        }
+    }
+
+    static func json(
         _ value: JSONValue?
     ) -> String {
         guard let value else {
             return "<default>"
         }
 
-        return String(
-            describing: value
+        return json(
+            value
         )
     }
 }

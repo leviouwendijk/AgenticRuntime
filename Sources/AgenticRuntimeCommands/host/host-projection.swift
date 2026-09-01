@@ -100,7 +100,18 @@ private extension HostProjection {
     static func makeRun(
         _ run: AgentToolPlanRun
     ) -> AgenticHostConsoleRunPresentation {
-        AgenticHostConsoleRunPresentation(
+        let recordsByPath = Dictionary(
+            uniqueKeysWithValues: records(
+                run
+            ).map { record in
+                (
+                    record.path,
+                    record
+                )
+            }
+        )
+
+        return AgenticHostConsoleRunPresentation(
             id: run.id,
             title: run.plan.id,
             summary: summary(
@@ -109,12 +120,97 @@ private extension HostProjection {
             state: state(
                 run
             ),
-            steps: records(
-                run
-            ).map(
-                makeStep
+            steps: steps(
+                run.plan.root,
+                path: "root",
+                recordsByPath: recordsByPath
             )
         )
+    }
+
+    static func steps(
+        _ node: AgentToolPlanNode,
+        path: String,
+        recordsByPath: [String: AgentToolPlanRecord]
+    ) -> [AgenticHostConsoleStepPresentation] {
+        switch node {
+        case .call(
+            let call,
+            _,
+            let onSuccess,
+            let onFailure,
+            let onDenied
+        ):
+            let current: AgenticHostConsoleStepPresentation
+
+            if let record = recordsByPath[path] {
+                current = makeStep(
+                    record
+                )
+            } else {
+                current = AgenticHostConsoleStepPresentation(
+                    id: call.id,
+                    title: call.name,
+                    state: .pending
+                )
+            }
+
+            var result = [
+                current,
+            ]
+
+            result.append(
+                contentsOf: steps(
+                    onSuccess,
+                    path: "\(path).onSuccess",
+                    recordsByPath: recordsByPath
+                )
+            )
+            result.append(
+                contentsOf: steps(
+                    onFailure,
+                    path: "\(path).onFailure",
+                    recordsByPath: recordsByPath
+                )
+            )
+            result.append(
+                contentsOf: steps(
+                    onDenied,
+                    path: "\(path).onDenied",
+                    recordsByPath: recordsByPath
+                )
+            )
+
+            return result
+
+        case .sequence(let children):
+            return steps(
+                children,
+                path: "\(path).sequence",
+                recordsByPath: recordsByPath
+            )
+
+        case .batch(let children):
+            return steps(
+                children,
+                path: "\(path).batch",
+                recordsByPath: recordsByPath
+            )
+        }
+    }
+
+    static func steps(
+        _ nodes: [AgentToolPlanNode],
+        path: String,
+        recordsByPath: [String: AgentToolPlanRecord]
+    ) -> [AgenticHostConsoleStepPresentation] {
+        nodes.enumerated().flatMap { index, node in
+            steps(
+                node,
+                path: "\(path)[\(index)]",
+                recordsByPath: recordsByPath
+            )
+        }
     }
 
     static func makeStep(

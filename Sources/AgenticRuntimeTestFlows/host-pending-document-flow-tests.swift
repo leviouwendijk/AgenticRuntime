@@ -94,7 +94,12 @@ enum AgenticRuntimePendingDocumentFlowTesting {
 
         try Expect.contains(
             details.body,
-            "state       ready",
+            "Summary",
+            "pending details structured summary"
+        )
+        try Expect.contains(
+            details.body,
+            "ready",
             "pending details state"
         )
         try Expect.contains(
@@ -106,6 +111,17 @@ enum AgenticRuntimePendingDocumentFlowTesting {
             details.body,
             "root.sequence[0]",
             "pending details path"
+        )
+        try Expect.contains(
+            details.body,
+            "\"reason\"",
+            "pending details pretty JSON input"
+        )
+        try Expect.false(
+            details.body.contains(
+                "JSONValue"
+            ),
+            "pending details avoid Swift JSONValue descriptions"
         )
         try Expect.equal(
             stdout.body,

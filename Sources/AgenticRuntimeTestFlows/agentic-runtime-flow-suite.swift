@@ -81,6 +81,34 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runReadyDocuments()
         },
         TestFlow(
+            "host-authored-timeline",
+            tags: [
+                "agentic-runtime",
+                "host",
+                "projection",
+                "tool-plan",
+                "single-step",
+                "paused",
+            ]
+        ) {
+            try AgenticRuntimeHostAuthoredTimelineFlowTesting
+                .runPausedFutureStepProjection()
+        },
+        TestFlow(
+            "host-authored-resume",
+            tags: [
+                "agentic-runtime",
+                "host",
+                "tool-plan",
+                "single-step",
+                "resume",
+                "selection",
+            ]
+        ) {
+            try await AgenticRuntimeHostAuthoredResumeFlowTesting
+                .runResumeNextAuthoredOperation()
+        },
+        TestFlow(
             "host-review-boundary",
             tags: [
                 "agentic-runtime",
