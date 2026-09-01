@@ -168,7 +168,11 @@ enum HostConsole {
                         )
                         note = "ToolPlan ready"
                     } catch {
-                        note = error.localizedDescription
+                        note = await work.recordStatus(
+                            error.localizedDescription,
+                            title: "Clipboard input failed",
+                            summary: "loading ToolPlan"
+                        )
                     }
 
                     console.update(
@@ -219,7 +223,11 @@ enum HostConsole {
                         ) {
                             note = "Copied \(title.lowercased())."
                         } else {
-                            note = "Clipboard write failed."
+                            note = await work.recordStatus(
+                                "The host could not write \(title.lowercased()) to the system clipboard.",
+                                title: "Clipboard write failed",
+                                summary: "copying \(title.lowercased())"
+                            )
                         }
 
                         console.update(
@@ -235,22 +243,33 @@ enum HostConsole {
                         continue
                     }
 
-                    let unavailableRunCopyMessage: String?
+                    let unavailableRunCopy: (
+                        message: String,
+                        runID: String
+                    )?
 
                     switch event {
-                    case .runInputCopyRequested:
-                        unavailableRunCopyMessage =
-                            "Run input is not available."
+                    case .runInputCopyRequested(
+                        runID: let runID
+                    ):
+                        unavailableRunCopy = (
+                            "Run input is not available.",
+                            runID
+                        )
 
-                    case .runOutputCopyRequested:
-                        unavailableRunCopyMessage =
-                            "Run output is not available yet."
+                    case .runOutputCopyRequested(
+                        runID: let runID
+                    ):
+                        unavailableRunCopy = (
+                            "Run output is not available yet.",
+                            runID
+                        )
 
                     default:
-                        unavailableRunCopyMessage = nil
+                        unavailableRunCopy = nil
                     }
 
-                    if let unavailableRunCopyMessage {
+                    if let unavailableRunCopy {
                         do {
                             if let copy = try await HostRunCopyMaterializer.materialize(
                                 event,
@@ -262,13 +281,23 @@ enum HostConsole {
                                 ) {
                                     note = "Copied run \(copy.title)."
                                 } else {
-                                    note = "Clipboard write failed."
+                                    note = await work.recordStatus(
+                                        "The host could not write the retained run \(copy.title) to the system clipboard.",
+                                        title: "Clipboard write failed",
+                                        summary: "copying run \(copy.title)",
+                                        runID: unavailableRunCopy.runID
+                                    )
                                 }
                             } else {
-                                note = unavailableRunCopyMessage
+                                note = unavailableRunCopy.message
                             }
                         } catch {
-                            note = "Run copy failed: \(error.localizedDescription)"
+                            note = await work.recordStatus(
+                                error.localizedDescription,
+                                title: "Run copy failed",
+                                summary: "materializing run copy",
+                                runID: unavailableRunCopy.runID
+                            )
                         }
 
                         console.update(
@@ -333,7 +362,13 @@ enum HostConsole {
                                 )
                             }
                         } catch {
-                            note = "Document request failed: \(error.localizedDescription)"
+                            note = await work.recordStatus(
+                                error.localizedDescription,
+                                title: "Document request failed",
+                                summary: "opening run document",
+                                runID: runID,
+                                stepID: stepID
+                            )
                             console.update(
                                 await work.project(
                                     await snapshot(

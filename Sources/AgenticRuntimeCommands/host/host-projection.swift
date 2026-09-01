@@ -217,6 +217,11 @@ private extension HostProjection {
         _ record: AgentToolPlanRecord
     ) -> AgenticHostConsoleStepPresentation {
         let review = record.invocation?.review
+        let projection =
+            record.invocation?
+                .toolResult?
+                .processing?
+                .projection
         let targets = review?.preflight.targetPaths ?? []
         let detail = targets.first.map { first in
             targets.count > 1
@@ -232,6 +237,24 @@ private extension HostProjection {
                 )
             ),
         ]
+
+        if let invocation = record.invocation {
+            fields.append(
+                .init(
+                    "decision",
+                    invocation.decision.rawValue
+                )
+            )
+        }
+
+        if let projection {
+            fields.append(
+                .init(
+                    "operation",
+                    projection.status
+                )
+            )
+        }
 
         if let review {
             let preflight = review.preflight
@@ -262,7 +285,9 @@ private extension HostProjection {
                 )
             }
 
-            if !preflight.summary.isEmpty {
+            if projection?.summary == nil,
+               !preflight.summary.isEmpty
+            {
                 fields.append(
                     .init(
                         "summary",
@@ -279,6 +304,29 @@ private extension HostProjection {
                     )
                 )
             }
+        }
+
+        if let summary = projection?.summary,
+           !summary.isEmpty
+        {
+            fields.append(
+                .init(
+                    "summary",
+                    summary
+                )
+            )
+        }
+
+        if let projection {
+            fields.append(
+                contentsOf:
+                    projection.facts.map { fact in
+                        .init(
+                            fact.label,
+                            fact.value
+                        )
+                    }
+            )
         }
 
         if let error = record.errorDescription,
@@ -448,7 +496,26 @@ private extension HostProjection {
             relationship = "recovery of \(parentID)"
         }
 
-        return "\(relationship) · rev \(run.revision)"
+        let identity =
+            "\(relationship) · rev \(run.revision)"
+
+        guard !run.attempts.isEmpty else {
+            return identity
+        }
+
+        let result =
+            AgenticRuntimeBridgeRecovery.projectedResult(
+                for: run
+            )
+
+        return [
+            identity,
+            result.outcome.rawValue,
+            "\(result.executedCount) executed",
+            "\(result.skippedCount) skipped",
+        ].joined(
+            separator: " · "
+        )
     }
 
     static func state(

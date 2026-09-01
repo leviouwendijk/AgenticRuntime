@@ -11,6 +11,7 @@ enum AgenticRuntimeHostProjectionFlowTesting {
         case missingStdout
         case missingStderr
         case missingDetails
+        case missingStep
     }
 
     static func runOutputDocuments() throws -> [TestFlowDiagnostic] {
@@ -54,6 +55,22 @@ enum AgenticRuntimeHostProjectionFlowTesting {
             context: "host output documents"
         )
 
+        guard let presentedRun = snapshot.runs.first,
+              let step = presentedRun.steps.first
+        else {
+            throw Failure.missingStep
+        }
+
+        let fields = Dictionary(
+            uniqueKeysWithValues:
+                step.fields.map { field in
+                    (
+                        field.label,
+                        field.value
+                    )
+                }
+        )
+
         guard let stdout = snapshot.documents.first(
             where: {
                 $0.kind == .stdout
@@ -77,6 +94,47 @@ enum AgenticRuntimeHostProjectionFlowTesting {
         ) else {
             throw Failure.missingDetails
         }
+
+        try Expect.equal(
+            presentedRun.summary,
+            "root · rev 1 · succeeded · 1 executed · 0 skipped",
+            "completed run summary uses the canonical bridge result projection"
+        )
+        try Expect.equal(
+            fields["outcome"],
+            Optional(
+                "succeeded"
+            ),
+            "step inspector presents record outcome"
+        )
+        try Expect.equal(
+            fields["decision"],
+            Optional(
+                "approved"
+            ),
+            "step inspector presents invocation decision"
+        )
+        try Expect.equal(
+            fields["operation"],
+            Optional(
+                "passed"
+            ),
+            "step inspector presents result operation status"
+        )
+        try Expect.equal(
+            fields["summary"],
+            Optional(
+                "Fixture completed."
+            ),
+            "result summary replaces the preflight fallback"
+        )
+        try Expect.equal(
+            fields["candidates"],
+            Optional(
+                "0"
+            ),
+            "step inspector presents result projection facts"
+        )
 
         try Expect.equal(
             stdout.id,
@@ -276,7 +334,17 @@ private extension AgenticRuntimeHostProjectionFlowTesting {
             processing: .init(
                 projection: .init(
                     status: "passed",
-                    summary: "Fixture completed."
+                    summary: "Fixture completed.",
+                    facts: [
+                        .init(
+                            label: "candidates",
+                            value: "0"
+                        ),
+                        .init(
+                            label: "mode",
+                            value: "ranked"
+                        ),
+                    ]
                 ),
                 observations: [
                     .init(

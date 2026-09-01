@@ -9,6 +9,7 @@ enum AgenticRuntimeHostStatusFlowTesting {
         case workDidNotBegin
         case missingCompletion
         case missingStatus
+        case missingGlobalStatus
     }
 
     static func runPersistentFailureStatus() async throws -> [TestFlowDiagnostic] {
@@ -85,6 +86,57 @@ enum AgenticRuntimeHostStatusFlowTesting {
             second.statuses,
             first.statuses,
             "status persists after completion is consumed"
+        )
+
+        let globalNote = await work.recordStatus(
+            "The clipboard did not contain a valid ToolPlan.",
+            title: "Clipboard input failed",
+            summary: "loading ToolPlan"
+        )
+
+        try Expect.equal(
+            globalNote,
+            "Clipboard input failed · Status available",
+            "non-execution status feedback remains concise"
+        )
+
+        let third = await work.project(
+            AgenticHostConsoleSnapshot()
+        )
+
+        guard let globalStatus = third.statuses.last else {
+            throw Failure.missingGlobalStatus
+        }
+
+        try Expect.equal(
+            third.statuses.count,
+            2,
+            "execution and global statuses coexist"
+        )
+        try Expect.equal(
+            globalStatus.runID,
+            Optional<String>.none,
+            "global status does not invent a run association"
+        )
+        try Expect.equal(
+            globalStatus.stepID,
+            Optional<String>.none,
+            "global status does not invent a step association"
+        )
+        try Expect.equal(
+            globalStatus.title,
+            "Clipboard input failed",
+            "global status title"
+        )
+        try Expect.equal(
+            globalStatus.summary,
+            "loading ToolPlan",
+            "global status operation summary"
+        )
+        try Expect.equal(
+            globalStatus.body,
+            "The clipboard did not contain a valid ToolPlan.",
+            "global status preserves complete diagnostic"
         )
 
         return [

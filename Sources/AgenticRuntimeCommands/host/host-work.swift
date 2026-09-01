@@ -205,18 +205,20 @@ package actor HostWork {
         completion = note
     }
 
-    package func fail(
+    package func recordStatus(
         _ body: String,
-        title: String = "Execution attempt failed"
-    ) {
-        let failedActivity = activity
+        title: String,
+        summary: String = "host operation",
+        runID: String? = nil,
+        stepID: String? = nil
+    ) -> String {
         let status = AgenticHostConsoleStatusPresentation(
             id: "host-status-\(nextStatusID)",
-            runID: failedActivity?.runID,
-            stepID: failedActivity?.stepID,
+            runID: runID,
+            stepID: stepID,
             kind: .error,
             title: title,
-            summary: failedActivity?.label ?? "host operation",
+            summary: summary,
             body: body
         )
 
@@ -224,8 +226,25 @@ package actor HostWork {
         statuses.append(
             status
         )
+
+        return "\(title) · Status available"
+    }
+
+    package func fail(
+        _ body: String,
+        title: String = "Execution attempt failed"
+    ) {
+        let failedActivity = activity
+        let note = recordStatus(
+            body,
+            title: title,
+            summary: failedActivity?.label ?? "host operation",
+            runID: failedActivity?.runID,
+            stepID: failedActivity?.stepID
+        )
+
         finish(
-            "\(title) · Status available"
+            note
         )
     }
 
