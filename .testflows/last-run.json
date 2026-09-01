@@ -3,12 +3,12 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-08-31T19:47:54Z",
-  "passed" : 8,
+  "generated_at" : "2026-09-01T10:22:54Z",
+  "passed" : 9,
   "results" : [
     {
       "display_name" : "application-realization",
-      "duration_seconds" : 0.003912925720214844,
+      "duration_seconds" : 0.002346038818359375,
       "name" : "application-realization",
       "status" : "passed",
       "tags" : [
@@ -19,7 +19,7 @@
     },
     {
       "display_name" : "host-parity",
-      "duration_seconds" : 0.007084965705871582,
+      "duration_seconds" : 0.005857944488525391,
       "name" : "host-parity",
       "status" : "passed",
       "tags" : [
@@ -30,7 +30,7 @@
     },
     {
       "display_name" : "workspace-resource-resolution",
-      "duration_seconds" : 0.019514083862304688,
+      "duration_seconds" : 0.023832082748413086,
       "name" : "workspace-resource-resolution",
       "status" : "passed",
       "tags" : [
@@ -41,8 +41,21 @@
       ]
     },
     {
+      "display_name" : "host-output-documents",
+      "duration_seconds" : 0.0006930828094482422,
+      "name" : "host-output-documents",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "host",
+        "projection",
+        "stderr",
+        "stdout"
+      ]
+    },
+    {
       "display_name" : "tool-plan-deferred-pause",
-      "duration_seconds" : 0.0010770559310913086,
+      "duration_seconds" : 0.0003960132598876953,
       "name" : "tool-plan-deferred-pause",
       "status" : "passed",
       "tags" : [
@@ -56,7 +69,7 @@
     },
     {
       "display_name" : "tool-plan-single-step-resolution-policy",
-      "duration_seconds" : 0.0008039474487304688,
+      "duration_seconds" : 0.00037598609924316406,
       "name" : "tool-plan-single-step-resolution-policy",
       "status" : "passed",
       "tags" : [
@@ -70,7 +83,7 @@
     },
     {
       "display_name" : "tool-plan-recovery-retry",
-      "duration_seconds" : 0.0003179311752319336,
+      "duration_seconds" : 0.00014197826385498047,
       "name" : "tool-plan-recovery-retry",
       "status" : "passed",
       "tags" : [
@@ -83,7 +96,7 @@
     },
     {
       "display_name" : "tool-plan-recovery-skip",
-      "duration_seconds" : 0.0002149343490600586,
+      "duration_seconds" : 9.298324584960938e-05,
       "name" : "tool-plan-recovery-skip",
       "status" : "passed",
       "tags" : [
@@ -96,7 +109,7 @@
     },
     {
       "display_name" : "tool-plan-recovery-hierarchy",
-      "duration_seconds" : 0.00039708614349365234,
+      "duration_seconds" : 0.0001729726791381836,
       "name" : "tool-plan-recovery-hierarchy",
       "status" : "passed",
       "tags" : [
@@ -110,5 +123,5 @@
   ],
   "skipped" : 0,
   "title" : "AgenticRuntime flow tests",
-  "total" : 8
+  "total" : 9
 }

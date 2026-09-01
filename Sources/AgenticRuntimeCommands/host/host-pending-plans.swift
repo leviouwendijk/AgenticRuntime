@@ -1,9 +1,19 @@
+import Primitives
 import Agentic
 import AgenticInterfaces
+
+struct HostPendingCall: Sendable {
+    let runID: String
+    let path: String
+    let call: AgentToolCall
+    let execution: JSONValue?
+}
 
 actor HostPendingPlans {
     private var plansByRunID: [String: AgentToolPlan] = [:]
     private var runOrder: [String] = []
+    private var documentsByRunID:
+        [String: [AgenticHostConsoleDocumentPresentation]] = [:]
 
     func insert(
         _ plan: AgentToolPlan,
@@ -13,6 +23,7 @@ actor HostPendingPlans {
             runOrder.append(
                 runID
             )
+            documentsByRunID[runID] = []
         }
 
         plansByRunID[runID] = plan
@@ -22,6 +33,53 @@ actor HostPendingPlans {
         runID: String
     ) -> AgentToolPlan? {
         plansByRunID[runID]
+    }
+
+    func call(
+        runID: String,
+        stepID: String
+    ) -> HostPendingCall? {
+        guard let plan = plansByRunID[runID] else {
+            return nil
+        }
+
+        return Self.call(
+            plan.root,
+            runID: runID,
+            stepID: stepID,
+            path: "root"
+        )
+    }
+
+    func store(
+        _ document: AgenticHostConsoleDocumentPresentation
+    ) {
+        guard plansByRunID[document.runID] != nil else {
+            return
+        }
+
+        var documents = documentsByRunID[document.runID] ?? []
+
+        if let index = documents.firstIndex(
+            where: {
+                $0.stepID == document.stepID
+                    && $0.kind == document.kind
+            }
+        ) {
+            documents[index] = document
+        } else {
+            documents.append(
+                document
+            )
+        }
+
+        documentsByRunID[document.runID] = documents
+    }
+
+    func documents() -> [AgenticHostConsoleDocumentPresentation] {
+        runOrder.flatMap { runID in
+            documentsByRunID[runID] ?? []
+        }
     }
 
     func take(
@@ -36,6 +94,9 @@ actor HostPendingPlans {
         runOrder.removeAll {
             $0 == runID
         }
+        documentsByRunID.removeValue(
+            forKey: runID
+        )
 
         return plan
     }
@@ -65,6 +126,86 @@ actor HostPendingPlans {
 }
 
 private extension HostPendingPlans {
+    static func call(
+        _ node: AgentToolPlanNode,
+        runID: String,
+        stepID: String,
+        path: String
+    ) -> HostPendingCall? {
+        switch node {
+        case .call(
+            let call,
+            let execution,
+            let onSuccess,
+            let onFailure,
+            let onDenied
+        ):
+            if call.id == stepID {
+                return HostPendingCall(
+                    runID: runID,
+                    path: path,
+                    call: call,
+                    execution: execution
+                )
+            }
+
+            return Self.call(
+                onSuccess,
+                runID: runID,
+                stepID: stepID,
+                path: "\(path).onSuccess"
+            )
+                ?? Self.call(
+                    onFailure,
+                    runID: runID,
+                    stepID: stepID,
+                    path: "\(path).onFailure"
+                )
+                ?? Self.call(
+                    onDenied,
+                    runID: runID,
+                    stepID: stepID,
+                    path: "\(path).onDenied"
+                )
+
+        case .sequence(let children):
+            return Self.call(
+                children,
+                runID: runID,
+                stepID: stepID,
+                path: "\(path).sequence"
+            )
+
+        case .batch(let children):
+            return Self.call(
+                children,
+                runID: runID,
+                stepID: stepID,
+                path: "\(path).batch"
+            )
+        }
+    }
+
+    static func call(
+        _ nodes: [AgentToolPlanNode],
+        runID: String,
+        stepID: String,
+        path: String
+    ) -> HostPendingCall? {
+        for (index, node) in nodes.enumerated() {
+            if let pending = Self.call(
+                node,
+                runID: runID,
+                stepID: stepID,
+                path: "\(path)[\(index)]"
+            ) {
+                return pending
+            }
+        }
+
+        return nil
+    }
+
     static func presentation(
         _ plan: AgentToolPlan,
         runID: String

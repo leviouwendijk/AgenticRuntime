@@ -186,6 +186,71 @@ enum HostConsole {
                         break
                     }
 
+                    if case .documentRequested(
+                        runID: let runID,
+                        stepID: let stepID,
+                        kind: let kind
+                    ) = event {
+                        do {
+                            if let pending = await pendingPlans.call(
+                                runID: runID,
+                                stepID: stepID
+                            ) {
+                                let document = try await HostPendingDocumentMaterializer.document(
+                                    host: host,
+                                    pending: pending,
+                                    kind: kind
+                                )
+
+                                await pendingPlans.store(
+                                    document
+                                )
+                                note = "Opened \(document.title.lowercased())"
+
+                                console.update(
+                                    await work.project(
+                                        await snapshot(
+                                            coordinator: coordinator,
+                                            pendingPlans: pendingPlans,
+                                            context: context,
+                                            note: note
+                                        )
+                                    )
+                                )
+
+                                _ = console.handle(
+                                    key
+                                )
+                            } else {
+                                note = "Document is not available for this step."
+                                console.update(
+                                    await work.project(
+                                        await snapshot(
+                                            coordinator: coordinator,
+                                            pendingPlans: pendingPlans,
+                                            context: context,
+                                            note: note
+                                        )
+                                    )
+                                )
+                            }
+                        } catch {
+                            note = "Document request failed: \(error.localizedDescription)"
+                            console.update(
+                                await work.project(
+                                    await snapshot(
+                                        coordinator: coordinator,
+                                        pendingPlans: pendingPlans,
+                                        context: context,
+                                        note: note
+                                    )
+                                )
+                            )
+                        }
+
+                        continue
+                    }
+
                     if case .runControlRequested(
                         runID: let runID,
                         control: let control
@@ -435,6 +500,21 @@ private extension HostConsole {
         snapshot.runs.append(
             contentsOf: pending
         )
+
+        let pendingRunIDs = Set(
+            pending.map(\.id)
+        )
+        let pendingDocuments = await pendingPlans.documents()
+            .filter {
+                pendingRunIDs.contains(
+                    $0.runID
+                )
+            }
+
+        snapshot.documents.append(
+            contentsOf: pendingDocuments
+        )
+
         return snapshot
     }
 

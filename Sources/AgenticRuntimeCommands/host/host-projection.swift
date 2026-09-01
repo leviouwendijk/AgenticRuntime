@@ -4,8 +4,8 @@ import AgenticInterfaces
 import AgenticRuntime
 import Terminal
 
-enum HostProjection {
-    static func snapshot(
+package enum HostProjection {
+    package static func snapshot(
         runs: [AgentToolPlanRun],
         context: String,
         note: String? = nil
@@ -274,6 +274,48 @@ private extension HostProjection {
                         body: body
                     )
                 )
+            }
+
+            if let processing = invocation.toolResult?.processing {
+                let stdout = processing.observations
+                    .filter {
+                        $0.kind == .standard_output
+                    }
+                    .map(\.content)
+                    .joined()
+
+                if !stdout.isEmpty {
+                    docs.append(
+                        AgenticHostConsoleDocumentPresentation(
+                            id: "\(run.id):\(record.call.id):stdout",
+                            runID: run.id,
+                            stepID: record.call.id,
+                            kind: .stdout,
+                            title: "stdout",
+                            body: stdout
+                        )
+                    )
+                }
+
+                let stderr = processing.observations
+                    .filter {
+                        $0.kind == .standard_error
+                    }
+                    .map(\.content)
+                    .joined()
+
+                if !stderr.isEmpty {
+                    docs.append(
+                        AgenticHostConsoleDocumentPresentation(
+                            id: "\(run.id):\(record.call.id):stderr",
+                            runID: run.id,
+                            stepID: record.call.id,
+                            kind: .stderr,
+                            title: "stderr",
+                            body: stderr
+                        )
+                    )
+                }
             }
 
             return docs

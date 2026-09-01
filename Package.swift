@@ -235,6 +235,7 @@ let package = Package(
             name: "AgenticRuntimeTestFlows",
             dependencies: [
                 "AgenticRuntime",
+                "AgenticRuntimeCommands",
                 .product(
                     name: "Agentic",
                     package: "Agentic"

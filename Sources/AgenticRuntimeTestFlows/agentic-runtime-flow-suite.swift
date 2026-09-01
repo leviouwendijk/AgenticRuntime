@@ -39,6 +39,19 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runWorkspaceResourceResolution()
         },
         TestFlow(
+            "host-output-documents",
+            tags: [
+                "agentic-runtime",
+                "host",
+                "projection",
+                "stdout",
+                "stderr",
+            ]
+        ) {
+            try AgenticRuntimeHostProjectionFlowTesting
+                .runOutputDocuments()
+        },
+        TestFlow(
             "tool-plan-deferred-pause",
             tags: [
                 "agentic-runtime",
