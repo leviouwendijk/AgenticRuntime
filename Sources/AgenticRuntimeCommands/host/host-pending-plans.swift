@@ -2,11 +2,23 @@ import Primitives
 import Agentic
 import AgenticInterfaces
 
-struct HostPendingCall: Sendable {
-    let runID: String
-    let path: String
-    let call: AgentToolCall
-    let execution: JSONValue?
+package struct HostPendingCall: Sendable {
+    package let runID: String
+    package let path: String
+    package let call: AgentToolCall
+    package let execution: JSONValue?
+
+    package init(
+        runID: String,
+        path: String,
+        call: AgentToolCall,
+        execution: JSONValue?
+    ) {
+        self.runID = runID
+        self.path = path
+        self.call = call
+        self.execution = execution
+    }
 }
 
 actor HostPendingPlans {

@@ -1,4 +1,5 @@
 import TestFlows
+import AgenticIO
 
 enum AgenticRuntimeFlowSuite: TestFlowRegistry {
     static let title = "AgenticRuntime flow tests"
@@ -50,6 +51,63 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
         ) {
             try AgenticRuntimeHostProjectionFlowTesting
                 .runOutputDocuments()
+        },
+        TestFlow(
+            "host-empty-output-documents",
+            tags: [
+                "agentic-runtime",
+                "host",
+                "projection",
+                "stdout",
+                "stderr",
+                "empty",
+            ]
+        ) {
+            try AgenticRuntimeHostProjectionFlowTesting
+                .runEmptyOutputDocuments()
+        },
+        TestFlow(
+            "host-ready-documents",
+            tags: [
+                "agentic-runtime",
+                "host",
+                "pending",
+                "preflight",
+                "diff",
+                "safety",
+            ]
+        ) {
+            try await AgenticRuntimePendingDocumentFlowTesting
+                .runReadyDocuments()
+        },
+        TestFlow(
+            "host-review-boundary",
+            tags: [
+                "agentic-runtime",
+                "host",
+                "approval",
+                "preflight",
+                "diff",
+                "single-step",
+                "safety",
+                "end-to-end",
+            ]
+        ) {
+            try await AgenticRuntimePendingDocumentFlowTesting
+                .runReviewBoundary()
+        },
+        TestFlow(
+            "host-status-diagnostics",
+            tags: [
+                "agentic-runtime",
+                "host",
+                "status",
+                "diagnostic",
+                "persistence",
+            ]
+        ) {
+            try await AgenticRuntimeHostStatusFlowTesting
+                .runPersistentFailureStatus()
         },
         TestFlow(
             "tool-plan-deferred-pause",

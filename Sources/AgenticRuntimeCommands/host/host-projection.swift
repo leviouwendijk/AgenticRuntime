@@ -264,6 +264,14 @@ private extension HostProjection {
                     body = preview.text
                 }
 
+                let provenance: String
+
+                if review.requirement == .needs_human_review {
+                    provenance = "staged for approval"
+                } else {
+                    provenance = "execution review"
+                }
+
                 docs.append(
                     AgenticHostConsoleDocumentPresentation(
                         id: "\(run.id):\(record.call.id):diff",
@@ -271,51 +279,58 @@ private extension HostProjection {
                         stepID: record.call.id,
                         kind: .diff,
                         title: preview.title ?? "Diff preview",
-                        body: body
+                        body: [
+                            "status     \(provenance)",
+                            "",
+                            body,
+                        ].joined(
+                            separator: "\n"
+                        )
                     )
                 )
             }
 
-            if let processing = invocation.toolResult?.processing {
-                let stdout = processing.observations
+            if let toolResult = invocation.toolResult {
+                let observations = toolResult.processing?.observations ?? []
+                let stdout = observations
                     .filter {
                         $0.kind == .standard_output
                     }
                     .map(\.content)
                     .joined()
 
-                if !stdout.isEmpty {
-                    docs.append(
-                        AgenticHostConsoleDocumentPresentation(
-                            id: "\(run.id):\(record.call.id):stdout",
-                            runID: run.id,
-                            stepID: record.call.id,
-                            kind: .stdout,
-                            title: "stdout",
-                            body: stdout
-                        )
+                docs.append(
+                    AgenticHostConsoleDocumentPresentation(
+                        id: "\(run.id):\(record.call.id):stdout",
+                        runID: run.id,
+                        stepID: record.call.id,
+                        kind: .stdout,
+                        title: "stdout",
+                        body: stdout.isEmpty
+                            ? "stdout is empty."
+                            : stdout
                     )
-                }
+                )
 
-                let stderr = processing.observations
+                let stderr = observations
                     .filter {
                         $0.kind == .standard_error
                     }
                     .map(\.content)
                     .joined()
 
-                if !stderr.isEmpty {
-                    docs.append(
-                        AgenticHostConsoleDocumentPresentation(
-                            id: "\(run.id):\(record.call.id):stderr",
-                            runID: run.id,
-                            stepID: record.call.id,
-                            kind: .stderr,
-                            title: "stderr",
-                            body: stderr
-                        )
+                docs.append(
+                    AgenticHostConsoleDocumentPresentation(
+                        id: "\(run.id):\(record.call.id):stderr",
+                        runID: run.id,
+                        stepID: record.call.id,
+                        kind: .stderr,
+                        title: "stderr",
+                        body: stderr.isEmpty
+                            ? "stderr is empty."
+                            : stderr
                     )
-                }
+                )
             }
 
             return docs

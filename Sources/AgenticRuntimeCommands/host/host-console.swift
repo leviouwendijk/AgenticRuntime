@@ -106,11 +106,13 @@ enum HostConsole {
                     note = completion
                     activityFrame = 0
                     console.update(
-                        await snapshot(
-                            coordinator: coordinator,
-                            pendingPlans: pendingPlans,
-                            context: context,
-                            note: note
+                        await work.project(
+                            await snapshot(
+                                coordinator: coordinator,
+                                pendingPlans: pendingPlans,
+                                context: context,
+                                note: note
+                            )
                         )
                     )
                     needsRender = true
@@ -184,6 +186,48 @@ enum HostConsole {
                     if event.requestsExit {
                         shouldExit = true
                         break
+                    }
+
+                    if case .feedbackRequested(
+                        message: let message
+                    ) = event {
+                        note = message
+                        console.update(
+                            await work.project(
+                                await snapshot(
+                                    coordinator: coordinator,
+                                    pendingPlans: pendingPlans,
+                                    context: context,
+                                    note: note
+                                )
+                            )
+                        )
+                        continue
+                    }
+
+                    if case .copyRequested(
+                        text: let text,
+                        title: let title
+                    ) = event {
+                        if Clipboard.system.write(
+                            text
+                        ) {
+                            note = "Copied \(title.lowercased())."
+                        } else {
+                            note = "Clipboard write failed."
+                        }
+
+                        console.update(
+                            await work.project(
+                                await snapshot(
+                                    coordinator: coordinator,
+                                    pendingPlans: pendingPlans,
+                                    context: context,
+                                    note: note
+                                )
+                            )
+                        )
+                        continue
                     }
 
                     if case .documentRequested(
@@ -360,8 +404,9 @@ enum HostConsole {
                                                 : "Step execution finished"
                                         )
                                     } catch {
-                                        await work.finish(
-                                            error.localizedDescription
+                                        await work.fail(
+                                            error.localizedDescription,
+                                            title: "Execution attempt failed"
                                         )
                                     }
                                 }
@@ -438,14 +483,16 @@ enum HostConsole {
                                             "Action applied"
                                         )
                                     } catch {
-                                        await work.finish(
-                                            error.localizedDescription
+                                        await work.fail(
+                                            error.localizedDescription,
+                                            title: "Action failed"
                                         )
                                     }
                                 }
                             } catch {
-                                await work.finish(
-                                    error.localizedDescription
+                                await work.fail(
+                                    error.localizedDescription,
+                                    title: "Action failed"
                                 )
                             }
                         } else {

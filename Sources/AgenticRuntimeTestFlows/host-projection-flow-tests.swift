@@ -121,6 +121,86 @@ enum AgenticRuntimeHostProjectionFlowTesting {
             ),
         ]
     }
+
+    static func runEmptyOutputDocuments() throws -> [TestFlowDiagnostic] {
+        let invocation = try emptyFixtureInvocation()
+        let call = invocation.review.call
+        let plan = AgentToolPlan(
+            id: "host-empty-output-documents-plan",
+            root: .call(
+                call
+            )
+        )
+        let run = AgentToolPlanRun(
+            id: "host-empty-output-documents-run",
+            plan: plan,
+            relationship: .root,
+            attempts: [
+                .init(
+                    number: 1,
+                    scope: .plan,
+                    result: .init(
+                        planID: plan.id,
+                        outcome: .succeeded,
+                        records: [
+                            .init(
+                                path: "root",
+                                call: call,
+                                outcome: .succeeded,
+                                invocation: invocation
+                            ),
+                        ]
+                    )
+                ),
+            ],
+            revision: 1,
+            state: .completed
+        )
+        let snapshot = HostProjection.snapshot(
+            runs: [
+                run,
+            ],
+            context: "host empty output documents"
+        )
+
+        guard let stdout = snapshot.documents.first(
+            where: {
+                $0.kind == .stdout
+            }
+        ) else {
+            throw Failure.missingStdout
+        }
+
+        guard let stderr = snapshot.documents.first(
+            where: {
+                $0.kind == .stderr
+            }
+        ) else {
+            throw Failure.missingStderr
+        }
+
+        try Expect.equal(
+            stdout.body,
+            "stdout is empty.",
+            "executed zero-byte stdout is explicit"
+        )
+        try Expect.equal(
+            stderr.body,
+            "stderr is empty.",
+            "executed zero-byte stderr is explicit"
+        )
+
+        return [
+            .field(
+                "stdout",
+                stdout.body
+            ),
+            .field(
+                "stderr",
+                stderr.body
+            ),
+        ]
+    }
 }
 
 private extension AgenticRuntimeHostProjectionFlowTesting {
@@ -130,6 +210,42 @@ private extension AgenticRuntimeHostProjectionFlowTesting {
         Hashable
     {
         let value: String
+    }
+
+    static func emptyFixtureInvocation() throws -> ToolInvocation.Result {
+        let output = try JSONToolBridge.encode(
+            FixtureOutput(
+                value: "authoritative-empty"
+            )
+        )
+        let call = AgentToolCall(
+            id: "host-empty-output-documents-call",
+            name: "host_empty_output_documents_fixture",
+            input: output
+        )
+        let review = ToolInvocation.Review(
+            call: call,
+            preflight: .init(
+                toolName: call.name,
+                risk: .observe,
+                summary: "Host empty output projection fixture."
+            ),
+            requirement: .no_approval_needed,
+            guidelineRelations: []
+        )
+        let result = AgentToolResult(
+            toolCallID: call.id,
+            name: call.name,
+            output: output,
+            processing: nil,
+            isError: false
+        )
+
+        return .init(
+            review: review,
+            decision: .approved,
+            toolResult: result
+        )
     }
 
     static func fixtureInvocation() throws -> ToolInvocation.Result {

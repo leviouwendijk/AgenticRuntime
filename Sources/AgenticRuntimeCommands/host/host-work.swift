@@ -114,10 +114,15 @@ struct HostActivity:
     }
 }
 
-actor HostWork {
+package actor HostWork {
     private var activity: HostActivity?
     private var completion: String?
     private var pausePendingRunIDs: Set<String> = []
+    private var statuses: [AgenticHostConsoleStatusPresentation] = []
+    private var nextStatusID = 1
+
+    package init() {
+    }
 
     func begin(
         _ activity: HostActivity
@@ -129,6 +134,20 @@ actor HostWork {
 
         self.activity = activity
         return true
+    }
+
+    package func begin(
+        runID: String? = nil,
+        stepID: String? = nil,
+        label: String
+    ) -> Bool {
+        begin(
+            HostActivity(
+                runID: runID,
+                stepID: stepID,
+                label: label
+            )
+        )
     }
 
     func current() -> HostActivity? {
@@ -148,7 +167,7 @@ actor HostWork {
         return true
     }
 
-    func project(
+    package func project(
         _ source: AgenticHostConsoleSnapshot
     ) -> AgenticHostConsoleSnapshot {
         var snapshot = activity?.project(
@@ -167,6 +186,9 @@ actor HostWork {
             snapshot.runs[runIndex].state = .pause_pending
         }
 
+        snapshot.statuses.append(
+            contentsOf: statuses
+        )
         return snapshot
     }
 
@@ -183,7 +205,31 @@ actor HostWork {
         completion = note
     }
 
-    func takeCompletion() -> String? {
+    package func fail(
+        _ body: String,
+        title: String = "Execution attempt failed"
+    ) {
+        let failedActivity = activity
+        let status = AgenticHostConsoleStatusPresentation(
+            id: "host-status-\(nextStatusID)",
+            runID: failedActivity?.runID,
+            stepID: failedActivity?.stepID,
+            kind: .error,
+            title: title,
+            summary: failedActivity?.label ?? "host operation",
+            body: body
+        )
+
+        nextStatusID += 1
+        statuses.append(
+            status
+        )
+        finish(
+            "\(title) · Status available"
+        )
+    }
+
+    package func takeCompletion() -> String? {
         guard let completion else {
             return nil
         }

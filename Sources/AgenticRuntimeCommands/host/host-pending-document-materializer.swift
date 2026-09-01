@@ -4,8 +4,8 @@ import AgenticExecution
 import AgenticInterfaces
 import Terminal
 
-enum HostPendingDocumentMaterializer {
-    static func document(
+package enum HostPendingDocumentMaterializer {
+    package static func document(
         host: AgenticToolHost,
         pending: HostPendingCall,
         kind: AgenticHostConsoleDocumentKind
