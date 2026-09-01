@@ -212,7 +212,7 @@ enum AgenticRuntimeBridgeRecovery {
     }
 }
 
-private extension AgenticRuntimeBridgeRecovery {
+extension AgenticRuntimeBridgeRecovery {
     static func render(
         _ run: AgentToolPlanRun
     ) {

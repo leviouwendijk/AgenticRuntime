@@ -48,7 +48,7 @@ enum AgenticRuntimeFlowTesting {
 
         try Expect.equal(
             runtime.tools.count,
-            6,
+            7,
             "runtime realized CoreFileToolSet"
         )
 

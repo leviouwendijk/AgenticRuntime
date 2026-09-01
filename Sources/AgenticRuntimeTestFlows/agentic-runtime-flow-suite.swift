@@ -138,6 +138,21 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runPersistentFailureStatus()
         },
         TestFlow(
+            "host-run-copy",
+            tags: [
+                "agentic-runtime",
+                "host",
+                "copy",
+                "input",
+                "output",
+                "bridge",
+                "retention",
+            ]
+        ) {
+            try await AgenticRuntimeHostRunCopyFlowTesting
+                .runRetainedInputAndBridgeOutput()
+        },
+        TestFlow(
             "tool-plan-deferred-pause",
             tags: [
                 "agentic-runtime",

@@ -56,6 +56,7 @@ enum HostConsole {
         var note = "p load clipboard ToolPlan"
         let work = HostWork()
         let pendingPlans = HostPendingPlans()
+        let runArtifacts = HostRunArtifacts()
         var activityFrame = 0
         var console = AgenticHostConsoleWorkflowControl(
             snapshot: HostProjection.snapshot(
@@ -152,13 +153,17 @@ enum HostConsole {
                 if key == .char("p"),
                    console.focus.current == .base {
                     do {
-                        let plan = try plan(
+                        let input = try plan(
                             host: host
                         )
                         let runID = UUID().uuidString
 
                         await pendingPlans.insert(
-                            plan,
+                            input.plan,
+                            runID: runID
+                        )
+                        await runArtifacts.retainInput(
+                            input.source,
                             runID: runID
                         )
                         note = "ToolPlan ready"
@@ -215,6 +220,55 @@ enum HostConsole {
                             note = "Copied \(title.lowercased())."
                         } else {
                             note = "Clipboard write failed."
+                        }
+
+                        console.update(
+                            await work.project(
+                                await snapshot(
+                                    coordinator: coordinator,
+                                    pendingPlans: pendingPlans,
+                                    context: context,
+                                    note: note
+                                )
+                            )
+                        )
+                        continue
+                    }
+
+                    let unavailableRunCopyMessage: String?
+
+                    switch event {
+                    case .runInputCopyRequested:
+                        unavailableRunCopyMessage =
+                            "Run input is not available."
+
+                    case .runOutputCopyRequested:
+                        unavailableRunCopyMessage =
+                            "Run output is not available yet."
+
+                    default:
+                        unavailableRunCopyMessage = nil
+                    }
+
+                    if let unavailableRunCopyMessage {
+                        do {
+                            if let copy = try await HostRunCopyMaterializer.materialize(
+                                event,
+                                inputs: runArtifacts,
+                                runs: await coordinator.runs()
+                            ) {
+                                if Clipboard.system.write(
+                                    copy.text
+                                ) {
+                                    note = "Copied run \(copy.title)."
+                                } else {
+                                    note = "Clipboard write failed."
+                                }
+                            } else {
+                                note = unavailableRunCopyMessage
+                            }
+                        } catch {
+                            note = "Run copy failed: \(error.localizedDescription)"
                         }
 
                         console.update(
@@ -461,14 +515,18 @@ enum HostConsole {
                             )
 
                             do {
-                                let recoveryPlan: AgentToolPlan?
+                                let recoveryInput:
+                                    (plan: AgentToolPlan, source: String)?
+                                let recoveryRunID: String?
 
                                 if action == .createFixBranch {
-                                    recoveryPlan = try plan(
+                                    recoveryInput = try plan(
                                         host: host
                                     )
+                                    recoveryRunID = UUID().uuidString
                                 } else {
-                                    recoveryPlan = nil
+                                    recoveryInput = nil
+                                    recoveryRunID = nil
                                 }
 
                                 Task {
@@ -476,9 +534,20 @@ enum HostConsole {
                                         try await apply(
                                             action,
                                             runID: runID,
-                                            recoveryPlan: recoveryPlan,
+                                            recoveryPlan: recoveryInput?.plan,
+                                            recoveryRunID: recoveryRunID,
                                             coordinator: coordinator
                                         )
+
+                                        if let recoveryInput,
+                                           let recoveryRunID
+                                        {
+                                            await runArtifacts.retainInput(
+                                                recoveryInput.source,
+                                                runID: recoveryRunID
+                                            )
+                                        }
+
                                         await work.finish(
                                             "Action applied"
                                         )
@@ -569,6 +638,7 @@ private extension HostConsole {
         _ action: AgenticHostConsoleAction,
         runID: String,
         recoveryPlan: AgentToolPlan?,
+        recoveryRunID: String?,
         coordinator: AgentToolPlanRunCoordinator
     ) async throws {
         guard let run = await coordinator.runs().first(
@@ -615,14 +685,17 @@ private extension HostConsole {
             )
 
         case .createFixBranch:
-            guard let recoveryPlan else {
+            guard let recoveryPlan,
+                  let recoveryRunID
+            else {
                 throw HostConsoleError.toolPlanRequired
             }
 
             _ = try await coordinator.recover(
                 parentRunID: runID,
                 expectedParentRevision: run.revision,
-                plan: recoveryPlan
+                plan: recoveryPlan,
+                runID: recoveryRunID
             )
 
         case .stopRun:
@@ -632,7 +705,10 @@ private extension HostConsole {
 
     static func plan(
         host: AgenticToolHost
-    ) throws -> AgentToolPlan {
+    ) throws -> (
+        plan: AgentToolPlan,
+        source: String
+    ) {
         guard let text = Clipboard.system.read(),
               !text.trimmingCharacters(
                 in: .whitespacesAndNewlines
@@ -654,6 +730,9 @@ private extension HostConsole {
             throw HostConsoleError.toolPlanRequired
         }
 
-        return plan
+        return (
+            plan: plan,
+            source: text
+        )
     }
 }

@@ -25,7 +25,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticExecution.git",
       "state" : {
         "branch" : "master",
-        "revision" : "b019d936fcc69522b24f00d3ff3049ff26597d64"
+        "revision" : "1bd03cd15c2cae75ad95b70ba3beb8b11cc32b81"
       }
     },
     {
@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "d453f8d45e0edc2c8d4838af8b6e80787a445b28"
+        "revision" : "7dfb7fcb562d4f7a418faa082c61df86b3db32a6"
       }
     },
     {
@@ -43,7 +43,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticIO.git",
       "state" : {
         "branch" : "master",
-        "revision" : "ab1c00fe392e7712aab7890619d59bcd9e3ea9eb"
+        "revision" : "f6b9884a96a54bc2b64f3dadf7c6f8e9acadba44"
       }
     },
     {
@@ -146,6 +146,15 @@
       }
     },
     {
+      "identity" : "dsl",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/DSL",
+      "state" : {
+        "branch" : "master",
+        "revision" : "9efff74e61ff3679fce19f3cbf6df09c3bc23691"
+      }
+    },
+    {
       "identity" : "filetypes",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/leviouwendijk/FileTypes.git",
@@ -169,7 +178,7 @@
       "location" : "https://github.com/leviouwendijk/Guidelines.git",
       "state" : {
         "branch" : "master",
-        "revision" : "a39e1130e31588a1f21dc24aeeb8fb0a1357c7f1"
+        "revision" : "0a5bd3f30af7eaeb79c0ac37007f10322920f95a"
       }
     },
     {
@@ -349,7 +358,7 @@
       "location" : "https://github.com/leviouwendijk/Terminal.git",
       "state" : {
         "branch" : "master",
-        "revision" : "89f07baf6148b614a0ac4fdd2c95cde465bcf2fe"
+        "revision" : "01e62b4821a772bb8676326f381c70e332f2c14f"
       }
     },
     {

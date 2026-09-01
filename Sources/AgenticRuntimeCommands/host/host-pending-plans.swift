@@ -21,13 +21,15 @@ package struct HostPendingCall: Sendable {
     }
 }
 
-actor HostPendingPlans {
+package actor HostPendingPlans {
     private var plansByRunID: [String: AgentToolPlan] = [:]
     private var runOrder: [String] = []
     private var documentsByRunID:
         [String: [AgenticHostConsoleDocumentPresentation]] = [:]
 
-    func insert(
+    package init() {}
+
+    package func insert(
         _ plan: AgentToolPlan,
         runID: String
     ) {
@@ -94,7 +96,7 @@ actor HostPendingPlans {
         }
     }
 
-    func take(
+    package func take(
         runID: String
     ) -> AgentToolPlan? {
         guard let plan = plansByRunID.removeValue(
