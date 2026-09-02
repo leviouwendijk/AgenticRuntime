@@ -31,14 +31,16 @@ public enum AgenticRuntimeConversationCommand<
             sessionID: options.sessionID
         )
         try await AgenticConversationConsole.run(
-            conversation: &conversation
+            conversation: &conversation,
+            voiceInput: runtime.application.voiceInputProvider
         )
     }
 }
 
 private enum AgenticConversationConsole {
     static func run(
-        conversation: inout AgenticConversationSession
+        conversation: inout AgenticConversationSession,
+        voiceInput: (any VoiceInputProvider)?
     ) async throws {
         let stream = TerminalStream.standardError
         let terminalSession = try TerminalSession(
@@ -58,6 +60,18 @@ private enum AgenticConversationConsole {
         let reader = TerminalKeyReader()
         var renderer = TerminalFrameRenderer(stream: stream)
         var size = Terminal.size(for: stream)
+
+        let voiceAvailability =
+            await voiceInput?.availability()
+            ?? .unconfigured
+
+        conversation.setVoiceAvailability(
+            voiceAvailability
+        )
+        conversation.setVoiceState(
+            .idle
+        )
+
         var control = AgenticConversationControl(
             snapshot: conversation.snapshot
         )
@@ -126,6 +140,128 @@ private enum AgenticConversationConsole {
                 case .feedbackRequested(let message):
                     conversation.setActivity(message)
                     control.update(conversation.snapshot)
+
+                case .voiceStartRequested:
+                    guard let voiceInput else {
+                        conversation.setVoiceAvailability(
+                            .unconfigured
+                        )
+                        conversation.setVoiceState(
+                            .idle
+                        )
+                        conversation.setActivity(
+                            "Voice input unavailable — no transcription provider configured."
+                        )
+                        control.update(
+                            conversation.snapshot
+                        )
+                        break
+                    }
+
+                    do {
+                        try await voiceInput.start()
+                        conversation.setVoiceState(
+                            .recording
+                        )
+                        conversation.setActivity(
+                            "recording voice input"
+                        )
+                    } catch {
+                        let message =
+                            String(
+                                describing: error
+                            )
+                        conversation.setVoiceState(
+                            .failed(
+                                message
+                            )
+                        )
+                        conversation.setActivity(
+                            "Voice input failed: \(message)"
+                        )
+                    }
+
+                    control.update(
+                        conversation.snapshot
+                    )
+
+                case .voiceStopRequested:
+                    guard let voiceInput else {
+                        conversation.setVoiceAvailability(
+                            .unconfigured
+                        )
+                        conversation.setVoiceState(
+                            .idle
+                        )
+                        conversation.setActivity(
+                            "Voice input unavailable — no transcription provider configured."
+                        )
+                        control.update(
+                            conversation.snapshot
+                        )
+                        break
+                    }
+
+                    conversation.setVoiceState(
+                        .transcribing
+                    )
+                    conversation.setActivity(
+                        "transcribing voice input"
+                    )
+                    control.update(
+                        conversation.snapshot
+                    )
+                    render()
+
+                    do {
+                        let transcription =
+                            try await voiceInput.stop()
+
+                        conversation.setVoiceState(
+                            .idle
+                        )
+                        conversation.setActivity(
+                            "transcription ready"
+                        )
+                        control.update(
+                            conversation.snapshot
+                        )
+
+                        _ = control.applyTranscription(
+                            transcription
+                        )
+                    } catch {
+                        let message =
+                            String(
+                                describing: error
+                            )
+                        conversation.setVoiceState(
+                            .failed(
+                                message
+                            )
+                        )
+                        conversation.setActivity(
+                            "Voice input failed: \(message)"
+                        )
+                        control.update(
+                            conversation.snapshot
+                        )
+                    }
+
+                case .voiceCancelRequested:
+                    if let voiceInput {
+                        await voiceInput.cancel()
+                    }
+
+                    conversation.setVoiceState(
+                        .idle
+                    )
+                    conversation.setActivity(
+                        "voice input cancelled"
+                    )
+                    control.update(
+                        conversation.snapshot
+                    )
 
                 case .run(let workflowEvent):
                     service(

@@ -1,5 +1,5 @@
 {
-  "originHash" : "2f0010f8ad0e813eb3d3dce05890ecaccdb0ca0423d13364d7552dce19dded8b",
+  "originHash" : "5fdb8b3fd8cd67f427d924a0568b50cb0b8f90a62b00afdef87ac0dc5453bd0c",
   "pins" : [
     {
       "identity" : "agentic",
@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticAdapters.git",
       "state" : {
         "branch" : "master",
-        "revision" : "bca07d720e287948d94bbe242306a77f8331e737"
+        "revision" : "0973da9a4c52092e4ffefe834a08fc6443abb902"
       }
     },
     {
@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "f93b014822d749ba53dedcd1343a70175fad6c43"
+        "revision" : "552455d481a57acdcee0ed34b9e9315f8a1625e7"
       }
     },
     {

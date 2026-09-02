@@ -26,6 +26,7 @@ public struct AgenticApplication:
     public let skillRegistrations: [AgentSkillRegistration]
     public let adapterRegistrations: [AgentModelAdapterRegistration]
     public let modelProviders: [any AgentModelProvider]
+    public let voiceInputProvider: (any VoiceInputProvider)?
 
     public init(
         identifier: AgenticApplicationIdentifier,
@@ -37,6 +38,7 @@ public struct AgenticApplication:
         var skillRegistrations: [AgentSkillRegistration] = []
         var adapterRegistrations: [AgentModelAdapterRegistration] = []
         var modelProviders: [any AgentModelProvider] = []
+        var voiceInputProvider: (any VoiceInputProvider)?
 
         for component in components {
             switch component {
@@ -59,6 +61,9 @@ public struct AgenticApplication:
                 modelProviders.append(
                     contentsOf: providers
                 )
+
+            case .voiceInput(let provider):
+                voiceInputProvider = provider
             }
         }
 
@@ -69,6 +74,7 @@ public struct AgenticApplication:
         self.skillRegistrations = skillRegistrations
         self.adapterRegistrations = adapterRegistrations
         self.modelProviders = modelProviders
+        self.voiceInputProvider = voiceInputProvider
     }
 
     public init(

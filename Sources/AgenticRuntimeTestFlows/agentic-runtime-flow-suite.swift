@@ -17,6 +17,18 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runApplicationRealization()
         },
         TestFlow(
+            "voice-input-provider",
+            tags: [
+                "agentic-runtime",
+                "conversation",
+                "voice",
+                "provider",
+            ]
+        ) {
+            try await AgenticRuntimeFlowTesting
+                .runVoiceInputProvider()
+        },
+        TestFlow(
             "host-parity",
             tags: [
                 "agentic-runtime",
