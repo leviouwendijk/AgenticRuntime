@@ -18,17 +18,11 @@ public extension AgentRunner {
             )
         }
 
-        return try await ToolLoopExecutor(
-            adapter: adapter,
-            configuration: configuration,
-            toolRegistry: toolRegistry,
-            extensions: extensions,
-            workspace: workspace,
-            approvalHandler: approvalHandler,
-            historyStore: historyStore,
-            eventSinks: eventSinks,
-            costTracker: costTracker
-        ).resume(
+        let executor = try await makeToolLoopExecutor(
+            restoring: checkpoint
+        )
+
+        return try await executor.resume(
             checkpoint,
             approvalDecision: approvalDecision,
             metadata: metadata

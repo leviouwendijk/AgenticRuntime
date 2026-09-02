@@ -529,6 +529,10 @@ extension ToolLoopExecutor {
     func saveCheckpoint(
         _ checkpoint: inout AgentHistoryCheckpoint
     ) async throws {
+        checkpoint.exposedToolIdentifiers = try await toolExposure.identifiers(
+            in: toolRegistry
+        )
+
         guard configuration.persistsHistory else {
             return
         }

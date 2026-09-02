@@ -25,6 +25,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
     public var suspension: AgentSuspension?
     public var pendingApproval: PendingApproval?
     public var costRecord: AgentCostRecord?
+    public var exposedToolIdentifiers: [AgentToolIdentifier]?
     public var updatedAt: Date
 
     public init(
@@ -39,6 +40,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         suspension: AgentSuspension? = nil,
         pendingApproval: PendingApproval? = nil,
         costRecord: AgentCostRecord? = nil,
+        exposedToolIdentifiers: [AgentToolIdentifier]? = nil,
         updatedAt: Date = Date()
     ) {
         self.id = id
@@ -52,6 +54,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         self.suspension = suspension
         self.pendingApproval = pendingApproval ?? suspension?.pendingApproval
         self.costRecord = costRecord
+        self.exposedToolIdentifiers = exposedToolIdentifiers
         self.updatedAt = updatedAt
     }
 }

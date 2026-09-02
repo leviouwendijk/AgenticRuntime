@@ -324,6 +324,21 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runSkillSeededDiscovery()
         },
         TestFlow(
+            "tool-exposure-runtime-approval-resume",
+            tags: [
+                "agentic-runtime",
+                "tools",
+                "exposure",
+                "discovery",
+                "approval",
+                "checkpoint",
+                "resume",
+            ]
+        ) {
+            try await AgenticRuntimeToolExposureFlowTesting
+                .runApprovalResumePersistence()
+        },
+        TestFlow(
             "conversation-runtime-session",
             tags: ["agentic-runtime", "conversation", "agent-runner", "tool-use", "host-console", "discovery"]
         ) {

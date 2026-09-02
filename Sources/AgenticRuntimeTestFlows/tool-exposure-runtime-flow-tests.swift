@@ -2,6 +2,7 @@ import Agentic
 import AgenticExecution
 import AgenticRuntime
 import AgenticTools
+import Foundation
 import Primitives
 import TestFlows
 
@@ -248,6 +249,236 @@ enum AgenticRuntimeToolExposureFlowTesting {
             .field(
                 "advertised",
                 advertised.joined(separator: ",")
+            ),
+        ]
+    }
+
+    static func runApprovalResumePersistence() async throws -> [TestFlowDiagnostic] {
+        let store = AdapterFlowScratchpadStore()
+        let findCall = AgentToolCall(
+            id: "runtime-resume-find-tools",
+            name: FindToolsTool.identifier.rawValue,
+            input: try JSONToolBridge.encode(
+                FindToolsToolInput(
+                    query: AdapterFlowScratchpadTool.identifier.rawValue,
+                    maximumResults: 1
+                )
+            )
+        )
+        let mutateCall = AgentToolCall(
+            id: "runtime-resume-scratchpad-put",
+            name: AdapterFlowScratchpadTool.identifier.rawValue,
+            input: try JSONToolBridge.encode(
+                AdapterFlowScratchpadPutInput(
+                    text: "approved after discovery"
+                )
+            )
+        )
+        let findResponse = AgentResponse(
+            message: .init(
+                role: .assistant,
+                content: .init(
+                    blocks: [
+                        .tool_call(
+                            findCall
+                        ),
+                    ]
+                )
+            ),
+            stopReason: .tool_use
+        )
+        let mutateResponse = AgentResponse(
+            message: .init(
+                role: .assistant,
+                content: .init(
+                    blocks: [
+                        .tool_call(
+                            mutateCall
+                        ),
+                    ]
+                )
+            ),
+            stopReason: .tool_use
+        )
+        let finalResponse = AgentResponse(
+            message: .init(
+                role: .assistant,
+                text: "approved discovery resumed"
+            ),
+            stopReason: .end_turn
+        )
+        let adapter = AdapterFlowScriptedModelAdapter(
+            streamBatches: [
+                [
+                    .toolcall(
+                        findCall
+                    ),
+                    .completed(
+                        findResponse
+                    ),
+                ],
+                [
+                    .toolcall(
+                        mutateCall
+                    ),
+                    .completed(
+                        mutateResponse
+                    ),
+                ],
+                [
+                    .completed(
+                        finalResponse
+                    ),
+                ],
+            ]
+        )
+        let sessionsDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "agentic-runtime-exposure-resume-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        let historyStore = FileHistoryStore(
+            sessionsdir: sessionsDirectory
+        )
+        defer {
+            try? FileManager.default.removeItem(
+                at: sessionsDirectory
+            )
+        }
+        let sessionID = "runtime-tool-exposure-approval-resume"
+        let runner = AgentRunner(
+            adapter: adapter,
+            configuration: .init(
+                maximumIterations: 4,
+                autonomyMode: .auto_observe,
+                historyPersistenceMode: .checkpointmutation,
+                toolExposure: .discoveryOnly,
+                responseDelivery: .stream
+            ),
+            toolRegistry: .init(
+                tools: [
+                    AdapterFlowScratchpadTool(
+                        store: store
+                    ),
+                ]
+            ),
+            historyStore: historyStore
+        )
+
+        let initialResult = try await runner.run(
+            AgentRequest(
+                model: "scripted",
+                messages: [
+                    .init(
+                        role: .user,
+                        text: "Discover the scratchpad tool and use it."
+                    ),
+                ]
+            ),
+            sessionID: sessionID
+        )
+        let pendingApproval = try Expect.notNil(
+            initialResult.pendingApproval,
+            "discovered bounded mutation suspends for approval"
+        )
+
+        try Expect.equal(
+            pendingApproval.toolCall.name,
+            AdapterFlowScratchpadTool.identifier.rawValue,
+            "approval belongs to the discovered tool"
+        )
+        try Expect.isEmpty(
+            await store.all(),
+            "discovered mutation has not executed before approval"
+        )
+
+        let checkpoint = try Expect.notNil(
+            try await historyStore.loadCheckpoint(
+                sessionID: sessionID
+            ),
+            "persisted discovery checkpoint"
+        )
+        let persistedExposure = (checkpoint.exposedToolIdentifiers ?? [])
+            .map(\.rawValue)
+            .sorted()
+
+        try Expect.equal(
+            persistedExposure,
+            [
+                AdapterFlowScratchpadTool.identifier.rawValue,
+                FindToolsTool.identifier.rawValue,
+            ].sorted(),
+            "checkpoint persists activated discovery surface"
+        )
+
+        let requestsBeforeResume = await adapter.recordedRequests()
+
+        try Expect.equal(
+            requestsBeforeResume.count,
+            2,
+            "discovery and mutation proposal occur before suspension"
+        )
+        try Expect.equal(
+            requestsBeforeResume[0].tools.map(\.name),
+            [
+                FindToolsTool.identifier.rawValue,
+            ],
+            "first turn is discovery only"
+        )
+        try Expect.equal(
+            requestsBeforeResume[1].tools.map(\.name),
+            [
+                AdapterFlowScratchpadTool.identifier.rawValue,
+                FindToolsTool.identifier.rawValue,
+            ],
+            "discovered tool is exposed before approval suspension"
+        )
+
+        let resumed = try await runner.resume(
+            sessionID: sessionID,
+            approvalDecision: .approved
+        )
+        let requestsAfterResume = await adapter.recordedRequests()
+        let values = await store.all()
+
+        try Expect.equal(
+            resumed.response?.message.content.text,
+            "approved discovery resumed",
+            "approval resume reaches final response"
+        )
+        try Expect.equal(
+            values,
+            [
+                "approved after discovery",
+            ],
+            "approved discovered tool executes exactly once"
+        )
+        try Expect.equal(
+            requestsAfterResume.count,
+            3,
+            "model loop continues after approval"
+        )
+        try Expect.equal(
+            requestsAfterResume[2].tools.map(\.name),
+            [
+                AdapterFlowScratchpadTool.identifier.rawValue,
+                FindToolsTool.identifier.rawValue,
+            ],
+            "discovered exposure survives approval resume"
+        )
+
+        return [
+            .field(
+                "persisted",
+                persistedExposure.joined(separator: ",")
+            ),
+            .field(
+                "after_resume",
+                requestsAfterResume[2].tools.map(\.name).joined(separator: ",")
+            ),
+            .field(
+                "executions",
+                String(values.count)
             ),
         ]
     }

@@ -43,7 +43,7 @@ public actor AgentRunner {
         _ request: AgentRequest,
         sessionID: String = UUID().uuidString
     ) async throws -> AgentRunResult {
-        let executor = try makeToolLoopExecutor()
+        let executor = try await makeToolLoopExecutor()
 
         return try await executor.run(
             request,
@@ -90,7 +90,9 @@ public actor AgentRunner {
 
         case .ready_for_model,
              .processing_tool_calls:
-            let executor = try makeToolLoopExecutor()
+            let executor = try await makeToolLoopExecutor(
+                restoring: checkpoint
+            )
 
             return try await executor.resume(
                 checkpoint
@@ -144,7 +146,9 @@ public actor AgentRunner {
             )
         }
 
-        let executor = try makeToolLoopExecutor()
+        let executor = try await makeToolLoopExecutor(
+            restoring: checkpoint
+        )
 
         return try await executor.resume(
             checkpoint,
@@ -154,8 +158,10 @@ public actor AgentRunner {
     }
 }
 
-private extension AgentRunner {
-    func makeToolLoopExecutor() throws -> ToolLoopExecutor {
+extension AgentRunner {
+    func makeToolLoopExecutor(
+        restoring checkpoint: AgentHistoryCheckpoint? = nil
+    ) async throws -> ToolLoopExecutor {
         let exposure = AgentToolExposure(
             policy: configuration.toolExposure.resolvedForRuntime
         )
@@ -170,6 +176,14 @@ private extension AgentRunner {
                     registry: toolRegistry,
                     exposure: exposure
                 )
+            )
+        }
+
+        if configuration.toolExposure.usesDiscovery,
+           let identifiers = checkpoint?.exposedToolIdentifiers {
+            _ = try await exposure.activate(
+                identifiers,
+                in: registry
             )
         }
 
