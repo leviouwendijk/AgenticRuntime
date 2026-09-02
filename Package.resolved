@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "7dfb7fcb562d4f7a418faa082c61df86b3db32a6"
+        "revision" : "8cd6ced55ebae94095d8b93b89a2ba99bea72235"
       }
     },
     {
@@ -169,7 +169,7 @@
       "location" : "https://github.com/leviouwendijk/Fuzzy.git",
       "state" : {
         "branch" : "master",
-        "revision" : "99b7d295446f9574161daa9bba60a0815df9b2ec"
+        "revision" : "a0ebef95732f720d2231bdd2d413ccd8134e929f"
       }
     },
     {
