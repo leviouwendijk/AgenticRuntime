@@ -100,11 +100,30 @@ private enum AgenticConversationConsole {
             )
 
             if events.isEmpty {
+                var needsRender = false
+
+                if conversation.snapshot.voiceState == .recording,
+                   let voiceInput
+                {
+                    conversation.setVoiceStatus(
+                        await voiceInput.status()
+                    )
+                    control.update(
+                        conversation.snapshot
+                    )
+                    needsRender = true
+                }
+
                 let currentSize = Terminal.size(for: stream)
                 if currentSize != size {
                     size = currentSize
+                    needsRender = true
+                }
+
+                if needsRender {
                     render()
                 }
+
                 continue
             }
 
@@ -160,6 +179,9 @@ private enum AgenticConversationConsole {
 
                     do {
                         try await voiceInput.start()
+                        conversation.setVoiceStatus(
+                            await voiceInput.status()
+                        )
                         conversation.setVoiceState(
                             .recording
                         )
@@ -202,6 +224,9 @@ private enum AgenticConversationConsole {
                         break
                     }
 
+                    conversation.setVoiceStatus(
+                        nil
+                    )
                     conversation.setVoiceState(
                         .transcribing
                     )
@@ -253,6 +278,9 @@ private enum AgenticConversationConsole {
                         await voiceInput.cancel()
                     }
 
+                    conversation.setVoiceStatus(
+                        nil
+                    )
                     conversation.setVoiceState(
                         .idle
                     )

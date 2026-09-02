@@ -120,6 +120,12 @@ package struct AgenticConversationSession {
         snapshot.voiceState = state
     }
 
+    package mutating func setVoiceStatus(
+        _ status: AgenticConversationVoice.Status?
+    ) {
+        snapshot.voiceStatus = status
+    }
+
     @discardableResult
     package mutating func submit(
         _ submission: AgenticConversationSubmission
