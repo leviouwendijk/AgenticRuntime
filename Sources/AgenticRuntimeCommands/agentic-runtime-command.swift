@@ -19,6 +19,7 @@ public enum AgenticRuntimeCommand<
             Help.self,
             AgenticRuntimeToolCommand<Application>.self,
             AgenticRuntimeHostCommand<Application>.self,
+            AgenticRuntimeConversationCommand<Application>.self,
         ]
     }
 

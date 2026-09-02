@@ -131,7 +131,8 @@ private extension HostProjection {
     static func steps(
         _ node: AgentToolPlanNode,
         path: String,
-        recordsByPath: [String: AgentToolPlanRecord]
+        recordsByPath: [String: AgentToolPlanRecord],
+        groups: [String] = []
     ) -> [AgenticHostConsoleStepPresentation] {
         switch node {
         case .call(
@@ -145,41 +146,60 @@ private extension HostProjection {
 
             if let record = recordsByPath[path] {
                 current = makeStep(
-                    record
+                    record,
+                    groups: groups
                 )
             } else {
                 current = AgenticHostConsoleStepPresentation(
                     id: call.id,
                     title: call.name,
-                    state: .pending
+                    state: .pending,
+                    groups: groups
                 )
             }
 
             var result = [
                 current,
             ]
-
-            result.append(
-                contentsOf: steps(
-                    onSuccess,
+            let branches: [
+                (
+                    nodes: [AgentToolPlanNode],
+                    path: String,
+                    label: String
+                )
+            ] = [
+                (
+                    nodes: onSuccess,
                     path: "\(path).onSuccess",
-                    recordsByPath: recordsByPath
-                )
-            )
-            result.append(
-                contentsOf: steps(
-                    onFailure,
+                    label: "on success"
+                ),
+                (
+                    nodes: onFailure,
                     path: "\(path).onFailure",
-                    recordsByPath: recordsByPath
-                )
-            )
-            result.append(
-                contentsOf: steps(
-                    onDenied,
+                    label: "on failure"
+                ),
+                (
+                    nodes: onDenied,
                     path: "\(path).onDenied",
-                    recordsByPath: recordsByPath
+                    label: "on denied"
+                ),
+            ]
+
+            for branch in branches where hasActivatedRecord(
+                under: branch.path,
+                recordsByPath: recordsByPath
+            ) {
+                result.append(
+                    contentsOf: steps(
+                        branch.nodes,
+                        path: branch.path,
+                        recordsByPath: recordsByPath,
+                        groups: groups + [
+                            branch.label,
+                        ]
+                    )
                 )
-            )
+            }
 
             return result
 
@@ -187,14 +207,16 @@ private extension HostProjection {
             return steps(
                 children,
                 path: "\(path).sequence",
-                recordsByPath: recordsByPath
+                recordsByPath: recordsByPath,
+                groups: groups
             )
 
         case .batch(let children):
             return steps(
                 children,
                 path: "\(path).batch",
-                recordsByPath: recordsByPath
+                recordsByPath: recordsByPath,
+                groups: groups
             )
         }
     }
@@ -202,19 +224,43 @@ private extension HostProjection {
     static func steps(
         _ nodes: [AgentToolPlanNode],
         path: String,
-        recordsByPath: [String: AgentToolPlanRecord]
+        recordsByPath: [String: AgentToolPlanRecord],
+        groups: [String] = []
     ) -> [AgenticHostConsoleStepPresentation] {
         nodes.enumerated().flatMap { index, node in
             steps(
                 node,
                 path: "\(path)[\(index)]",
-                recordsByPath: recordsByPath
+                recordsByPath: recordsByPath,
+                groups: groups
             )
         }
     }
 
+    static func hasActivatedRecord(
+        under path: String,
+        recordsByPath: [String: AgentToolPlanRecord]
+    ) -> Bool {
+        recordsByPath.contains {
+            recordPath,
+            record in
+
+            (
+                recordPath == path
+                    || recordPath.hasPrefix(
+                        path + "["
+                    )
+                    || recordPath.hasPrefix(
+                        path + "."
+                    )
+            )
+                && record.skipReason != "condition_not_selected"
+        }
+    }
+
     static func makeStep(
-        _ record: AgentToolPlanRecord
+        _ record: AgentToolPlanRecord,
+        groups: [String]
     ) -> AgenticHostConsoleStepPresentation {
         let review = record.invocation?.review
         let projection =
@@ -356,7 +402,8 @@ private extension HostProjection {
             state: state(
                 record.outcome
             ),
-            fields: fields
+            fields: fields,
+            groups: groups
         )
     }
 
@@ -595,6 +642,19 @@ private extension HostProjection {
         }
     }
 
+    static func shouldReplaceProjectedRecord(
+        _ existing: AgentToolPlanRecord,
+        with candidate: AgentToolPlanRecord
+    ) -> Bool {
+        guard candidate.skipReason == "condition_not_selected",
+              existing.skipReason != "condition_not_selected"
+        else {
+            return true
+        }
+
+        return false
+    }
+
     static func records(
         _ run: AgentToolPlanRun
     ) -> [AgentToolPlanRecord] {
@@ -607,6 +667,15 @@ private extension HostProjection {
                     paths.append(
                         record.path
                     )
+                }
+
+                if let existing = byPath[record.path],
+                   !shouldReplaceProjectedRecord(
+                    existing,
+                    with: record
+                   )
+                {
+                    continue
                 }
 
                 byPath[record.path] = record

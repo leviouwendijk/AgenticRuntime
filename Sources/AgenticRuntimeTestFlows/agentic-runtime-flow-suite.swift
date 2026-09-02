@@ -109,6 +109,21 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runPausedFutureStepProjection()
         },
         TestFlow(
+            "host-authored-branch-timeline",
+            tags: [
+                "agentic-runtime",
+                "host",
+                "projection",
+                "tool-plan",
+                "branch",
+                "timeline",
+                "history",
+            ]
+        ) {
+            try AgenticRuntimeHostAuthoredTimelineFlowTesting
+                .runActivatedFailureBranchProjection()
+        },
+        TestFlow(
             "host-authored-resume",
             tags: [
                 "agentic-runtime",
@@ -281,6 +296,12 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
         ) {
             try await AgenticRuntimeAdapterFlowTesting
                 .runAppleLiveScratchpadReadWriteLoop()
+        },
+        TestFlow(
+            "conversation-runtime-session",
+            tags: ["agentic-runtime", "conversation", "agent-runner", "tool-use", "host-console"]
+        ) {
+            try await AgenticRuntimeConversationFlowTesting.run()
         },
     ]
 }
