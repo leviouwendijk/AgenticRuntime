@@ -8,6 +8,7 @@ public struct ToolLoopExecutor: Sendable {
     public let adapter: any AgentModelAdapter
     public let configuration: AgentRunnerConfiguration
     public let toolRegistry: ToolRegistry
+    public let toolExposure: AgentToolExposure
     public let extensions: [any AgentHarnessExtension]
     public let workspace: AgentWorkspace?
     public let approvalHandler: (any ToolApprovalHandler)?
@@ -19,6 +20,7 @@ public struct ToolLoopExecutor: Sendable {
         adapter: any AgentModelAdapter,
         configuration: AgentRunnerConfiguration = .default,
         toolRegistry: ToolRegistry = .init(),
+        toolExposure: AgentToolExposure = .init(),
         extensions: [any AgentHarnessExtension] = [],
         workspace: AgentWorkspace? = nil,
         approvalHandler: (any ToolApprovalHandler)? = nil,
@@ -29,6 +31,7 @@ public struct ToolLoopExecutor: Sendable {
         self.adapter = adapter
         self.configuration = configuration
         self.toolRegistry = toolRegistry
+        self.toolExposure = toolExposure
         self.extensions = extensions
         self.workspace = workspace
         self.approvalHandler = approvalHandler

@@ -7,13 +7,15 @@ extension ToolLoopExecutor {
     func requestWithCurrentState(
         from request: AgentRequest,
         messages: [AgentMessage]
-    ) -> AgentRequest {
-        AgentRequest(
+    ) async throws -> AgentRequest {
+        let definitions = try await toolDefinitions(
+            fallback: request.tools
+        )
+
+        return AgentRequest(
             model: request.model,
             messages: messages,
-            tools: toolDefinitions(
-                fallback: request.tools
-            ),
+            tools: definitions,
             generationConfiguration: request.generationConfiguration,
             metadata: request.metadata
         )
@@ -21,14 +23,14 @@ extension ToolLoopExecutor {
 
     func toolDefinitions(
         fallback: [AgentToolDefinition]
-    ) -> [AgentToolDefinition] {
-        let definitions = toolRegistry.definitions
-
-        guard !definitions.isEmpty else {
+    ) async throws -> [AgentToolDefinition] {
+        guard !toolRegistry.isEmpty else {
             return fallback
         }
 
-        return definitions
+        return try await toolExposure.definitions(
+            in: toolRegistry
+        )
     }
 
     func toolCalls(

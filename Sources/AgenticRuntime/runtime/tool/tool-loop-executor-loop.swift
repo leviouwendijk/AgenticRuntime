@@ -113,7 +113,7 @@ extension ToolLoopExecutor {
             &checkpoint
         )
 
-        var preparedRequest = requestWithCurrentState(
+        var preparedRequest = try await requestWithCurrentState(
             from: checkpoint.originalRequest,
             messages: checkpoint.state.messages
         )

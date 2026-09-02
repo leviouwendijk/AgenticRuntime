@@ -53,6 +53,35 @@ extension ToolLoopExecutor {
                 toolCall
             )
 
+            do {
+                _ = try await toolExposure.parseModelCall(
+                    toolCall,
+                    registry: toolRegistry
+                )
+            } catch {
+                let result = makeToolErrorResult(
+                    for: toolCall,
+                    error: error
+                )
+
+                try await appendToolResult(
+                    result,
+                    for: toolCall,
+                    disposition: .failed_preflight,
+                    to: &checkpoint,
+                    summary: localizedDescription(
+                        for: error
+                    )
+                )
+
+                try await saveCheckpoint(
+                    &checkpoint
+                )
+
+                batch = checkpoint.toolBatch ?? batch
+                continue
+            }
+
             let preflight: ToolPreflight
 
             do {

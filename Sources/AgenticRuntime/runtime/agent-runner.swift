@@ -1,6 +1,7 @@
 import Agentic
 import AgenticExecution
 import AgenticModels
+import AgenticTools
 import AgenticUsage
 import AgenticWorkspace
 import Foundation
@@ -42,17 +43,9 @@ public actor AgentRunner {
         _ request: AgentRequest,
         sessionID: String = UUID().uuidString
     ) async throws -> AgentRunResult {
-        try await ToolLoopExecutor(
-            adapter: adapter,
-            configuration: configuration,
-            toolRegistry: toolRegistry,
-            extensions: extensions,
-            workspace: workspace,
-            approvalHandler: approvalHandler,
-            historyStore: historyStore,
-            eventSinks: eventSinks,
-            costTracker: costTracker
-        ).run(
+        let executor = try makeToolLoopExecutor()
+
+        return try await executor.run(
             request,
             sessionID: sessionID
         )
@@ -97,17 +90,11 @@ public actor AgentRunner {
 
         case .ready_for_model,
              .processing_tool_calls:
-            return try await ToolLoopExecutor(
-                adapter: adapter,
-                configuration: configuration,
-                toolRegistry: toolRegistry,
-                extensions: extensions,
-                workspace: workspace,
-                approvalHandler: approvalHandler,
-                historyStore: historyStore,
-                eventSinks: eventSinks,
-                costTracker: costTracker
-            ).resume(checkpoint)
+            let executor = try makeToolLoopExecutor()
+
+            return try await executor.resume(
+                checkpoint
+            )
 
         case .receiving_model_response:
             throw AgentStreamingError.receivingModelResponseCheckpoint(
@@ -157,17 +144,9 @@ public actor AgentRunner {
             )
         }
 
-        return try await ToolLoopExecutor(
-            adapter: adapter,
-            configuration: configuration,
-            toolRegistry: toolRegistry,
-            extensions: extensions,
-            workspace: workspace,
-            approvalHandler: approvalHandler,
-            historyStore: historyStore,
-            eventSinks: eventSinks,
-            costTracker: costTracker
-        ).resume(
+        let executor = try makeToolLoopExecutor()
+
+        return try await executor.resume(
             checkpoint,
             answer: answer,
             metadata: metadata
@@ -176,6 +155,38 @@ public actor AgentRunner {
 }
 
 private extension AgentRunner {
+    func makeToolLoopExecutor() throws -> ToolLoopExecutor {
+        let exposure = AgentToolExposure(
+            policy: configuration.toolExposure.resolvedForRuntime
+        )
+        var registry = toolRegistry
+
+        if configuration.toolExposure.usesDiscovery,
+           registry.registeredTool(
+               identifiedBy: FindToolsTool.identifier
+           ) == nil {
+            try registry.register(
+                FindToolsTool(
+                    registry: toolRegistry,
+                    exposure: exposure
+                )
+            )
+        }
+
+        return ToolLoopExecutor(
+            adapter: adapter,
+            configuration: configuration,
+            toolRegistry: registry,
+            toolExposure: exposure,
+            extensions: extensions,
+            workspace: workspace,
+            approvalHandler: approvalHandler,
+            historyStore: historyStore,
+            eventSinks: eventSinks,
+            costTracker: costTracker
+        )
+    }
+
     func suspendedResult(
         from checkpoint: AgentHistoryCheckpoint
     ) throws -> AgentRunResult {

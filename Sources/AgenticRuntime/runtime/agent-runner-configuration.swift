@@ -8,6 +8,7 @@ public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
     public var executionLimits: ExecutionLimits
     public var historyPersistenceMode: HistoryPersistenceMode
     public var compactionStrategy: CompactionStrategy?
+    public var toolExposure: AgentToolExposurePolicy
     public var responseDelivery: AgentModelResponseDelivery
     public var streamCheckpointPolicy: AgentStreamCheckpointPolicy
 
@@ -18,6 +19,7 @@ public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
         executionLimits: ExecutionLimits = .unlimited,
         historyPersistenceMode: HistoryPersistenceMode = .disabled,
         compactionStrategy: CompactionStrategy? = nil,
+        toolExposure: AgentToolExposurePolicy = .all,
         responseDelivery: AgentModelResponseDelivery = .buffered,
         streamCheckpointPolicy: AgentStreamCheckpointPolicy = .default
     ) {
@@ -27,6 +29,7 @@ public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
         self.executionLimits = executionLimits
         self.historyPersistenceMode = historyPersistenceMode
         self.compactionStrategy = compactionStrategy
+        self.toolExposure = toolExposure
         self.responseDelivery = responseDelivery
         self.streamCheckpointPolicy = streamCheckpointPolicy
     }

@@ -100,8 +100,8 @@ package struct AgenticConversationSession {
     ) {
         snapshot.selectedSkillIDs = identifiers
         snapshot.activity = identifiers.isEmpty
-            ? "full tool manifest selected"
-            : "skill tool set selected"
+            ? "tool discovery selected"
+            : "skill-seeded tool discovery selected"
     }
 
     package mutating func setActivity(_ activity: String) {
@@ -131,18 +131,12 @@ package struct AgenticConversationSession {
             )
         }
 
-        let tools: ToolRegistry
-        if submission.skillIDs.isEmpty {
-            tools = runtime.tools
-        } else {
-            let identifiers = selection.loadedSkills.flatMap { skill in
-                (
-                    skill.metadata.tools.required
-                    + skill.metadata.tools.optional
-                ).map(\.identifier)
-            }
-            tools = try runtime.tools.selecting(identifiers)
-        }
+        let toolExposure: AgentToolExposurePolicy =
+            submission.skillIDs.isEmpty
+                ? .discoveryOnly
+                : .skillSeeded(
+                    selection.loadedSkills
+                )
 
         let renderedInput = Self.renderedInput(submission)
         let runID = "\(baseSessionID)-turn-\(nextOrdinal)"
@@ -191,9 +185,10 @@ package struct AgenticConversationSession {
             adapter: adapter,
             configuration: .init(
                 maximumIterations: 12,
+                toolExposure: toolExposure,
                 responseDelivery: .stream
             ),
-            toolRegistry: tools,
+            toolRegistry: runtime.tools,
             workspace: workspace
         )
         let result = try await runner.run(
@@ -321,11 +316,14 @@ package struct AgenticConversationSession {
 
         if skills.isEmpty {
             sections.append(
-                "No skill is selected. The full registered tool manifest is available."
+                "No skill is selected. Use find_tools to discover registered capabilities before calling them."
             )
         } else {
             sections.append(
                 skills.map(\.contextText).joined(separator: "\n\n")
+            )
+            sections.append(
+                "Tools referenced by selected skills are exposed immediately. Use find_tools to discover additional registered capabilities."
             )
         }
 

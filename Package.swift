@@ -249,6 +249,10 @@ let package = Package(
                     package: "AgenticExecution"
                 ),
                 .product(
+                    name: "AgenticTools",
+                    package: "AgenticTools"
+                ),
+                .product(
                     name: "AgenticWorkspace",
                     package: "AgenticWorkspace"
                 ),
@@ -259,6 +263,14 @@ let package = Package(
                 .product(
                     name: "Primitives",
                     package: "Primitives"
+                ),
+                .product(
+                    name: "Schema",
+                    package: "Schema"
+                ),
+                .product(
+                    name: "SchemaMacros",
+                    package: "SchemaMacros"
                 ),
                 .product(
                     name: "AgenticIO",

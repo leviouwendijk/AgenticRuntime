@@ -298,8 +298,34 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runAppleLiveScratchpadReadWriteLoop()
         },
         TestFlow(
+            "tool-exposure-runtime-explicit",
+            tags: [
+                "agentic-runtime",
+                "tools",
+                "exposure",
+                "explicit",
+                "enforcement",
+            ]
+        ) {
+            try await AgenticRuntimeToolExposureFlowTesting
+                .runExplicitEnforcement()
+        },
+        TestFlow(
+            "tool-exposure-runtime-skill-seeded",
+            tags: [
+                "agentic-runtime",
+                "tools",
+                "exposure",
+                "skills",
+                "discovery",
+            ]
+        ) {
+            try await AgenticRuntimeToolExposureFlowTesting
+                .runSkillSeededDiscovery()
+        },
+        TestFlow(
             "conversation-runtime-session",
-            tags: ["agentic-runtime", "conversation", "agent-runner", "tool-use", "host-console"]
+            tags: ["agentic-runtime", "conversation", "agent-runner", "tool-use", "host-console", "discovery"]
         ) {
             try await AgenticRuntimeConversationFlowTesting.run()
         },

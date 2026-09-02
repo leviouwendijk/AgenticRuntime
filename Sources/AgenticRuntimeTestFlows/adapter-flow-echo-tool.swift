@@ -2,8 +2,12 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
-struct AdapterFlowEchoTool: StaticAgentTool {
+struct AdapterFlowEchoTool: TypedAgentTool {
+    typealias Input = AdapterFlowEchoToolInput
+
     static let identifier: AgentToolIdentifier = .init(
         "adapter_echo_tool"
     )
@@ -29,6 +33,7 @@ struct AdapterFlowEchoTool: StaticAgentTool {
     }
 }
 
+@JSONSchema
 struct AdapterFlowEchoToolInput: Sendable, Codable, Hashable {
     var text: String
 }

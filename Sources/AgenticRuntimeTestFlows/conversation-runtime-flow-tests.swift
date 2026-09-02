@@ -4,6 +4,7 @@ import AgenticIO
 import AgenticInterfaces
 import AgenticRuntime
 import AgenticRuntimeCommands
+import AgenticTools
 import Foundation
 import Primitives
 import TestFlows
@@ -54,7 +55,17 @@ private struct ConversationRuntimeModelProvider:
 
 enum AgenticRuntimeConversationFlowTesting {
     static func run() async throws -> [TestFlowDiagnostic] {
-        let call = AgentToolCall(
+        let findCall = AgentToolCall(
+            id: "conversation-find-tools-call",
+            name: FindToolsTool.identifier.rawValue,
+            input: try JSONToolBridge.encode(
+                FindToolsToolInput(
+                    query: AdapterFlowEchoTool.identifier.rawValue,
+                    maximumResults: 1
+                )
+            )
+        )
+        let echoCall = AgentToolCall(
             id: "conversation-echo-call",
             name: AdapterFlowEchoTool.identifier.rawValue,
             input: try JSONToolBridge.encode(
@@ -63,12 +74,27 @@ enum AgenticRuntimeConversationFlowTesting {
                 )
             )
         )
-        let firstResponse = AgentResponse(
+        let findResponse = AgentResponse(
             message: .init(
                 role: .assistant,
                 content: .init(
                     blocks: [
-                        .tool_call(call),
+                        .tool_call(
+                            findCall
+                        ),
+                    ]
+                )
+            ),
+            stopReason: .tool_use
+        )
+        let echoResponse = AgentResponse(
+            message: .init(
+                role: .assistant,
+                content: .init(
+                    blocks: [
+                        .tool_call(
+                            echoCall
+                        ),
                     ]
                 )
             ),
@@ -84,11 +110,25 @@ enum AgenticRuntimeConversationFlowTesting {
         let scriptedAdapter = AdapterFlowScriptedModelAdapter(
             streamBatches: [
                 [
-                    .toolcall(call),
-                    .completed(firstResponse),
+                    .toolcall(
+                        findCall
+                    ),
+                    .completed(
+                        findResponse
+                    ),
                 ],
                 [
-                    .completed(finalResponse),
+                    .toolcall(
+                        echoCall
+                    ),
+                    .completed(
+                        echoResponse
+                    ),
+                ],
+                [
+                    .completed(
+                        finalResponse
+                    ),
                 ],
             ]
         )
@@ -140,7 +180,9 @@ enum AgenticRuntimeConversationFlowTesting {
             modelProfileID: "conversation-scripted",
             skillIDs: []
         )
-        let result = try await conversation.submit(submission)
+        let result = try await conversation.submit(
+            submission
+        )
         let requests = await scriptedAdapter.recordedRequests()
         let run: AgenticHostConsoleRunPresentation = try Expect.notNil(
             conversation.snapshot.hostConsole.runs.first,
@@ -158,13 +200,37 @@ enum AgenticRuntimeConversationFlowTesting {
         )
         try Expect.equal(
             requests.count,
-            2,
+            3,
             "model request count"
         )
         try Expect.equal(
-            requests.first?.tools.map(\.name),
-            [AdapterFlowEchoTool.identifier.rawValue],
-            "full tool manifest advertised"
+            requests[0].tools.map(
+                \.name
+            ),
+            [
+                FindToolsTool.identifier.rawValue,
+            ],
+            "conversation begins with discovery only"
+        )
+        try Expect.equal(
+            requests[1].tools.map(
+                \.name
+            ),
+            [
+                AdapterFlowEchoTool.identifier.rawValue,
+                FindToolsTool.identifier.rawValue,
+            ],
+            "discovered tool is advertised on the next turn"
+        )
+        try Expect.equal(
+            requests[2].tools.map(
+                \.name
+            ),
+            [
+                AdapterFlowEchoTool.identifier.rawValue,
+                FindToolsTool.identifier.rawValue,
+            ],
+            "discovered tool remains exposed for the run"
         )
         try Expect.equal(
             requests.first?.metadata["conversation_input_origin"],
@@ -191,12 +257,17 @@ enum AgenticRuntimeConversationFlowTesting {
             "attached run state"
         )
         try Expect.equal(
-            run.steps.first?.title,
-            AdapterFlowEchoTool.identifier.rawValue,
-            "attached tool step"
+            run.steps.map(
+                \.title
+            ),
+            [
+                FindToolsTool.identifier.rawValue,
+                AdapterFlowEchoTool.identifier.rawValue,
+            ],
+            "attached run records discovery then execution"
         )
         try Expect.equal(
-            run.steps.first?.state,
+            run.steps.last?.state,
             Optional(
                 AgenticHostConsoleStepState.completed
             ),
@@ -226,11 +297,29 @@ enum AgenticRuntimeConversationFlowTesting {
         )
 
         return [
-            .field("workspace", conversation.snapshot.workspace),
-            .field("model_calls", String(requests.count)),
-            .field("run", run.id),
-            .field("steps", String(run.steps.count)),
-            AdapterRuntimeFlowDiagnostics.events(result.events),
+            .field(
+                "workspace",
+                conversation.snapshot.workspace
+            ),
+            .field(
+                "model_calls",
+                String(
+                    requests.count
+                )
+            ),
+            .field(
+                "run",
+                run.id
+            ),
+            .field(
+                "steps",
+                String(
+                    run.steps.count
+                )
+            ),
+            AdapterRuntimeFlowDiagnostics.events(
+                result.events
+            ),
         ]
     }
 }

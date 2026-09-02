@@ -2,6 +2,8 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
 actor AdapterFlowScratchpadStore {
     private var values: [String] = []
@@ -21,7 +23,9 @@ actor AdapterFlowScratchpadStore {
     }
 }
 
-struct AdapterFlowScratchpadReadTool: StaticAgentTool {
+struct AdapterFlowScratchpadReadTool: TypedAgentTool {
+    typealias Input = AdapterFlowScratchpadReadInput
+
     static let identifier: AgentToolIdentifier = .init(
         "adapter_scratchpad_read"
     )
@@ -48,7 +52,9 @@ struct AdapterFlowScratchpadReadTool: StaticAgentTool {
     }
 }
 
-struct AdapterFlowScratchpadTool: StaticAgentTool {
+struct AdapterFlowScratchpadTool: TypedAgentTool {
+    typealias Input = AdapterFlowScratchpadPutInput
+
     static let identifier: AgentToolIdentifier = .init(
         "adapter_scratchpad_put"
     )
@@ -80,11 +86,17 @@ struct AdapterFlowScratchpadTool: StaticAgentTool {
     }
 }
 
+@JSONSchema
+struct AdapterFlowScratchpadReadInput: Sendable, Codable, Hashable {
+    init() {}
+}
+
 struct AdapterFlowScratchpadReadOutput: Sendable, Codable, Hashable {
     var values: [String]
     var count: Int
 }
 
+@JSONSchema
 struct AdapterFlowScratchpadPutInput: Sendable, Codable, Hashable {
     var text: String
 }

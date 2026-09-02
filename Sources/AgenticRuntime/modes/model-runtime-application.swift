@@ -38,14 +38,17 @@ public struct ModeRuntimeApplication: Sendable {
         skills: SkillRegistry = .init(),
         metadata additionalMetadata: [String: String] = [:]
     ) throws {
-        let selectedTools = try tools.selecting(
-            selection.exposedToolIdentifiers
+        _ = try tools.modelFacingDefinitions(
+            for: selection.exposedToolIdentifiers
         )
         let selectedSkills = try skills.selecting(
             selection.loadedSkillIdentifiers
         )
         var effectiveConfiguration = configuration
         effectiveConfiguration.autonomyMode = selection.mode.autonomyMode
+        effectiveConfiguration.toolExposure = .explicit(
+            selection.exposedToolIdentifiers
+        )
         let metadata = selection.metadata.merging(
             additionalMetadata
         ) { _, new in
@@ -56,7 +59,7 @@ public struct ModeRuntimeApplication: Sendable {
             selection: selection,
             configuration: effectiveConfiguration,
             routePolicy: selection.routePolicy,
-            toolRegistry: selectedTools,
+            toolRegistry: tools,
             skillRegistry: selectedSkills.registry,
             loadedSkills: selectedSkills.loadedSkills,
             missingSkillIdentifiers: selectedSkills.missingIdentifiers,
@@ -69,6 +72,23 @@ public struct ModeRuntimeApplication: Sendable {
     }
 
     public var toolDefinitions: [AgentToolDefinition] {
-        toolRegistry.definitions
+        let modelFacing = toolRegistry.modelFacingDefinitions
+
+        switch configuration.toolExposure {
+        case .all:
+            return modelFacing
+
+        case .explicit(let identifiers),
+             .discoverable(let identifiers):
+            let selected = Set(
+                identifiers
+            )
+
+            return modelFacing.filter { definition in
+                selected.contains(
+                    definition.identifier
+                )
+            }
+        }
     }
 }
