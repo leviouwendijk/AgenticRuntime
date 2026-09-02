@@ -184,6 +184,7 @@ package struct AgenticConversationSession {
                 "conversation_session_id": baseSessionID,
                 "conversation_run_id": runID,
                 "model_profile_id": profile.identifier.rawValue,
+                "conversation_input_origin": submission.origin.rawValue,
             ]
         )
         let runner = AgentRunner(
@@ -288,11 +289,23 @@ package struct AgenticConversationSession {
         _ submission: AgenticConversationSubmission
     ) -> String {
         var sections = [submission.body]
+
         for content in submission.contents {
+            let heading: String
+
+            switch content.kind {
+            case .pasted:
+                heading = "Pasted content"
+
+            case .transcribed:
+                heading = "Transcribed content"
+            }
+
             sections.append(
-                "# Attached content: \(content.title)\n\n\(content.body)"
+                "# \(heading): \(content.title)\n\n\(content.body)"
             )
         }
+
         return sections.joined(separator: "\n\n")
     }
 

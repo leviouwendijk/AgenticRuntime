@@ -127,9 +127,11 @@ enum AgenticRuntimeConversationFlowTesting {
         )
         let submission = AgenticConversationSubmission(
             body: "Use the echo tool.",
+            origin: .transcribed,
             contents: [
                 .init(
                     id: "pinned-1",
+                    kind: .transcribed,
                     title: "Pinned note",
                     summary: "one note",
                     body: "exact pinned body"
@@ -165,6 +167,11 @@ enum AgenticRuntimeConversationFlowTesting {
             "full tool manifest advertised"
         )
         try Expect.equal(
+            requests.first?.metadata["conversation_input_origin"],
+            "transcribed",
+            "conversation input origin metadata"
+        )
+        try Expect.equal(
             assistant.body,
             "conversation tool ok",
             "assistant presentation"
@@ -194,6 +201,11 @@ enum AgenticRuntimeConversationFlowTesting {
                 AgenticHostConsoleStepState.completed
             ),
             "attached tool outcome"
+        )
+        try Expect.contains(
+            conversation.input(for: result.sessionID) ?? "",
+            "# Transcribed content: Pinned note",
+            "retained transcribed content heading"
         )
         try Expect.contains(
             conversation.input(for: result.sessionID) ?? "",
