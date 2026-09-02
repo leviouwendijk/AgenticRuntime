@@ -12,6 +12,107 @@ enum AgenticRuntimeHostProjectionFlowTesting {
         case missingStderr
         case missingDetails
         case missingStep
+        case missingRun
+        case unexpectedSuspensionProjection
+    }
+
+    static func runSuspensionStateProjection() throws -> [TestFlowDiagnostic] {
+        let call = AgentToolCall(
+            id: "host-suspension-projection-call",
+            name: "host_suspension_projection",
+            input: .object([:])
+        )
+        let plan = AgentToolPlan(
+            id: "host-suspension-projection-plan",
+            root: .call(
+                call
+            )
+        )
+        let resolution = AgentToolPlanResolution(
+            revision: 2,
+            path: "root",
+            callID: call.id,
+            kind: .skipped
+        )
+        let failureRun = AgentToolPlanRun(
+            id: "host-suspension-failure",
+            plan: plan,
+            relationship: .root,
+            attempts: [],
+            revision: 1,
+            state: .suspended(
+                AgentToolPlanSuspension(
+                    path: "root",
+                    callID: call.id,
+                    attemptNumber: 1,
+                    reason: .failure(
+                        errorDescription: "fixture failure"
+                    )
+                )
+            )
+        )
+        let continuationRun = AgentToolPlanRun(
+            id: "host-suspension-continuation",
+            plan: plan,
+            relationship: .root,
+            attempts: [],
+            resolutions: [
+                resolution,
+            ],
+            revision: 2,
+            state: .suspended(
+                AgentToolPlanSuspension(
+                    path: "root",
+                    callID: call.id,
+                    attemptNumber: 1,
+                    reason: .continuation_required(
+                        resolution
+                    )
+                )
+            )
+        )
+        let snapshot = HostProjection.snapshot(
+            runs: [
+                failureRun,
+                continuationRun,
+            ],
+            context: "host suspension projection"
+        )
+
+        guard snapshot.runs.count == 2 else {
+            throw Failure.missingRun
+        }
+
+        guard snapshot.runs[0].state == .onHold,
+              snapshot.runs[1].state == .paused,
+              snapshot.runs[0].state.executionControls.isEmpty,
+              snapshot.runs[1].state.executionControls == [
+                .execute_run,
+                .execute_step_and_wait,
+              ],
+              snapshot.interruptions.count == 2,
+              snapshot.interruptions[0].actions == [
+                .retry,
+                .skip,
+                .createFixBranch,
+              ],
+              snapshot.interruptions[1].actions == [
+                .continueRun,
+              ]
+        else {
+            throw Failure.unexpectedSuspensionProjection
+        }
+
+        return [
+            .field(
+                "failure-state",
+                snapshot.runs[0].state.rawValue
+            ),
+            .field(
+                "continuation-state",
+                snapshot.runs[1].state.rawValue
+            ),
+        ]
     }
 
     static func runOutputDocuments() throws -> [TestFlowDiagnostic] {

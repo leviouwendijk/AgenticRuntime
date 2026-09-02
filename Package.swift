@@ -249,6 +249,18 @@ let package = Package(
                     package: "AgenticExecution"
                 ),
                 .product(
+                    name: "AgenticWorkspace",
+                    package: "AgenticWorkspace"
+                ),
+                .product(
+                    name: "AgenticApple",
+                    package: "AgenticAdapters"
+                ),
+                .product(
+                    name: "Primitives",
+                    package: "Primitives"
+                ),
+                .product(
                     name: "AgenticIO",
                     package: "AgenticIO"
                 ),

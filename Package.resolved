@@ -1,5 +1,5 @@
 {
-  "originHash" : "bba604f59e1728d1dc0a04a85db5bb48e82b1357428c742856842634a6e761e4",
+  "originHash" : "2f0010f8ad0e813eb3d3dce05890ecaccdb0ca0423d13364d7552dce19dded8b",
   "pins" : [
     {
       "identity" : "agentic",
@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticAdapters.git",
       "state" : {
         "branch" : "master",
-        "revision" : "5d46e68250e663c6712b0becc6b451db533f4678"
+        "revision" : "600e1226301953750decc0101f03f01a6c9cbc9e"
       }
     },
     {
@@ -169,7 +169,7 @@
       "location" : "https://github.com/leviouwendijk/Fuzzy.git",
       "state" : {
         "branch" : "master",
-        "revision" : "a0ebef95732f720d2231bdd2d413ccd8134e929f"
+        "revision" : "b51fd4d53899dcfd0150bd8b8215c12acb25910f"
       }
     },
     {

@@ -542,9 +542,11 @@ private extension HostProjection {
             case .human_review:
                 return .awaitingApproval
 
-            case .failure,
-                 .continuation_required:
+            case .failure:
                 return .onHold
+
+            case .continuation_required:
+                return .paused
             }
         }
     }

@@ -53,6 +53,20 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runOutputDocuments()
         },
         TestFlow(
+            "host-suspension-state-projection",
+            tags: [
+                "agentic-runtime",
+                "host",
+                "projection",
+                "suspension",
+                "recovery",
+                "resume",
+            ]
+        ) {
+            try AgenticRuntimeHostProjectionFlowTesting
+                .runSuspensionStateProjection()
+        },
+        TestFlow(
             "host-empty-output-documents",
             tags: [
                 "agentic-runtime",
@@ -218,6 +232,55 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
         ) {
             try await AgenticRuntimeToolPlanFlowTesting
                 .runRecoveryHierarchyAndGating()
+        },
+        TestFlow(
+            "adapter-stream-supported",
+            tags: ["agentic-runtime", "adapter", "stream", "offline"]
+        ) {
+            try await AgenticRuntimeAdapterFlowTesting
+                .runAdapterStreamSupported()
+        },
+        TestFlow(
+            "adapter-tool-loop",
+            tags: ["agentic-runtime", "adapter", "tool-use", "stream", "offline"]
+        ) {
+            try await AgenticRuntimeAdapterFlowTesting
+                .runAdapterToolLoop()
+        },
+        TestFlow(
+            "adapter-scratchpad-tool",
+            tags: ["agentic-runtime", "adapter", "tool-use", "scratchpad", "offline"]
+        ) {
+            try await AgenticRuntimeAdapterFlowTesting
+                .runAdapterScratchpadTool()
+        },
+        TestFlow(
+            "adapter-scratchpad-read-write-loop",
+            tags: ["agentic-runtime", "adapter", "tool-use", "scratchpad", "loop", "offline"]
+        ) {
+            try await AgenticRuntimeAdapterFlowTesting
+                .runAdapterScratchpadReadWriteLoop()
+        },
+        TestFlow(
+            "apple-live-query",
+            tags: ["agentic-runtime", "apple", "foundation-models", "live"]
+        ) {
+            try await AgenticRuntimeAdapterFlowTesting
+                .runAppleLiveQuery()
+        },
+        TestFlow(
+            "apple-live-stream-query",
+            tags: ["agentic-runtime", "apple", "foundation-models", "stream", "live"]
+        ) {
+            try await AgenticRuntimeAdapterFlowTesting
+                .runAppleLiveStreamQuery()
+        },
+        TestFlow(
+            "apple-live-scratchpad-read-write-loop",
+            tags: ["agentic-runtime", "apple", "foundation-models", "tool-use", "scratchpad", "loop", "live"]
+        ) {
+            try await AgenticRuntimeAdapterFlowTesting
+                .runAppleLiveScratchpadReadWriteLoop()
         },
     ]
 }
