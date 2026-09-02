@@ -33,11 +33,19 @@ private struct ConversationRuntimeProfileProvider:
 private struct ConversationRuntimeModelProvider:
     AgentModelProvider
 {
+    let modelAdapter: AdapterFlowScriptedModelAdapter
+
     let descriptor = AgentModelProviderDescriptor(
         source: "conversation-scripted",
         adapterIdentifier: "conversation-scripted",
         displayName: "Conversation Scripted"
     )
+
+    var adapter: AgentModelAdapterFactory? {
+        .init {
+            modelAdapter
+        }
+    }
 
     var profileProvider: (any AgentModelProfileProvider)? {
         ConversationRuntimeProfileProvider()
@@ -90,11 +98,10 @@ enum AgenticRuntimeConversationFlowTesting {
             tools {
                 AdapterFlowEchoTool()
             }
-            adapter("conversation-scripted") {
-                scriptedAdapter
-            }
             modelProvider(
-                ConversationRuntimeModelProvider()
+                ConversationRuntimeModelProvider(
+                    modelAdapter: scriptedAdapter
+                )
             )
         }
         let runtime = try await AgenticRuntime(

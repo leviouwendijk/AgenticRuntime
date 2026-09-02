@@ -23,19 +23,19 @@ public struct AgenticRuntime:
             application.skillRegistrations
         }
 
-        var realizedAdapters: [
+        var adapterOverrides: [
             (
                 AgentModelAdapterIdentifier,
                 any AgentModelAdapter
             )
         ] = []
 
-        realizedAdapters.reserveCapacity(
+        adapterOverrides.reserveCapacity(
             application.adapterRegistrations.count
         )
 
         for registration in application.adapterRegistrations {
-            realizedAdapters.append(
+            adapterOverrides.append(
                 (
                     registration.identifier,
                     try await registration.make()
@@ -43,15 +43,16 @@ public struct AgenticRuntime:
             )
         }
 
+        let modelCatalogs = try await AgentModelCatalogs(
+            modelProviders: application.modelProviders,
+            adapterOverrides: adapterOverrides
+        )
+
         self.application = application
         self.tools = tools
         self.skills = skills
-        self.adapters = try AgentModelAdapterCatalog(
-            adapters: realizedAdapters
-        )
-        self.profiles = try AgentModelProfileCatalog(
-            modelProviders: application.modelProviders
-        )
+        self.adapters = modelCatalogs.adapters
+        self.profiles = modelCatalogs.profiles
     }
 }
 
