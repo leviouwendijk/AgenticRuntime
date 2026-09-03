@@ -1,4 +1,5 @@
 import Agentic
+import AgenticExecution
 import Foundation
 
 extension ToolLoopExecutor {
@@ -35,6 +36,7 @@ extension ToolLoopExecutor {
             messageID: UUID().uuidString
         )
         var checkpointState = AgentStreamCheckpointState()
+        let journal = AgentModelToolInvocationJournal()
 
         checkpoint.phase = .receiving_model_response
         checkpoint.partialResponse = accumulator.partial
@@ -58,7 +60,8 @@ extension ToolLoopExecutor {
                 request: preparedRequest,
                 delivery: .stream,
                 context: modelInvocationContext(
-                    sessionID: checkpoint.id
+                    sessionID: checkpoint.id,
+                    journal: journal
                 )
             ) {
                 try Task.checkCancellation()
@@ -108,8 +111,24 @@ extension ToolLoopExecutor {
                 preparedRequest: preparedRequest,
                 response: response,
                 checkpoint: checkpoint,
-                turnIndex: turnIndex
+                turnIndex: turnIndex,
+                nativeInvocations: await journal.snapshot()
             )
+        } catch RuntimeAgentToolCallBoundary.exposure_changed {
+            try await finishNativeExposureBoundary(
+                invocations: await journal.snapshot(),
+                checkpoint: &checkpoint
+            )
+
+            return checkpoint
+        } catch AgentToolCallResolutionError.needsHumanReview(let review) {
+            try await suspendForNativeApproval(
+                review,
+                invocations: await journal.snapshot(),
+                checkpoint: &checkpoint
+            )
+
+            return checkpoint
         } catch is CancellationError {
             try await interruptStreamingTurn(
                 checkpoint: &checkpoint,
@@ -132,11 +151,18 @@ extension ToolLoopExecutor {
         preparedRequest: AgentRequest,
         response: AgentResponse,
         checkpoint: AgentHistoryCheckpoint,
-        turnIndex: Int
+        turnIndex: Int,
+        nativeInvocations: [ToolInvocation.Result]
     ) async throws -> AgentHistoryCheckpoint {
         var checkpoint = checkpoint
 
         checkpoint.state.iteration += 1
+
+        try await applyNativeToolInvocations(
+            nativeInvocations,
+            to: &checkpoint
+        )
+
         checkpoint.state.messages.append(
             response.message
         )

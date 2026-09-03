@@ -310,6 +310,21 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runAppleLiveScratchpadReadWriteLoop()
         },
         TestFlow(
+            "native-tool-invocation-lifecycle",
+            tags: [
+                "agentic-runtime",
+                "tools",
+                "resolver",
+                "native",
+                "approval",
+                "discovery",
+                "checkpoint",
+            ]
+        ) {
+            try await AgenticRuntimeFlowTesting
+                .runNativeToolInvocationLifecycle()
+        },
+        TestFlow(
             "tool-exposure-runtime-explicit",
             tags: [
                 "agentic-runtime",

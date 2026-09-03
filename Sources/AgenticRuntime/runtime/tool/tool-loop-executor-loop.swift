@@ -1,4 +1,5 @@
 import Agentic
+import AgenticExecution
 import Foundation
 
 extension ToolLoopExecutor {
@@ -169,14 +170,31 @@ extension ToolLoopExecutor {
         )
 
         let response: AgentResponse
+        let journal = AgentModelToolInvocationJournal()
 
         do {
             response = try await adapter.respond(
                 request: preparedRequest,
                 context: modelInvocationContext(
-                    sessionID: checkpoint.id
+                    sessionID: checkpoint.id,
+                    journal: journal
                 )
             )
+        } catch RuntimeAgentToolCallBoundary.exposure_changed {
+            try await finishNativeExposureBoundary(
+                invocations: await journal.snapshot(),
+                checkpoint: &checkpoint
+            )
+
+            return checkpoint
+        } catch AgentToolCallResolutionError.needsHumanReview(let review) {
+            try await suspendForNativeApproval(
+                review,
+                invocations: await journal.snapshot(),
+                checkpoint: &checkpoint
+            )
+
+            return checkpoint
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -203,6 +221,12 @@ extension ToolLoopExecutor {
         }
 
         checkpoint.state.iteration += 1
+
+        try await applyNativeToolInvocations(
+            await journal.snapshot(),
+            to: &checkpoint
+        )
+
         checkpoint.state.messages.append(
             response.message
         )
