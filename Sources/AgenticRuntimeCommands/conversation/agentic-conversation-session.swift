@@ -99,9 +99,14 @@ package struct AgenticConversationSession {
         _ identifiers: [AgentSkillIdentifier]
     ) {
         snapshot.selectedSkillIDs = identifiers
-        snapshot.activity = identifiers.isEmpty
-            ? "tool discovery selected"
-            : "skill-seeded tool discovery selected"
+        snapshot.activity = "skills selected"
+    }
+
+    package mutating func selectToolExposure(
+        _ exposure: AgenticConversationToolExposure
+    ) {
+        snapshot.selectedToolExposure = exposure
+        snapshot.activity = "\(exposure.title.lowercased()) tool exposure selected"
     }
 
     package mutating func setActivity(_ activity: String) {
@@ -132,6 +137,7 @@ package struct AgenticConversationSession {
     ) async throws -> AgentRunResult {
         selectModel(submission.modelProfileID)
         selectSkills(submission.skillIDs)
+        selectToolExposure(submission.toolExposure)
 
         let profile = try runtime.profiles.profile(
             submission.modelProfileID
@@ -149,12 +155,19 @@ package struct AgenticConversationSession {
             )
         }
 
-        let toolExposure: AgentToolExposurePolicy =
-            submission.skillIDs.isEmpty
-                ? .discoveryOnly
-                : .skillSeeded(
-                    selection.loadedSkills
-                )
+        let toolExposure: AgentToolExposurePolicy
+        switch submission.toolExposure {
+        case .discovery:
+            toolExposure = .discoveryOnly
+
+        case .all:
+            toolExposure = .all
+
+        case .skillSeeded:
+            toolExposure = .skillSeeded(
+                selection.loadedSkills
+            )
+        }
 
         let renderedInput = Self.renderedInput(submission)
         let runID = "\(baseSessionID)-turn-\(nextOrdinal)"
@@ -183,7 +196,8 @@ package struct AgenticConversationSession {
                 role: .system,
                 text: Self.systemPrompt(
                     workspace: workspace,
-                    skills: selection.loadedSkills
+                    skills: selection.loadedSkills,
+                    toolExposure: submission.toolExposure
                 )
             ),
         ]
@@ -197,6 +211,7 @@ package struct AgenticConversationSession {
                 "conversation_run_id": runID,
                 "model_profile_id": profile.identifier.rawValue,
                 "conversation_input_origin": submission.origin.rawValue,
+                "conversation_tool_exposure": submission.toolExposure.rawValue,
             ]
         )
         let runner = AgentRunner(
@@ -339,7 +354,8 @@ package struct AgenticConversationSession {
 
     private static func systemPrompt(
         workspace: AgentWorkspace,
-        skills: [AgentSkill]
+        skills: [AgentSkill],
+        toolExposure: AgenticConversationToolExposure
     ) -> String {
         var sections = [
             "You are operating in an Agentic terminal conversation.",
@@ -347,17 +363,33 @@ package struct AgenticConversationSession {
             "Use only the advertised tools and keep all file operations inside the workspace.",
         ]
 
-        if skills.isEmpty {
-            sections.append(
-                "No skill is selected. Use find_tools to discover registered capabilities before calling them."
-            )
-        } else {
+        if !skills.isEmpty {
             sections.append(
                 skills.map(\.contextText).joined(separator: "\n\n")
             )
+        }
+
+        switch toolExposure {
+        case .discovery:
             sections.append(
-                "Tools referenced by selected skills are exposed immediately. Use find_tools to discover additional registered capabilities."
+                "Tool exposure is discovery-only. Use find_tools to discover registered capabilities before calling them."
             )
+
+        case .all:
+            sections.append(
+                "All registered model-facing tools are exposed immediately."
+            )
+
+        case .skillSeeded:
+            if skills.isEmpty {
+                sections.append(
+                    "No skill tools are currently seeded. Use find_tools to discover registered capabilities."
+                )
+            } else {
+                sections.append(
+                    "Tools referenced by selected skills are exposed immediately. Use find_tools to discover additional registered capabilities."
+                )
+            }
         }
 
         return sections.joined(separator: "\n\n")

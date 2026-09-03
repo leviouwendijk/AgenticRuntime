@@ -152,6 +152,10 @@ private enum AgenticConversationConsole {
                     conversation.selectModel(identifier)
                     control.update(conversation.snapshot)
 
+                case .toolExposureSelectionChanged(let exposure):
+                    conversation.selectToolExposure(exposure)
+                    control.update(conversation.snapshot)
+
                 case .skillSelectionChanged(let identifiers):
                     conversation.selectSkills(identifiers)
                     control.update(conversation.snapshot)

@@ -178,7 +178,8 @@ enum AgenticRuntimeConversationFlowTesting {
                 ),
             ],
             modelProfileID: "conversation-scripted",
-            skillIDs: []
+            skillIDs: [],
+            toolExposure: .discovery
         )
         let result = try await conversation.submit(
             submission
@@ -236,6 +237,21 @@ enum AgenticRuntimeConversationFlowTesting {
             requests.first?.metadata["conversation_input_origin"],
             "transcribed",
             "conversation input origin metadata"
+        )
+        try Expect.equal(
+            requests.first?.metadata["conversation_tool_exposure"],
+            "discovery",
+            "conversation tool exposure metadata"
+        )
+        try Expect.equal(
+            conversation.snapshot.selectedToolExposure,
+            AgenticConversationToolExposure.discovery,
+            "conversation retains discovery exposure selection"
+        )
+        try Expect.contains(
+            requests.first?.messages.first?.content.text ?? "",
+            "Tool exposure is discovery-only.",
+            "discovery system prompt"
         )
         try Expect.equal(
             assistant.body,
@@ -319,6 +335,110 @@ enum AgenticRuntimeConversationFlowTesting {
             ),
             AdapterRuntimeFlowDiagnostics.events(
                 result.events
+            ),
+        ]
+    }
+
+    static func runToolExposureSelection() async throws -> [TestFlowDiagnostic] {
+        let response = AgentResponse(
+            message: .init(
+                role: .assistant,
+                text: "all tools exposure ok"
+            ),
+            stopReason: .end_turn
+        )
+        let adapter = AdapterFlowScriptedModelAdapter(
+            streamBatches: [
+                [
+                    .completed(
+                        response
+                    ),
+                ],
+            ]
+        )
+        let application = Agentic.application(
+            "conversation-tool-exposure-runtime-fixture"
+        ) {
+            tools {
+                AdapterFlowEchoTool()
+            }
+            modelProvider(
+                ConversationRuntimeModelProvider(
+                    modelAdapter: adapter
+                )
+            )
+        }
+        let runtime = try await AgenticRuntime(
+            application: application
+        )
+        let workspaceRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "agentic-conversation-tool-exposure-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        try FileManager.default.createDirectory(
+            at: workspaceRoot,
+            withIntermediateDirectories: true
+        )
+        defer {
+            try? FileManager.default.removeItem(
+                at: workspaceRoot
+            )
+        }
+
+        var conversation = try AgenticConversationSession(
+            runtime: runtime,
+            workspacePath: workspaceRoot.path,
+            sessionID: "conversation-tool-exposure-runtime"
+        )
+        _ = try await conversation.submit(
+            .init(
+                body: "Inspect the full tool surface.",
+                contents: [],
+                modelProfileID: "conversation-scripted",
+                skillIDs: [],
+                toolExposure: .all
+            )
+        )
+
+        let requests = await adapter.recordedRequests()
+        let first = try Expect.notNil(
+            requests.first,
+            "all-tools conversation request"
+        )
+        let advertised = first.tools.map(\.name)
+
+        try Expect.equal(
+            advertised.contains(
+                AdapterFlowEchoTool.identifier.rawValue
+            ),
+            true,
+            "all exposure advertises registered model-facing tools"
+        )
+        try Expect.equal(
+            first.metadata["conversation_tool_exposure"],
+            "all",
+            "all exposure metadata"
+        )
+        try Expect.equal(
+            conversation.snapshot.selectedToolExposure,
+            AgenticConversationToolExposure.all,
+            "conversation retains all-tools selection"
+        )
+        try Expect.contains(
+            first.messages.first?.content.text ?? "",
+            "All registered model-facing tools are exposed immediately.",
+            "all-tools system prompt"
+        )
+
+        return [
+            .field(
+                "advertised",
+                advertised.joined(separator: ",")
+            ),
+            .field(
+                "exposure",
+                conversation.snapshot.selectedToolExposure.rawValue
             ),
         ]
     }

@@ -357,6 +357,19 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticRuntimeConversationFlowTesting.run()
         },
         TestFlow(
+            "conversation-runtime-tool-exposure-selection",
+            tags: [
+                "agentic-runtime",
+                "conversation",
+                "tools",
+                "exposure",
+                "settings",
+            ]
+        ) {
+            try await AgenticRuntimeConversationFlowTesting
+                .runToolExposureSelection()
+        },
+        TestFlow(
             "conversation-runtime-failed-run",
             tags: [
                 "agentic-runtime",
