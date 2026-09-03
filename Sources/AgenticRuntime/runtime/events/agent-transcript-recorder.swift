@@ -71,7 +71,8 @@ private extension AgentTranscriptRecorder {
              .tool_error:
             return false
 
-        case .compaction,
+        case .run_failed,
+             .compaction,
              .model_stream_started,
              .assistant_delta,
              .model_stream_tool_call,

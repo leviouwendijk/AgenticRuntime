@@ -5,6 +5,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
     public let response: AgentResponse?
     public let suspension: AgentSuspension?
     public let pendingApproval: PendingApproval?
+    public let failure: AgentRunFailure?
     public let state: AgentLoopState
     public let events: [AgentRunEvent]
     public let costRecord: AgentCostRecord?
@@ -14,6 +15,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         response: AgentResponse?,
         suspension: AgentSuspension? = nil,
         pendingApproval: PendingApproval? = nil,
+        failure: AgentRunFailure? = nil,
         state: AgentLoopState,
         events: [AgentRunEvent] = [],
         costRecord: AgentCostRecord? = nil
@@ -22,6 +24,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         self.response = response
         self.suspension = suspension
         self.pendingApproval = pendingApproval ?? suspension?.pendingApproval
+        self.failure = failure
         self.state = state
         self.events = events
         self.costRecord = costRecord
@@ -104,12 +107,39 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         )
     }
 
+    public static func failed(
+        sessionID: String,
+        failure: AgentRunFailure,
+        response: AgentResponse? = nil,
+        state: AgentLoopState,
+        events: [AgentRunEvent] = [],
+        costRecord: AgentCostRecord? = nil
+    ) -> Self {
+        .init(
+            sessionID: sessionID,
+            response: response,
+            suspension: nil,
+            pendingApproval: nil,
+            failure: failure,
+            state: state,
+            events: events,
+            costRecord: costRecord
+        )
+    }
+
     public var pendingUserInput: PendingUserInput? {
         suspension?.pendingUserInput
     }
 
     public var isCompleted: Bool {
-        response != nil && suspension == nil && pendingApproval == nil
+        response != nil
+            && suspension == nil
+            && pendingApproval == nil
+            && failure == nil
+    }
+
+    public var isFailed: Bool {
+        failure != nil
     }
 
     public var isSuspended: Bool {

@@ -109,8 +109,19 @@ public actor AgentRunner {
             )
 
         case .failed:
-            throw AgentStreamingError.failedCheckpoint(
-                checkpoint.id
+            guard let failure = checkpoint.failure else {
+                throw AgentStreamingError.failedCheckpoint(
+                    checkpoint.id
+                )
+            }
+
+            return .failed(
+                sessionID: checkpoint.id,
+                failure: failure,
+                response: checkpoint.lastResponse,
+                state: checkpoint.state,
+                events: checkpoint.events,
+                costRecord: checkpoint.costRecord
             )
         }
     }

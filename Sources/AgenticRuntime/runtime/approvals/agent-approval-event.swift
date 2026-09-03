@@ -74,6 +74,7 @@ public extension AgentApprovalEvent {
             decision = .skipped
 
         case .assistant_response,
+             .run_failed,
              .compaction,
              .model_stream_started,
              .assistant_delta,

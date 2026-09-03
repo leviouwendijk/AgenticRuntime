@@ -60,7 +60,7 @@ package struct AgenticConversationRunProjection {
         }
 
         if steps.isEmpty {
-            let failed = result.events.contains {
+            let failed = result.isFailed || result.events.contains {
                 $0.kind == .model_stream_failed
             }
             let state: AgenticHostConsoleStepState = failed ? .failed : .completed
@@ -73,7 +73,8 @@ package struct AgenticConversationRunProjection {
                 .init(
                     id: stepID,
                     title: "model response",
-                    detail: result.response?.message.content.text,
+                    detail: result.failure?.message
+                        ?? result.response?.message.content.text,
                     state: state,
                     fields: [
                         .init("outcome", state.rawValue),
@@ -92,11 +93,42 @@ package struct AgenticConversationRunProjection {
             )
         }
 
+        if let failure = result.failure {
+            let stepID = "\(result.sessionID)-failure"
+
+            steps.append(
+                .init(
+                    id: stepID,
+                    title: "run failure",
+                    detail: failure.message,
+                    state: .failed,
+                    fields: [
+                        .init("outcome", AgenticHostConsoleStepState.failed.rawValue),
+                        .init("kind", failure.kind.rawValue),
+                        .init("iteration", String(result.state.iteration)),
+                    ]
+                )
+            )
+            documents.append(
+                .init(
+                    id: "\(stepID)-details",
+                    runID: result.sessionID,
+                    stepID: stepID,
+                    kind: .details,
+                    body: [
+                        "kind     \(failure.kind.rawValue)",
+                        "message  \(failure.message)",
+                    ].joined(separator: "\n")
+                )
+            )
+        }
+
         return .init(
             run: .init(
                 id: result.sessionID,
                 title: title,
-                summary: result.response?.message.content.text,
+                summary: result.failure?.message
+                    ?? result.response?.message.content.text,
                 state: runState(for: result),
                 steps: steps
             ),
@@ -107,6 +139,9 @@ package struct AgenticConversationRunProjection {
     private static func runState(
         for result: AgentRunResult
     ) -> AgenticHostConsoleRunState {
+        if result.isFailed {
+            return .failed
+        }
         if result.isAwaitingApproval {
             return .awaitingApproval
         }

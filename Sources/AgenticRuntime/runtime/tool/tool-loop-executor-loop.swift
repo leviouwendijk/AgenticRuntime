@@ -9,8 +9,32 @@ extension ToolLoopExecutor {
 
         while true {
             guard checkpoint.state.iteration < configuration.maximumIterations else {
-                throw AgentRunLoopError.maximumIterationsExceeded(
+                let failure = AgentRunFailure.maximumIterationsExceeded(
                     configuration.maximumIterations
+                )
+                checkpoint.phase = .failed
+                checkpoint.failure = failure
+
+                try await appendRunEvent(
+                    .init(
+                        kind: .run_failed,
+                        iteration: checkpoint.state.iteration,
+                        summary: failure.message
+                    ),
+                    to: &checkpoint
+                )
+
+                try await saveCheckpoint(
+                    &checkpoint
+                )
+
+                return .failed(
+                    sessionID: checkpoint.id,
+                    failure: failure,
+                    response: checkpoint.lastResponse,
+                    state: checkpoint.state,
+                    events: checkpoint.events,
+                    costRecord: checkpoint.costRecord
                 )
             }
 
@@ -66,8 +90,19 @@ extension ToolLoopExecutor {
                 )
 
             case .failed:
-                throw AgentStreamingError.failedCheckpoint(
-                    checkpoint.id
+                guard let failure = checkpoint.failure else {
+                    throw AgentStreamingError.failedCheckpoint(
+                        checkpoint.id
+                    )
+                }
+
+                return .failed(
+                    sessionID: checkpoint.id,
+                    failure: failure,
+                    response: checkpoint.lastResponse,
+                    state: checkpoint.state,
+                    events: checkpoint.events,
+                    costRecord: checkpoint.costRecord
                 )
 
             case .completed:

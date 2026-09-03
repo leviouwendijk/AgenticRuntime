@@ -24,6 +24,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
     public var toolBatch: AgentToolUseBatch?
     public var suspension: AgentSuspension?
     public var pendingApproval: PendingApproval?
+    public var failure: AgentRunFailure?
     public var costRecord: AgentCostRecord?
     public var exposedToolIdentifiers: [AgentToolIdentifier]?
     public var updatedAt: Date
@@ -39,6 +40,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         toolBatch: AgentToolUseBatch? = nil,
         suspension: AgentSuspension? = nil,
         pendingApproval: PendingApproval? = nil,
+        failure: AgentRunFailure? = nil,
         costRecord: AgentCostRecord? = nil,
         exposedToolIdentifiers: [AgentToolIdentifier]? = nil,
         updatedAt: Date = Date()
@@ -53,6 +55,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         self.toolBatch = toolBatch
         self.suspension = suspension
         self.pendingApproval = pendingApproval ?? suspension?.pendingApproval
+        self.failure = failure
         self.costRecord = costRecord
         self.exposedToolIdentifiers = exposedToolIdentifiers
         self.updatedAt = updatedAt

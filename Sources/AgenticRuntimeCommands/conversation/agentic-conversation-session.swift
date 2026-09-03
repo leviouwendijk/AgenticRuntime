@@ -230,7 +230,9 @@ package struct AgenticConversationSession {
         let responseText = result.response?.message.content.text
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let body: String
-        if let responseText, !responseText.isEmpty {
+        if let failure = result.failure {
+            body = failure.message
+        } else if let responseText, !responseText.isEmpty {
             body = responseText
         } else if result.isAwaitingApproval {
             body = "The run is awaiting approval."
@@ -250,9 +252,22 @@ package struct AgenticConversationSession {
                 ]
             )
         )
-        snapshot.activity = result.isCompleted
-            ? "response completed"
-            : "response suspended"
+        if let failure = result.failure {
+            snapshot.activity = "run failed"
+            snapshot.hostConsole.statuses.append(
+                .init(
+                    id: UUID().uuidString,
+                    kind: .error,
+                    title: "Conversation run failed",
+                    summary: failure.kind.rawValue,
+                    body: failure.message
+                )
+            )
+        } else {
+            snapshot.activity = result.isCompleted
+                ? "response completed"
+                : "response suspended"
+        }
 
         runInputs[runID] = renderedInput
         let encoder = JSONEncoder()
@@ -271,7 +286,7 @@ package struct AgenticConversationSession {
 
     package mutating func recordFailure(_ error: Error) {
         let body = error.localizedDescription
-        snapshot.activity = "model invocation failed"
+        snapshot.activity = "conversation run failed"
         snapshot.messages.append(
             .init(
                 id: UUID().uuidString,
@@ -284,7 +299,7 @@ package struct AgenticConversationSession {
                 id: UUID().uuidString,
                 kind: .error,
                 title: "Conversation run failed",
-                summary: "model invocation",
+                summary: "runtime error",
                 body: body
             )
         )

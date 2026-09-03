@@ -356,5 +356,20 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
         ) {
             try await AgenticRuntimeConversationFlowTesting.run()
         },
+        TestFlow(
+            "conversation-runtime-failed-run",
+            tags: [
+                "agentic-runtime",
+                "conversation",
+                "agent-runner",
+                "failure",
+                "checkpoint",
+                "host-console",
+                "observability",
+            ]
+        ) {
+            try await AgenticRuntimeConversationFlowTesting
+                .runFailureObservability()
+        },
     ]
 }
