@@ -121,7 +121,7 @@ extension ToolLoopExecutor {
                 error: error
             )
 
-            throw error
+            return checkpoint
         }
     }
 
@@ -214,7 +214,11 @@ extension ToolLoopExecutor {
         accumulator: AgentStreamAccumulator,
         error: Error
     ) async throws {
+        let failure = AgentRunFailure.modelInvocationFailed(
+            error
+        )
         checkpoint.phase = .failed
+        checkpoint.failure = failure
         checkpoint.partialResponse = accumulator.partial
 
         try await appendRunEvent(
@@ -222,9 +226,17 @@ extension ToolLoopExecutor {
                 kind: .model_stream_failed,
                 iteration: checkpoint.state.iteration,
                 messageID: accumulator.partial.messageID,
-                summary: localizedDescription(
-                    for: error
-                )
+                summary: failure.message
+            ),
+            to: &checkpoint
+        )
+
+        try await appendRunEvent(
+            .init(
+                kind: .run_failed,
+                iteration: checkpoint.state.iteration,
+                messageID: accumulator.partial.messageID,
+                summary: failure.message
             ),
             to: &checkpoint
         )

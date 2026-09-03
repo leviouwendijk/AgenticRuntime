@@ -570,6 +570,65 @@ enum AgenticRuntimeConversationFlowTesting {
             "loading a terminal failed session preserves run events"
         )
 
+        let bufferedFailureAdapter = AdapterFlowScriptedModelAdapter()
+        let bufferedFailureSessionID = "runtime-model-invocation-failed-buffered"
+        let bufferedFailureRunner = AgentRunner(
+            adapter: bufferedFailureAdapter,
+            configuration: .init(
+                maximumIterations: 2,
+                historyPersistenceMode: .checkpointmutation,
+                responseDelivery: .buffered
+            ),
+            historyStore: historyStore
+        )
+        let bufferedFailureResult = try await bufferedFailureRunner.run(
+            AgentRequest(
+                model: "scripted",
+                messages: [
+                    .init(
+                        role: .user,
+                        text: "Fail this buffered model invocation."
+                    ),
+                ]
+            ),
+            sessionID: bufferedFailureSessionID
+        )
+        let bufferedFailureCheckpoint = try Expect.notNil(
+            try await historyStore.loadCheckpoint(
+                sessionID: bufferedFailureSessionID
+            ),
+            "buffered model failure checkpoint persisted"
+        )
+        let restoredBufferedFailure = try await bufferedFailureRunner.resume(
+            sessionID: bufferedFailureSessionID
+        )
+
+        try Expect.equal(
+            bufferedFailureResult.failure?.kind,
+            Optional(AgentRunFailure.Kind.model_invocation_failed),
+            "buffered model invocation becomes structured run failure"
+        )
+        try Expect.contains(
+            bufferedFailureResult.failure?.message ?? "",
+            "Scripted model has no buffered response left.",
+            "buffered model failure preserves adapter message"
+        )
+        try Expect.equal(
+            bufferedFailureCheckpoint.failure,
+            bufferedFailureResult.failure,
+            "buffered model failure persists in checkpoint"
+        )
+        try Expect.equal(
+            restoredBufferedFailure.failure,
+            bufferedFailureResult.failure,
+            "buffered model failure restores as terminal run result"
+        )
+        try Expect.equal(
+            bufferedFailureResult.events.last?.kind,
+            Optional(AgentRunEvent.Kind.run_failed),
+            "buffered model failure records terminal run event"
+        )
+
         let findCall = AgentToolCall(
             id: "conversation-failed-find-tools",
             name: FindToolsTool.identifier.rawValue,
@@ -765,6 +824,106 @@ enum AgenticRuntimeConversationFlowTesting {
             "failed run exposes terminal failure details"
         )
 
+        let invocationFailureAdapter = AdapterFlowScriptedModelAdapter()
+        let invocationFailureApplication = Agentic.application(
+            "conversation-model-invocation-failed-runtime-fixture"
+        ) {
+            tools {
+                AdapterFlowEchoTool()
+            }
+            modelProvider(
+                ConversationRuntimeModelProvider(
+                    modelAdapter: invocationFailureAdapter
+                )
+            )
+        }
+        let invocationFailureRuntime = try await AgenticRuntime(
+            application: invocationFailureApplication
+        )
+        var invocationFailureConversation = try AgenticConversationSession(
+            runtime: invocationFailureRuntime,
+            workspacePath: workspaceRoot.path,
+            sessionID: "conversation-model-invocation-failed-runtime"
+        )
+        let invocationFailureResult = try await invocationFailureConversation.submit(
+            .init(
+                body: "Trigger a model invocation failure.",
+                contents: [],
+                modelProfileID: "conversation-scripted",
+                skillIDs: [],
+                toolExposure: .discovery
+            )
+        )
+        let invocationFailureRequests = await invocationFailureAdapter.recordedRequests()
+        let invocationFailure = try Expect.notNil(
+            invocationFailureResult.failure,
+            "conversation model invocation failure"
+        )
+        let invocationFailureRun = try Expect.notNil(
+            invocationFailureConversation.snapshot.hostConsole.runs.first,
+            "conversation model invocation failure retains host run"
+        )
+        let invocationFailureAssistant = try Expect.notNil(
+            invocationFailureConversation.snapshot.messages.last,
+            "conversation model invocation failure retains assistant message"
+        )
+
+        try Expect.equal(
+            invocationFailure.kind,
+            AgentRunFailure.Kind.model_invocation_failed,
+            "conversation model invocation failure kind"
+        )
+        try Expect.equal(
+            invocationFailureRequests.count,
+            1,
+            "conversation model invocation failure records one attempted request"
+        )
+        try Expect.contains(
+            invocationFailure.message,
+            "Scripted model has no stream batch left.",
+            "streaming model failure preserves adapter message"
+        )
+        try Expect.equal(
+            invocationFailureResult.events.contains {
+                $0.kind == .model_stream_failed
+            },
+            true,
+            "streaming model failure records model stream failure event"
+        )
+        try Expect.equal(
+            invocationFailureResult.events.last?.kind,
+            Optional(AgentRunEvent.Kind.run_failed),
+            "streaming model failure records terminal run event"
+        )
+        try Expect.equal(
+            invocationFailureRun.state,
+            AgenticHostConsoleRunState.failed,
+            "conversation model invocation failure projects failed run"
+        )
+        try Expect.equal(
+            invocationFailureAssistant.attachments,
+            [
+                AgenticConversationAttachmentPresentation.run(
+                    runID: invocationFailureResult.sessionID
+                ),
+            ],
+            "conversation model invocation failure retains run attachment"
+        )
+        try Expect.contains(
+            invocationFailureConversation.input(
+                for: invocationFailureResult.sessionID
+            ) ?? "",
+            "Trigger a model invocation failure.",
+            "conversation model invocation failure retains input"
+        )
+        try Expect.contains(
+            invocationFailureConversation.output(
+                for: invocationFailureResult.sessionID
+            ) ?? "",
+            "model_invocation_failed",
+            "conversation model invocation failure retains encoded output"
+        )
+
         return [
             .field(
                 "persisted_failure",
@@ -777,6 +936,14 @@ enum AgenticRuntimeConversationFlowTesting {
             .field(
                 "conversation_model_calls",
                 String(requests.count)
+            ),
+            .field(
+                "buffered_model_failure",
+                bufferedFailureResult.failure?.kind.rawValue ?? "missing"
+            ),
+            .field(
+                "streaming_model_failure",
+                invocationFailure.kind.rawValue
             ),
             AdapterRuntimeFlowDiagnostics.events(
                 result.events

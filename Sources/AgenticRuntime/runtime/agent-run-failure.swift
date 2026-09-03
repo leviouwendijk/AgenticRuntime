@@ -3,6 +3,7 @@ import Foundation
 public struct AgentRunFailure: Sendable, Codable, Hashable {
     public enum Kind: String, Sendable, Codable, Hashable, CaseIterable {
         case maximum_iterations_exceeded
+        case model_invocation_failed
     }
 
     public let kind: Kind
@@ -27,6 +28,21 @@ public struct AgentRunFailure: Sendable, Codable, Hashable {
             message: "Agent loop exceeded the configured maximum iteration count of \(maximumIterations).",
             metadata: [
                 "maximum_iterations": String(maximumIterations),
+            ]
+        )
+    }
+
+    public static func modelInvocationFailed(
+        _ error: Error
+    ) -> Self {
+        let nsError = error as NSError
+
+        return .init(
+            kind: .model_invocation_failed,
+            message: error.localizedDescription,
+            metadata: [
+                "error_domain": nsError.domain,
+                "error_code": String(nsError.code),
             ]
         )
     }

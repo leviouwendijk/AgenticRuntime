@@ -168,9 +168,36 @@ extension ToolLoopExecutor {
             turnIndex: turnIndex
         )
 
-        let response = try await adapter.respond(
-            request: preparedRequest
-        )
+        let response: AgentResponse
+
+        do {
+            response = try await adapter.respond(
+                request: preparedRequest
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            let failure = AgentRunFailure.modelInvocationFailed(
+                error
+            )
+            checkpoint.phase = .failed
+            checkpoint.failure = failure
+
+            try await appendRunEvent(
+                .init(
+                    kind: .run_failed,
+                    iteration: checkpoint.state.iteration,
+                    summary: failure.message
+                ),
+                to: &checkpoint
+            )
+
+            try await saveCheckpoint(
+                &checkpoint
+            )
+
+            return checkpoint
+        }
 
         checkpoint.state.iteration += 1
         checkpoint.state.messages.append(
