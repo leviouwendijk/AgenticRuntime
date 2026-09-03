@@ -172,7 +172,10 @@ extension ToolLoopExecutor {
 
         do {
             response = try await adapter.respond(
-                request: preparedRequest
+                request: preparedRequest,
+                context: modelInvocationContext(
+                    sessionID: checkpoint.id
+                )
             )
         } catch is CancellationError {
             throw CancellationError()

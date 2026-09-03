@@ -56,7 +56,10 @@ extension ToolLoopExecutor {
         do {
             for try await event in adapter.respond(
                 request: preparedRequest,
-                delivery: .stream
+                delivery: .stream,
+                context: modelInvocationContext(
+                    sessionID: checkpoint.id
+                )
             ) {
                 try Task.checkCancellation()
 

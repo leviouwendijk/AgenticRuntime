@@ -7,7 +7,7 @@
       "location" : "https://github.com/leviouwendijk/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "980b210a8604bd1f7a8c4f3f743903d33ff0002c"
+        "revision" : "05992e285cd10e0304ce38d39ebd2bf9a7d482cb"
       }
     },
     {
@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticAdapters.git",
       "state" : {
         "branch" : "master",
-        "revision" : "0f5d1bb1ab4ae0cdf8d6eb787470d089cdb7a048"
+        "revision" : "05ec23fcd314282c178fc506a3c4125dc8fd5b22"
       }
     },
     {
@@ -25,7 +25,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticExecution.git",
       "state" : {
         "branch" : "master",
-        "revision" : "9709a1a7d49cc2e8da98f6ab8de96b9aa100aeff"
+        "revision" : "e326b40a5b135d3bccb2c48197e1e44ce6e08f18"
       }
     },
     {
@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "6abe8860defca71204af605075e6d2192d22a147"
+        "revision" : "ca05e89b543719449c37a19969e0d5b73189fa5f"
       }
     },
     {
@@ -43,7 +43,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticIO.git",
       "state" : {
         "branch" : "master",
-        "revision" : "f6b9884a96a54bc2b64f3dadf7c6f8e9acadba44"
+        "revision" : "d689956a1ae71006e52f9a063c427d9154fc9d64"
       }
     },
     {
@@ -52,7 +52,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticModels.git",
       "state" : {
         "branch" : "master",
-        "revision" : "7fd2b8bdf61a01e2aebf3fb9b4e1ab3e44ed5245"
+        "revision" : "4acf46e9039edfb1e057e5fd6acc9fd43e136c91"
       }
     },
     {
@@ -79,7 +79,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticWorkspace.git",
       "state" : {
         "branch" : "master",
-        "revision" : "49fa47b13403ae7e9eb1653ac5e730f17c2ca1b3"
+        "revision" : "a0ec00d7bc584110398979512585a3bee7e2d2be"
       }
     },
     {
@@ -224,6 +224,15 @@
       "state" : {
         "branch" : "master",
         "revision" : "4583182baf00cccbbdd271942819c8e774cf2194"
+      }
+    },
+    {
+      "identity" : "parsers",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Parsers.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "f2f979c3d2e3b85533dd887bcd90bd0f40d53028"
       }
     },
     {
