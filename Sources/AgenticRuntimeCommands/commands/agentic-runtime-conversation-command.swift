@@ -37,6 +37,24 @@ public enum AgenticRuntimeConversationCommand<
     }
 }
 
+private actor AgenticConversationTurnCompletion {
+    private var completed: AgenticConversationSession?
+
+    func store(
+        _ conversation: AgenticConversationSession
+    ) {
+        completed = conversation
+    }
+
+    func take() -> AgenticConversationSession? {
+        defer {
+            completed = nil
+        }
+
+        return completed
+    }
+}
+
 private enum AgenticConversationConsole {
     static func run(
         conversation: inout AgenticConversationSession,
@@ -75,6 +93,14 @@ private enum AgenticConversationConsole {
         var control = AgenticConversationControl(
             snapshot: conversation.snapshot
         )
+        let completion =
+            AgenticConversationTurnCompletion()
+        var activeSubmission:
+            Task<Void, Never>?
+
+        defer {
+            activeSubmission?.cancel()
+        }
 
         func render() {
             var frame = TerminalFrame(
@@ -98,28 +124,45 @@ private enum AgenticConversationConsole {
                 timeoutMilliseconds: 100,
                 maximumCount: 128
             )
+            var needsRender = false
+
+            if let completed =
+                await completion.take()
+            {
+                conversation = completed
+                activeSubmission = nil
+                control.endPendingTurn()
+                control.update(
+                    conversation.snapshot
+                )
+                needsRender = true
+            }
+
+            if activeSubmission != nil,
+               control.advancePendingTurn()
+            {
+                needsRender = true
+            }
+
+            if conversation.snapshot.voiceState == .recording,
+               let voiceInput
+            {
+                conversation.setVoiceStatus(
+                    await voiceInput.status()
+                )
+                control.update(
+                    conversation.snapshot
+                )
+                needsRender = true
+            }
+
+            let currentSize = Terminal.size(for: stream)
+            if currentSize != size {
+                size = currentSize
+                needsRender = true
+            }
 
             if events.isEmpty {
-                var needsRender = false
-
-                if conversation.snapshot.voiceState == .recording,
-                   let voiceInput
-                {
-                    conversation.setVoiceStatus(
-                        await voiceInput.status()
-                    )
-                    control.update(
-                        conversation.snapshot
-                    )
-                    needsRender = true
-                }
-
-                let currentSize = Terminal.size(for: stream)
-                if currentSize != size {
-                    size = currentSize
-                    needsRender = true
-                }
-
                 if needsRender {
                     render()
                 }
@@ -137,26 +180,69 @@ private enum AgenticConversationConsole {
                     return
 
                 case .submissionRequested(let submission):
-                    conversation.setActivity("invoking model")
-                    control.update(conversation.snapshot)
+                    guard activeSubmission == nil else {
+                        conversation.setActivity(
+                            "model response already pending"
+                        )
+                        control.update(
+                            conversation.snapshot
+                        )
+                        break
+                    }
+
+                    conversation.setActivity(
+                        "invoking model"
+                    )
+                    control.beginPendingTurn(
+                        submission
+                    )
+                    control.update(
+                        conversation.snapshot
+                    )
                     render()
 
-                    do {
-                        try await conversation.submit(submission)
-                    } catch {
-                        conversation.recordFailure(error)
+                    let startingConversation =
+                        conversation
+
+                    activeSubmission = Task {
+                        var submittedConversation =
+                            startingConversation
+
+                        do {
+                            _ = try await submittedConversation.submit(
+                                submission
+                            )
+                        } catch is CancellationError {
+                            return
+                        } catch {
+                            submittedConversation.recordFailure(
+                                error
+                            )
+                        }
+
+                        await completion.store(
+                            submittedConversation
+                        )
                     }
-                    control.update(conversation.snapshot)
 
                 case .modelSelectionChanged(let identifier):
+                    guard activeSubmission == nil else {
+                        break
+                    }
                     conversation.selectModel(identifier)
                     control.update(conversation.snapshot)
 
                 case .toolExposureSelectionChanged(let exposure):
+                    guard activeSubmission == nil else {
+                        break
+                    }
                     conversation.selectToolExposure(exposure)
                     control.update(conversation.snapshot)
 
                 case .skillSelectionChanged(let identifiers):
+                    guard activeSubmission == nil else {
+                        break
+                    }
                     conversation.selectSkills(identifiers)
                     control.update(conversation.snapshot)
 

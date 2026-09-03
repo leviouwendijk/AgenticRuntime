@@ -20,7 +20,9 @@ package enum AgenticConversationSessionError: Error, LocalizedError {
     }
 }
 
-package struct AgenticConversationSession {
+package struct AgenticConversationSession:
+    Sendable
+{
     package private(set) var snapshot: AgenticConversationSnapshot
 
     private let runtime: AgenticRuntime
