@@ -35,7 +35,7 @@ extension AgenticRuntimeFlowTesting {
             )
         }
 
-        var arguments =
+        let arguments =
             AgenticRuntimeWorkspaceArguments()
         arguments.root = workspaceRoot.path
         arguments.exactPaths = [

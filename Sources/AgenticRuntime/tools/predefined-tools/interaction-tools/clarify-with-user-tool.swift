@@ -2,7 +2,10 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
+@JSONSchema
 public struct ClarifyWithUserToolInput: Sendable, Codable, Hashable {
     public let prompt: String
     public let reason: String?
@@ -51,6 +54,9 @@ public struct ClarifyWithUserToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ClarifyWithUserTool: AgentTool {
+    public typealias Input = ClarifyWithUserToolInput
+    public typealias Output = ClarifyWithUserToolOutput
+
     public static let identifier: AgentToolIdentifier = "clarify_with_user"
     public static let description = "Suspend the current agent run and ask the user for missing information needed to continue."
     public static let risk: ActionRisk = .observe
@@ -62,20 +68,16 @@ public struct ClarifyWithUserTool: AgentTool {
     public init() {}
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ClarifyWithUserToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
+            workspaceRoot: context.workspace?.rootURL.path,
             targetPaths: [],
-            summary: decoded.prompt,
+            summary: input.prompt,
             estimatedWriteCount: 0,
             estimatedByteCount: 0,
             sideEffects: [
@@ -86,20 +88,12 @@ public struct ClarifyWithUserTool: AgentTool {
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
-        let decoded = try JSONToolBridge.decode(
-            ClarifyWithUserToolInput.self,
-            from: input
-        )
-
-        return try JSONToolBridge.encode(
-            ClarifyWithUserToolOutput(
-                pendingUserInput: decoded.pendingUserInput
+        return ClarifyWithUserToolOutput(
+                pendingUserInput: input.pendingUserInput
             )
-        )
     }
 }

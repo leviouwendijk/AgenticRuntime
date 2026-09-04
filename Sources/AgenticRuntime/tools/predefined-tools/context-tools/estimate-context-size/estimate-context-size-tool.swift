@@ -2,8 +2,13 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
 public struct EstimateContextSizeTool: AgentTool {
+    public typealias Input = EstimateContextSizeToolInput
+    public typealias Output = EstimateContextSizeToolOutput
+
     public static let identifier: AgentToolIdentifier = "estimate_context_size"
     public static let description = "Estimate context size and approximate token count for a context plan."
     public static let risk: ActionRisk = .observe
@@ -21,25 +26,21 @@ public struct EstimateContextSizeTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            EstimateContextSizeToolInput.self,
-            from: input
-        )
         let inspection = ContextToolSupport.inspect(
-            decoded.plan
+            input.plan
         )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
-            summary: decoded.shouldCompose
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: input.shouldCompose
                 ? "Compose context internally to estimate final rendered size."
                 : "Estimate known context source sizes without rendering file-backed content.",
-            estimatedByteCount: decoded.shouldCompose || inspection.hasUnknownSizeSources
+            estimatedByteCount: input.shouldCompose || inspection.hasUnknownSizeSources
                 ? nil
                 : inspection.knownCharacterCount,
             sideEffects: []
@@ -47,24 +48,20 @@ public struct EstimateContextSizeTool: AgentTool {
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        let decoded = try JSONToolBridge.decode(
-            EstimateContextSizeToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
         let inspection = ContextToolSupport.inspect(
-            decoded.plan
+            input.plan
         )
 
         let size: ContextSizeEstimate?
-        if decoded.shouldCompose {
+        if input.shouldCompose {
             let effectiveComposer = ContextComposer(
-                workspace: workspace ?? composer.workspace
+                workspace: context.workspace ?? composer.workspace
             )
             let composed = try effectiveComposer.compose(
-                decoded.plan
+                input.plan
             )
 
             size = ContextToolSupport.estimate(
@@ -79,13 +76,11 @@ public struct EstimateContextSizeTool: AgentTool {
             )
         }
 
-        return try JSONToolBridge.encode(
-            EstimateContextSizeToolOutput(
-                metadata: decoded.plan.metadata,
+        return EstimateContextSizeToolOutput(
+                metadata: input.plan.metadata,
                 inspection: inspection,
                 size: size,
-                composed: decoded.shouldCompose
+                composed: input.shouldCompose
             )
-        )
     }
 }

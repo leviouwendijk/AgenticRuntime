@@ -2,7 +2,10 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
+@JSONSchema
 public struct ReadAgentApprovalsToolInput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let limit: Int?
@@ -38,6 +41,9 @@ public struct ReadAgentApprovalsToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ReadAgentApprovalsTool: AgentTool {
+    public typealias Input = ReadAgentApprovalsToolInput
+    public typealias Output = ReadAgentApprovalsToolOutput
+
     public static let identifier: AgentToolIdentifier = "read_agent_approvals"
     public static let description = "Read approval/audit events for a durable Agentic session."
     public static let risk: ActionRisk = .observe
@@ -63,59 +69,47 @@ public struct ReadAgentApprovalsTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ReadAgentApprovalsToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
-            summary: "Read approval events for session \(decoded.sessionID).",
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: "Read approval events for session \(input.sessionID).",
             sideEffects: []
         )
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            ReadAgentApprovalsToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
         var events = try await catalog.loadApprovals(
-            sessionID: decoded.sessionID
+            sessionID: input.sessionID
         )
 
         let total = events.count
 
-        if decoded.latestFirst {
+        if input.latestFirst {
             events.reverse()
         }
 
         let limit = max(
             0,
-            decoded.limit ?? 100
+            input.limit ?? 100
         )
 
         events = Array(
             events.prefix(limit)
         )
 
-        return try JSONToolBridge.encode(
-            ReadAgentApprovalsToolOutput(
-                sessionID: decoded.sessionID,
+        return ReadAgentApprovalsToolOutput(
+                sessionID: input.sessionID,
                 totalEventCount: total,
                 events: events
             )
-        )
     }
 }

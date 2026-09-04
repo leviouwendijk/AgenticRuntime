@@ -23,8 +23,9 @@ actor AdapterFlowScratchpadStore {
     }
 }
 
-struct AdapterFlowScratchpadReadTool: TypedAgentTool {
+struct AdapterFlowScratchpadReadTool: AgentTool {
     typealias Input = AdapterFlowScratchpadReadInput
+    typealias Output = AdapterFlowScratchpadReadOutput
 
     static let identifier: AgentToolIdentifier = .init(
         "adapter_scratchpad_read"
@@ -32,28 +33,38 @@ struct AdapterFlowScratchpadReadTool: TypedAgentTool {
     static let description = "Reads notes from an in-memory test scratchpad."
     static let risk: ActionRisk = .observe
 
+    var identifier: AgentToolIdentifier {
+        Self.identifier
+    }
+
+    var description: String {
+        Self.description
+    }
+
+    var risk: ActionRisk {
+        Self.risk
+    }
+
     let store: AdapterFlowScratchpadStore
 
     func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
+        _ input: Input,
+        context _: AgentToolExecutionContext
+    ) async throws -> Output {
         _ = input
-        _ = workspace
 
         let values = await store.all()
 
-        return try JSONToolBridge.encode(
-            AdapterFlowScratchpadReadOutput(
-                values: values,
-                count: values.count
-            )
+        return AdapterFlowScratchpadReadOutput(
+            values: values,
+            count: values.count
         )
     }
 }
 
-struct AdapterFlowScratchpadTool: TypedAgentTool {
+struct AdapterFlowScratchpadTool: AgentTool {
     typealias Input = AdapterFlowScratchpadPutInput
+    typealias Output = AdapterFlowScratchpadPutOutput
 
     static let identifier: AgentToolIdentifier = .init(
         "adapter_scratchpad_put"
@@ -61,27 +72,31 @@ struct AdapterFlowScratchpadTool: TypedAgentTool {
     static let description = "Stores a note in an in-memory test scratchpad."
     static let risk: ActionRisk = .boundedmutate
 
+    var identifier: AgentToolIdentifier {
+        Self.identifier
+    }
+
+    var description: String {
+        Self.description
+    }
+
+    var risk: ActionRisk {
+        Self.risk
+    }
+
     let store: AdapterFlowScratchpadStore
 
     func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            AdapterFlowScratchpadPutInput.self,
-            from: input
-        )
+        _ input: Input,
+        context _: AgentToolExecutionContext
+    ) async throws -> Output {
         let count = await store.append(
-            decoded.text
+            input.text
         )
 
-        return try JSONToolBridge.encode(
-            AdapterFlowScratchpadPutOutput(
-                text: decoded.text,
-                count: count
-            )
+        return AdapterFlowScratchpadPutOutput(
+            text: input.text,
+            count: count
         )
     }
 }

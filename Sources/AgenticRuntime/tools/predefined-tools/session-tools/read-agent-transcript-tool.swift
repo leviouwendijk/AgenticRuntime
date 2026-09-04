@@ -2,7 +2,10 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
+@JSONSchema
 public struct ReadAgentTranscriptToolInput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let startIndex: Int?
@@ -41,6 +44,9 @@ public struct ReadAgentTranscriptToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ReadAgentTranscriptTool: AgentTool {
+    public typealias Input = ReadAgentTranscriptToolInput
+    public typealias Output = ReadAgentTranscriptToolOutput
+
     public static let identifier: AgentToolIdentifier = "read_agent_transcript"
     public static let description = "Read transcript events for a durable Agentic session."
     public static let risk: ActionRisk = .observe
@@ -66,63 +72,51 @@ public struct ReadAgentTranscriptTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ReadAgentTranscriptToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
-            summary: "Read transcript events for session \(decoded.sessionID).",
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: "Read transcript events for session \(input.sessionID).",
             sideEffects: []
         )
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            ReadAgentTranscriptToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
         var events = try await catalog.loadTranscript(
-            sessionID: decoded.sessionID
+            sessionID: input.sessionID
         )
 
         let total = events.count
 
-        if decoded.latestFirst {
+        if input.latestFirst {
             events.reverse()
         }
 
         let start = max(
             0,
-            decoded.startIndex ?? 0
+            input.startIndex ?? 0
         )
         let limit = max(
             0,
-            decoded.limit ?? 100
+            input.limit ?? 100
         )
 
         events = Array(
             events.dropFirst(start).prefix(limit)
         )
 
-        return try JSONToolBridge.encode(
-            ReadAgentTranscriptToolOutput(
-                sessionID: decoded.sessionID,
+        return ReadAgentTranscriptToolOutput(
+                sessionID: input.sessionID,
                 totalEventCount: total,
                 events: events
             )
-        )
     }
 }

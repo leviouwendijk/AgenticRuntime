@@ -2,8 +2,13 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
 public struct InspectContextSourcesTool: AgentTool {
+    public typealias Input = InspectContextSourcesToolInput
+    public typealias Output = InspectContextSourcesToolOutput
+
     public static let identifier: AgentToolIdentifier = "inspect_context_sources"
     public static let description = "Inspect a context plan without rendering full context content."
     public static let risk: ActionRisk = .observe
@@ -15,21 +20,17 @@ public struct InspectContextSourcesTool: AgentTool {
     public init() {}
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            InspectContextSourcesToolInput.self,
-            from: input
-        )
         let inspection = ContextToolSupport.inspect(
-            decoded.plan
+            input.plan
         )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
+            workspaceRoot: context.workspace?.rootURL.path,
             summary: "Inspect \(inspection.sourceCount) context source(s) without rendering full content.",
             estimatedByteCount: inspection.knownCharacterCount,
             sideEffects: []
@@ -37,23 +38,15 @@ public struct InspectContextSourcesTool: AgentTool {
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
-        let decoded = try JSONToolBridge.decode(
-            InspectContextSourcesToolInput.self,
-            from: input
-        )
-
-        return try JSONToolBridge.encode(
-            InspectContextSourcesToolOutput(
-                metadata: decoded.plan.metadata,
+        return InspectContextSourcesToolOutput(
+                metadata: input.plan.metadata,
                 inspection: ContextToolSupport.inspect(
-                    decoded.plan
+                    input.plan
                 )
             )
-        )
     }
 }

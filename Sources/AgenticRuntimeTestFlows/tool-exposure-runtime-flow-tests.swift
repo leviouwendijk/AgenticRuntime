@@ -69,15 +69,13 @@ enum AgenticRuntimeToolExposureFlowTesting {
                 ),
                 responseDelivery: .stream
             ),
-            toolRegistry: .init(
-                tools: [
-                    AdapterFlowEchoTool(),
-                    hiddenTool,
-                ]
-            )
+            toolRegistry: try ToolRegistry {
+                AdapterFlowEchoTool()
+                hiddenTool
+            }
         )
 
-        let result = try await runner.run(
+        _ = try await runner.run(
             AgentRequest(
                 model: "scripted",
                 messages: [
@@ -205,14 +203,12 @@ enum AgenticRuntimeToolExposureFlowTesting {
                 ),
                 responseDelivery: .stream
             ),
-            toolRegistry: .init(
-                tools: [
-                    AdapterFlowEchoTool(),
-                    AdapterFlowScratchpadTool(
-                        store: store
-                    ),
-                ]
-            )
+            toolRegistry: try ToolRegistry {
+                AdapterFlowEchoTool()
+                AdapterFlowScratchpadTool(
+                    store: store
+                )
+            }
         )
 
         _ = try await runner.run(
@@ -355,13 +351,11 @@ enum AgenticRuntimeToolExposureFlowTesting {
                 toolExposure: .discoveryOnly,
                 responseDelivery: .stream
             ),
-            toolRegistry: .init(
-                tools: [
-                    AdapterFlowScratchpadTool(
-                        store: store
-                    ),
-                ]
-            ),
+            toolRegistry: try ToolRegistry {
+                AdapterFlowScratchpadTool(
+                    store: store
+                )
+            },
             historyStore: historyStore
         )
 

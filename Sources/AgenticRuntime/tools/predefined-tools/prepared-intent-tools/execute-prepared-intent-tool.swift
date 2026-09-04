@@ -4,6 +4,8 @@ import AgenticIO
 import AgenticWorkspace
 import Foundation
 import Primitives
+import Schema
+import SchemaMacros
 
 public enum ExecutePreparedIntentToolError: Error, Sendable, LocalizedError {
     case missingExecutionToolName(PreparedIntentIdentifier)
@@ -28,6 +30,7 @@ public enum ExecutePreparedIntentToolError: Error, Sendable, LocalizedError {
     }
 }
 
+@JSONSchema
 public struct ExecutePreparedIntentToolInput: Sendable, Codable, Hashable {
     public let id: PreparedIntentIdentifier
 
@@ -55,6 +58,9 @@ public struct ExecutePreparedIntentToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ExecutePreparedIntentTool: AgentTool {
+    public typealias Input = ExecutePreparedIntentToolInput
+    public typealias Output = ExecutePreparedIntentToolOutput
+
     public let identifier: AgentToolIdentifier = .execute_prepared_intent
     public let description = "Execute an approved prepared intent by replaying its exact tool call."
     public let risk: ActionRisk = .boundedmutate
@@ -74,15 +80,11 @@ public struct ExecutePreparedIntentTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ExecutePreparedIntentToolInput.self,
-            from: input
-        )
         let intent = try await manager.get(
-            decoded.id
+            input.id
         )
         let toolName = try executionToolName(
             for: intent
@@ -95,7 +97,7 @@ public struct ExecutePreparedIntentTool: AgentTool {
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
+            workspaceRoot: context.workspace?.rootURL.path,
             targetPaths: intent.reviewPayload.target.map { [$0] } ?? [],
             summary: """
             Execute prepared intent \(intent.id.rawValue).
@@ -114,16 +116,12 @@ public struct ExecutePreparedIntentTool: AgentTool {
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        let decoded = try JSONToolBridge.decode(
-            ExecutePreparedIntentToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
         let startedAt = Date()
         let executableIntent = try await manager.executableIntent(
-            id: decoded.id
+            id: input.id
         )
 
         do {
@@ -137,7 +135,7 @@ public struct ExecutePreparedIntentTool: AgentTool {
             try requirePreparedFileMutationApproval(
                 executableIntent,
                 toolName: toolName,
-                workspace: workspace
+                workspace: context.workspace
             )
 
             let metadata = executionMetadata(
@@ -152,12 +150,19 @@ public struct ExecutePreparedIntentTool: AgentTool {
             let toolResult = try await registry.execute(
                 toolCall,
                 context: .init(
-                    workspace: workspace,
-                    sessionID: executableIntent.sessionID ?? sessionID,
+                    workspace: context.workspace,
+                    workspaceLocation: context.workspaceLocation,
+                    sessionID: executableIntent.sessionID ?? sessionID ?? context.sessionID,
                     toolCallID: toolCall.id,
                     preparedIntentID: executableIntent.id,
                     executionMode: .prepared_intent_replay,
-                    metadata: metadata
+                    guidelineRelations: context.guidelineRelations,
+                    metadata: context.metadata.merging(
+                        metadata
+                    ) { _, new in
+                        new
+                    },
+                    observationSink: context.observationSink
                 )
             )
             let executed = try await manager.recordExecution(
@@ -174,13 +179,11 @@ public struct ExecutePreparedIntentTool: AgentTool {
                 )
             )
 
-            return try JSONToolBridge.encode(
-                ExecutePreparedIntentToolOutput(
+            return ExecutePreparedIntentToolOutput(
                     intent: executed,
                     toolCall: toolCall,
                     toolResult: toolResult
                 )
-            )
         } catch {
             _ = try? await manager.recordExecution(
                 id: executableIntent.id,
@@ -275,8 +278,8 @@ private extension ExecutePreparedIntentTool {
 
     func registeredTool(
         named name: String
-    ) throws -> any AgentTool {
-        guard let tool = registry.tool(
+    ) throws -> RegisteredAgentTool {
+        guard let tool = registry.registeredTool(
             named: name
         ) else {
             throw ToolRegistryExecutionError.missingTool(

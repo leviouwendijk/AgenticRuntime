@@ -2,7 +2,10 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
+@JSONSchema
 public struct ReadAgentPreparedIntentToolInput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let id: PreparedIntentIdentifier
@@ -30,6 +33,9 @@ public struct ReadAgentPreparedIntentToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ReadAgentPreparedIntentTool: AgentTool {
+    public typealias Input = ReadAgentPreparedIntentToolInput
+    public typealias Output = ReadAgentPreparedIntentToolOutput
+
     public static let identifier: AgentToolIdentifier = "read_agent_prepared_intent"
     public static let description = "Read a prepared intent associated with a durable Agentic session."
     public static let risk: ActionRisk = .observe
@@ -55,44 +61,32 @@ public struct ReadAgentPreparedIntentTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ReadAgentPreparedIntentToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
-            summary: "Read prepared intent \(decoded.id.rawValue) for session \(decoded.sessionID).",
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: "Read prepared intent \(input.id.rawValue) for session \(input.sessionID).",
             sideEffects: []
         )
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            ReadAgentPreparedIntentToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
         let intent = try await catalog.loadPreparedIntent(
-            sessionID: decoded.sessionID,
-            id: decoded.id
+            sessionID: input.sessionID,
+            id: input.id
         )
 
-        return try JSONToolBridge.encode(
-            ReadAgentPreparedIntentToolOutput(
-                sessionID: decoded.sessionID,
+        return ReadAgentPreparedIntentToolOutput(
+                sessionID: input.sessionID,
                 intent: intent
             )
-        )
     }
 }

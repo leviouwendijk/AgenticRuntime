@@ -160,6 +160,14 @@ let package = Package(
                     package: "Primitives"
                 ),
                 .product(
+                    name: "Schema",
+                    package: "Schema"
+                ),
+                .product(
+                    name: "SchemaMacros",
+                    package: "SchemaMacros"
+                ),
+                .product(
                     name: "Path",
                     package: "Path"
                 ),

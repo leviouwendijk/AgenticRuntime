@@ -2,6 +2,8 @@ import Agentic
 import AgenticExecution
 import AgenticRuntime
 import Primitives
+import Schema
+import SchemaMacros
 import TestFlows
 
 enum AgenticRuntimeToolPlanFlowTesting {
@@ -524,20 +526,13 @@ private extension AgenticRuntimeToolPlanFlowTesting {
 
     static func makeFixture(maximumRecoveryDepth: Int = 4) throws -> Fixture {
         let probe = RuntimeToolPlanProbe()
-        let tool = ClosureAgentTool(
-            identifier: "runtime_tool_plan_probe",
-            description: "Records plan-run execution order and fails the first repair call."
-        ) { value, _ in
-            try await probe.invoke(
-                value
-            )
-        }
+        let tool = RuntimeToolPlanProbeTool(
+            probe: probe
+        )
         let invoker = ToolInvoker(
-            registry: ToolRegistry(
-                tools: [
-                    tool,
-                ]
-            ),
+            registry: try ToolRegistry {
+                tool
+            },
             policy: ToolExecutionPolicy(
                 autonomyMode: .auto_observe
             )
@@ -674,13 +669,8 @@ private actor RuntimeToolPlanProbe {
     private var holdContinuation: CheckedContinuation<Void, Never>?
 
     func invoke(
-        _ value: JSONValue
-    ) async throws -> JSONValue {
-        let input = try JSONToolBridge.decode(
-            RuntimeToolPlanProbeInput.self,
-            from: value
-        )
-
+        _ input: RuntimeToolPlanProbeInput
+    ) async throws -> RuntimeToolPlanProbeInput {
         invocations.append(
             input.marker
         )
@@ -696,7 +686,7 @@ private actor RuntimeToolPlanProbe {
             throw RuntimeToolPlanProbeError.firstRepairAttempt
         }
 
-        return value
+        return input
     }
 
     func hasInvoked(
@@ -719,12 +709,32 @@ private actor RuntimeToolPlanProbe {
     }
 }
 
+@JSONSchema
 private struct RuntimeToolPlanProbeInput:
     Sendable,
     Codable,
     Hashable
 {
     let marker: String
+}
+
+private struct RuntimeToolPlanProbeTool: AgentTool {
+    typealias Input = RuntimeToolPlanProbeInput
+    typealias Output = RuntimeToolPlanProbeInput
+
+    let identifier: AgentToolIdentifier = "runtime_tool_plan_probe"
+    let description = "Records plan-run execution order and fails the first repair call."
+    let risk: ActionRisk = .observe
+    let probe: RuntimeToolPlanProbe
+
+    func call(
+        _ input: Input,
+        context _: AgentToolExecutionContext
+    ) async throws -> Output {
+        try await probe.invoke(
+            input
+        )
+    }
 }
 
 private enum RuntimeToolPlanProbeError: Error {

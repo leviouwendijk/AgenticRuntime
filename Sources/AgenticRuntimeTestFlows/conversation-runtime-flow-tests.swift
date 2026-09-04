@@ -500,11 +500,9 @@ enum AgenticRuntimeConversationFlowTesting {
                 historyPersistenceMode: .checkpointmutation,
                 responseDelivery: .stream
             ),
-            toolRegistry: .init(
-                tools: [
-                    AdapterFlowEchoTool(),
-                ]
-            ),
+            toolRegistry: try ToolRegistry {
+                AdapterFlowEchoTool()
+            },
             historyStore: historyStore
         )
         let persistedResult = try await persistedRunner.run(

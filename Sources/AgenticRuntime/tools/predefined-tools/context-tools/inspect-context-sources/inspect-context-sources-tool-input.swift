@@ -1,3 +1,7 @@
+import Schema
+import SchemaMacros
+
+@JSONSchema
 public struct InspectContextSourcesToolInput: Sendable, Codable, Hashable {
     public let plan: ContextCompositionPlan
 

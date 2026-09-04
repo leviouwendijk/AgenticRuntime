@@ -2,7 +2,10 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
+@JSONSchema
 public struct ListPreparedIntentsToolInput: Sendable, Codable, Hashable {
     public let statuses: [PreparedIntentStatus]
     public let sessionID: String?
@@ -52,6 +55,9 @@ public struct ListPreparedIntentsToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ListPreparedIntentsTool: AgentTool {
+    public typealias Input = ListPreparedIntentsToolInput
+    public typealias Output = ListPreparedIntentsToolOutput
+
     public static let identifier: AgentToolIdentifier = "list_prepared_intents"
     public static let description = "List prepared intents awaiting review or already resolved."
     public static let risk: ActionRisk = .observe
@@ -69,54 +75,42 @@ public struct ListPreparedIntentsTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ListPreparedIntentsToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
+            workspaceRoot: context.workspace?.rootURL.path,
             summary: summary(
-                for: decoded
+                for: input
             ),
             sideEffects: []
         )
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            ListPreparedIntentsToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
         let intents = try await manager.list(
-            statuses: decoded.statuses,
-            sessionID: decoded.sessionID,
-            actionType: decoded.actionType,
-            includeExpired: decoded.includeExpired
+            statuses: input.statuses,
+            sessionID: input.sessionID,
+            actionType: input.actionType,
+            includeExpired: input.includeExpired
         )
         let returned = Array(
             intents.prefix(
-                decoded.clampedLimit
+                input.clampedLimit
             )
         )
 
-        return try JSONToolBridge.encode(
-            ListPreparedIntentsToolOutput(
+        return ListPreparedIntentsToolOutput(
                 totalIntentCount: intents.count,
                 intents: returned
             )
-        )
     }
 }
 

@@ -2,7 +2,10 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
+@JSONSchema
 public struct ListAgentSessionsToolInput: Sendable, Codable, Hashable {
     public let statuses: [AgentSessionStatus]
     public let includeArchived: Bool
@@ -32,6 +35,9 @@ public struct ListAgentSessionsToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ListAgentSessionsTool: AgentTool {
+    public typealias Input = ListAgentSessionsToolInput
+    public typealias Output = ListAgentSessionsToolOutput
+
     public static let identifier: AgentToolIdentifier = "list_agent_sessions"
     public static let description = "List durable Agentic sessions and branches."
     public static let risk: ActionRisk = .observe
@@ -57,54 +63,42 @@ public struct ListAgentSessionsTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ListAgentSessionsToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
-            summary: decoded.parentSessionID == nil
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: input.parentSessionID == nil
                 ? "List Agentic sessions."
-                : "List Agentic child branches for session \(decoded.parentSessionID ?? "").",
+                : "List Agentic child branches for session \(input.parentSessionID ?? "").",
             sideEffects: []
         )
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            ListAgentSessionsToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
         let sessions: [AgentSessionSummary]
 
-        if let parentSessionID = decoded.parentSessionID,
+        if let parentSessionID = input.parentSessionID,
            !parentSessionID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             sessions = try catalog.listBranches(
                 parentSessionID: parentSessionID
             )
         } else {
             sessions = try catalog.listSessions(
-                statuses: decoded.statuses,
-                includeArchived: decoded.includeArchived
+                statuses: input.statuses,
+                includeArchived: input.includeArchived
             )
         }
 
-        return try JSONToolBridge.encode(
-            ListAgentSessionsToolOutput(
+        return ListAgentSessionsToolOutput(
                 sessions: sessions
             )
-        )
     }
 }

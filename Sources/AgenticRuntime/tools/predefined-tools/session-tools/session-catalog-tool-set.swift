@@ -15,33 +15,31 @@ public struct SessionCatalogToolSet: AgentToolSet {
     public func register(
         into registry: inout ToolRegistry
     ) throws {
-        try registry.register(
-            [
-                ListAgentSessionsTool(
-                    catalog: catalog
-                ),
-                ReadAgentSessionTool(
-                    catalog: catalog
-                ),
-                ReadAgentTranscriptTool(
-                    catalog: catalog
-                ),
-                ReadAgentApprovalsTool(
-                    catalog: catalog
-                ),
-                ListAgentArtifactsTool(
-                    catalog: catalog
-                ),
-                ReadAgentArtifactTool(
-                    catalog: catalog
-                ),
-                ListAgentPreparedIntentsTool(
-                    catalog: catalog
-                ),
-                ReadAgentPreparedIntentTool(
-                    catalog: catalog
-                )
-            ]
-        )
+        try registry.register {
+            ListAgentSessionsTool(
+                catalog: catalog
+            )
+            ReadAgentSessionTool(
+                catalog: catalog
+            )
+            ReadAgentTranscriptTool(
+                catalog: catalog
+            )
+            ReadAgentApprovalsTool(
+                catalog: catalog
+            )
+            ListAgentArtifactsTool(
+                catalog: catalog
+            )
+            ReadAgentArtifactTool(
+                catalog: catalog
+            )
+            ListAgentPreparedIntentsTool(
+                catalog: catalog
+            )
+            ReadAgentPreparedIntentTool(
+                catalog: catalog
+            )
+        }
     }
 }

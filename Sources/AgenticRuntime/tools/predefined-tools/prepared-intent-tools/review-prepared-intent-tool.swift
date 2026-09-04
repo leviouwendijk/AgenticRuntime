@@ -2,7 +2,10 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
+@JSONSchema
 public struct ReviewPreparedIntentToolInput: Sendable, Codable, Hashable {
     public let id: PreparedIntentIdentifier
     public let decision: PreparedIntentReviewDecision
@@ -33,6 +36,9 @@ public struct ReviewPreparedIntentToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ReviewPreparedIntentTool: AgentTool {
+    public typealias Input = ReviewPreparedIntentToolInput
+    public typealias Output = ReviewPreparedIntentToolOutput
+
     public static let identifier: AgentToolIdentifier = "review_prepared_intent"
     public static let description = "Approve, deny, cancel, or expire a prepared intent. This does not execute it."
     public static let risk: ActionRisk = .boundedmutate
@@ -50,19 +56,15 @@ public struct ReviewPreparedIntentTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ReviewPreparedIntentToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
-            summary: "Mark prepared intent \(decoded.id.rawValue) as \(decoded.decision.resolvedStatus.rawValue).",
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: "Mark prepared intent \(input.id.rawValue) as \(input.decision.resolvedStatus.rawValue).",
             estimatedWriteCount: 1,
             sideEffects: [
                 "updates prepared intent review status"
@@ -71,27 +73,19 @@ public struct ReviewPreparedIntentTool: AgentTool {
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            ReviewPreparedIntentToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
         let intent = try await manager.review(
-            id: decoded.id,
-            decision: decoded.decision,
-            reviewer: decoded.reviewer,
-            note: decoded.note
+            id: input.id,
+            decision: input.decision,
+            reviewer: input.reviewer,
+            note: input.note
         )
 
-        return try JSONToolBridge.encode(
-            ReviewPreparedIntentToolOutput(
+        return ReviewPreparedIntentToolOutput(
                 intent: intent
             )
-        )
     }
 }

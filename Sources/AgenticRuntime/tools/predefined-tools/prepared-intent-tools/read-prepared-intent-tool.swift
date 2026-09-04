@@ -2,7 +2,10 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
+@JSONSchema
 public struct ReadPreparedIntentToolInput: Sendable, Codable, Hashable {
     public let id: PreparedIntentIdentifier
 
@@ -24,6 +27,9 @@ public struct ReadPreparedIntentToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ReadPreparedIntentTool: AgentTool {
+    public typealias Input = ReadPreparedIntentToolInput
+    public typealias Output = ReadPreparedIntentToolOutput
+
     public static let identifier: AgentToolIdentifier = "read_prepared_intent"
     public static let description = "Read a prepared intent and its exact review payload."
     public static let risk: ActionRisk = .observe
@@ -41,40 +47,28 @@ public struct ReadPreparedIntentTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ReadPreparedIntentToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
-            summary: "Read prepared intent \(decoded.id.rawValue).",
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: "Read prepared intent \(input.id.rawValue).",
             sideEffects: []
         )
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
-        let decoded = try JSONToolBridge.decode(
-            ReadPreparedIntentToolInput.self,
-            from: input
-        )
-
-        return try JSONToolBridge.encode(
-            ReadPreparedIntentToolOutput(
+        return ReadPreparedIntentToolOutput(
                 intent: try await manager.get(
-                    decoded.id
+                    input.id
                 )
             )
-        )
     }
 }

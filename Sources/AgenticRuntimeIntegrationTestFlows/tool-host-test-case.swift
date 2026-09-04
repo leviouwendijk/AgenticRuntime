@@ -146,8 +146,8 @@ private extension ToolHostTestCase {
         )
 
         try Expect.equal(
-            capability.supportsWorkspaceTargeting,
-            true,
+            capability.execution.workingLocation,
+            .targetable,
             "manifest projects workspace targeting from the concrete registered tool"
         )
 
@@ -767,59 +767,42 @@ private actor ToolHostProbe {
     }
 }
 
-private struct ToolHostProbeTool:
-    TypedInstanceAgentTool,
-    WorkspaceTargetableTool
-{
+private struct ToolHostProbeTool: AgentTool {
     typealias Input = ToolHostProbeInput
+    typealias Output = ToolHostProbeOutput
+
     let identifier: AgentToolIdentifier = "tool_host_probe"
     let description = "Records one interface-hosted Agentic tool call."
     let risk: ActionRisk
+    let execution: AgentToolExecutionContract = .targetable
     let probe: ToolHostProbe
 
     func preflight(
-        input _: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        ToolPreflight(
+        _ = input
+
+        return ToolPreflight(
             toolName: identifier.rawValue,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
+            workspaceRoot: context.workspace?.rootURL.path,
             summary: description
         )
     }
 
     func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        try await call(
-            input: input,
-            context: .init(
-                workspace: workspace
-            )
-        )
-    }
-
-    func call(
-        input: JSONValue,
+        _ input: Input,
         context: AgentToolExecutionContext
-    ) async throws -> JSONValue {
-        let decoded = try JSONToolBridge.decode(
-            ToolHostProbeInput.self,
-            from: input
-        )
-
+    ) async throws -> Output {
         await probe.record()
 
-        return try JSONToolBridge.encode(
-            ToolHostProbeOutput(
-                marker: decoded.marker,
-                toolCallID: context.toolCallID,
-                executionMode: context.executionMode.rawValue,
-                sessionID: context.sessionID,
-                source: context.metadata["source"]
-            )
+        return ToolHostProbeOutput(
+            marker: input.marker,
+            toolCallID: context.toolCallID,
+            executionMode: context.executionMode.rawValue,
+            sessionID: context.sessionID,
+            source: context.metadata["source"]
         )
     }
 }
@@ -855,14 +838,12 @@ private extension ToolHostTestCase {
         probe: ToolHostProbe,
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) -> AgenticToolHost {
-        let registry = ToolRegistry(
-            tools: [
-                ToolHostProbeTool(
-                    risk: risk,
-                    probe: probe
-                )
-            ]
-        )
+        let registry = try! ToolRegistry {
+            ToolHostProbeTool(
+                risk: risk,
+                probe: probe
+            )
+        }
 
         return AgenticToolHost(
             registry: registry,

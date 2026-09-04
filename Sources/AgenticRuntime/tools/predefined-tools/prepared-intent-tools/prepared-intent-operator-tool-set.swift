@@ -18,30 +18,24 @@ public struct PreparedIntentOperatorToolSet: AgentToolSet {
     public func register(
         into registry: inout ToolRegistry
     ) throws {
-        var tools: [any AgentTool] = [
+        try registry.register {
             ListPreparedIntentsTool(
                 manager: manager
-            ),
+            )
             ReadPreparedIntentTool(
                 manager: manager
-            ),
+            )
             ReviewPreparedIntentTool(
                 manager: manager
             )
-        ]
 
-        if let executionRegistry {
-            tools.append(
+            if let executionRegistry {
                 ExecutePreparedIntentTool(
                     manager: manager,
                     registry: executionRegistry,
                     sessionID: sessionID
                 )
-            )
+            }
         }
-
-        try registry.register(
-            tools
-        )
     }
 }

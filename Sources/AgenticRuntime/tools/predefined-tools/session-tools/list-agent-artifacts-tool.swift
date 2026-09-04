@@ -2,7 +2,11 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
+import AgenticTools
 
+@JSONSchema
 public struct ListAgentArtifactsToolInput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let kinds: [AgentArtifactKind]
@@ -52,6 +56,9 @@ public struct ListAgentArtifactsToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ListAgentArtifactsTool: AgentTool {
+    public typealias Input = ListAgentArtifactsToolInput
+    public typealias Output = ListAgentArtifactsToolOutput
+
     public static let identifier: AgentToolIdentifier = "list_agent_artifacts"
     public static let description = "List artifacts emitted for a durable Agentic session."
     public static let risk: ActionRisk = .observe
@@ -77,52 +84,40 @@ public struct ListAgentArtifactsTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ListAgentArtifactsToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
-            summary: "List artifacts for session \(decoded.sessionID).",
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: "List artifacts for session \(input.sessionID).",
             sideEffects: []
         )
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            ListAgentArtifactsToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
         let artifacts = try await catalog.listArtifacts(
-            sessionID: decoded.sessionID,
-            kinds: decoded.kinds,
-            latestFirst: decoded.latestFirst,
+            sessionID: input.sessionID,
+            kinds: input.kinds,
+            latestFirst: input.latestFirst,
             limit: nil
         )
         let returnedArtifacts = Array(
             artifacts.prefix(
-                decoded.clampedLimit
+                input.clampedLimit
             )
         )
 
-        return try JSONToolBridge.encode(
-            ListAgentArtifactsToolOutput(
-                sessionID: decoded.sessionID,
+        return ListAgentArtifactsToolOutput(
+                sessionID: input.sessionID,
                 totalArtifactCount: artifacts.count,
                 artifacts: returnedArtifacts
             )
-        )
     }
 }

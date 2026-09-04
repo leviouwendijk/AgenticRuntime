@@ -1,3 +1,7 @@
+import Schema
+import SchemaMacros
+
+@JSONSchema
 public struct EstimateContextSizeToolInput: Sendable, Codable, Hashable {
     public let plan: ContextCompositionPlan
     public let compose: Bool?

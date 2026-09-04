@@ -9,6 +9,8 @@ import AgenticAWS
 import AgenticInterfaces
 import Foundation
 import Primitives
+import Schema
+import SchemaMacros
 
 enum AWSModelRoutingAdvisorTestCase {
     static func make() -> AgenticInterfaceTestCase {
@@ -768,6 +770,7 @@ private enum AWSModelRoutingAdvisorTestError: Error, Sendable, LocalizedError {
     }
 }
 
+@JSONSchema
 private struct EvidenceCheckedAdvisorToolRawInput: Sendable, Codable, Hashable {
     var prompt: String?
     var context: String?
@@ -775,6 +778,9 @@ private struct EvidenceCheckedAdvisorToolRawInput: Sendable, Codable, Hashable {
 }
 
 private struct EvidenceCheckedAdvisorTool: AgentTool {
+    typealias Input = EvidenceCheckedAdvisorToolRawInput
+    typealias Output = AgentAdvisorToolOutput
+
     static let identifier = AgentAdvisorToolDefaults.identifier
 
     var delegate: AgentAdvisorTool
@@ -793,80 +799,38 @@ private struct EvidenceCheckedAdvisorTool: AgentTool {
         """
     }
 
-    var inputSchema: JSONValue? {
-        .object([
-            "type": .string("object"),
-            "required": .array([
-                .string("prompt"),
-                .string("context"),
-                .string("instruction"),
-            ]),
-            "properties": .object([
-                "prompt": .object([
-                    "type": .string("string"),
-                    "description": .string("Required top-level architectural question to ask the advisor model."),
-                ]),
-                "context": .object([
-                    "type": .string("string"),
-                    "description": .string("Required top-level Evidence Packet. Must include every required file path and at least three numbered findings with concrete code behavior."),
-                ]),
-                "instruction": .object([
-                    "type": .string("string"),
-                    "description": .string("Required top-level response-shape instruction for the advisor."),
-                ]),
-            ]),
-        ])
-    }
-
     var risk: ActionRisk {
         delegate.risk
     }
 
     func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> ToolPreflight {
-        try await delegate.preflight(
-            input: input,
-            workspace: workspace
-        )
-    }
-
-    func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        try await call(
-            input: input,
-            context: .init(
-                workspace: workspace
-            )
-        )
-    }
-
-    func call(
-        input: JSONValue,
+        _ input: Input,
         context: AgentToolExecutionContext
-    ) async throws -> JSONValue {
-        let rawInput = try JSONToolBridge.decode(
-            EvidenceCheckedAdvisorToolRawInput.self,
-            from: input
+    ) async throws -> ToolPreflight {
+        let advisorInput = try normalizedAdvisorInput(
+            input
         )
 
+        return try await delegate.preflight(
+            advisorInput,
+            context: context
+        )
+    }
+
+    func call(
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
         let advisorInput = try normalizedAdvisorInput(
-            rawInput
+            input
         )
 
         try validate(
             advisorInput
         )
 
-        let encodedInput = try JSONToolBridge.encode(
-            advisorInput
-        )
-
         return try await delegate.call(
-            input: encodedInput,
+            advisorInput,
             context: context
         )
     }

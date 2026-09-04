@@ -2,7 +2,10 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
+@JSONSchema
 public struct ReadAgentSessionToolInput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let includeInspection: Bool
@@ -30,6 +33,9 @@ public struct ReadAgentSessionToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ReadAgentSessionTool: AgentTool {
+    public typealias Input = ReadAgentSessionToolInput
+    public typealias Output = ReadAgentSessionToolOutput
+
     public static let identifier: AgentToolIdentifier = "read_agent_session"
     public static let description = "Read Agentic session metadata and lightweight inspection counts."
     public static let risk: ActionRisk = .observe
@@ -55,49 +61,37 @@ public struct ReadAgentSessionTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ReadAgentSessionToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
-            summary: "Read Agentic session \(decoded.sessionID).",
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: "Read Agentic session \(input.sessionID).",
             sideEffects: []
         )
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            ReadAgentSessionToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
         let summary = try catalog.loadSession(
-            sessionID: decoded.sessionID
+            sessionID: input.sessionID
         )
 
-        let inspection = decoded.includeInspection
+        let inspection = input.includeInspection
             ? try await catalog.inspectSession(
-                sessionID: decoded.sessionID
+                sessionID: input.sessionID
             )
             : nil
 
-        return try JSONToolBridge.encode(
-            ReadAgentSessionToolOutput(
+        return ReadAgentSessionToolOutput(
                 summary: summary,
                 inspection: inspection
             )
-        )
     }
 }

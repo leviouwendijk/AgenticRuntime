@@ -2,8 +2,13 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
 public struct ComposeContextTool: AgentTool {
+    public typealias Input = ComposeContextToolInput
+    public typealias Output = ComposeContextToolOutput
+
     public static let identifier: AgentToolIdentifier = "compose_context"
     public static let description = "Compose a context plan into prompt-ready text using the configured ContextComposer."
     public static let risk: ActionRisk = .observe
@@ -21,24 +26,20 @@ public struct ComposeContextTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ComposeContextToolInput.self,
-            from: input
-        )
         let inspection = ContextToolSupport.inspect(
-            decoded.plan
+            input.plan
         )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
+            workspaceRoot: context.workspace?.rootURL.path,
             summary: summary(
                 inspection: inspection,
-                maxCharacters: decoded.maxCharacters
+                maxCharacters: input.maxCharacters
             ),
             estimatedByteCount: inspection.hasUnknownSizeSources
                 ? nil
@@ -48,38 +49,32 @@ public struct ComposeContextTool: AgentTool {
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        let decoded = try JSONToolBridge.decode(
-            ComposeContextToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
         let effectiveComposer = ContextComposer(
-            workspace: workspace ?? composer.workspace
+            workspace: context.workspace ?? composer.workspace
         )
         let composed = try effectiveComposer.compose(
-            decoded.plan
+            input.plan
         )
         let trimmed = ContextToolSupport.truncated(
             composed.text,
-            maxCharacters: decoded.maxCharacters
+            maxCharacters: input.maxCharacters
         )
         let size = ContextToolSupport.estimate(
             text: trimmed.text
         )
 
-        return try JSONToolBridge.encode(
-            ComposeContextToolOutput(
+        return ComposeContextToolOutput(
                 metadata: composed.metadata,
                 content: trimmed.text,
                 size: size,
                 inspection: ContextToolSupport.inspect(
-                    decoded.plan
+                    input.plan
                 ),
                 truncated: trimmed.truncated
             )
-        )
     }
 }
 

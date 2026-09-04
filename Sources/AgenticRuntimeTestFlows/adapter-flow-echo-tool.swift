@@ -5,8 +5,9 @@ import Primitives
 import Schema
 import SchemaMacros
 
-struct AdapterFlowEchoTool: TypedAgentTool {
+struct AdapterFlowEchoTool: AgentTool {
     typealias Input = AdapterFlowEchoToolInput
+    typealias Output = AdapterFlowEchoToolOutput
 
     static let identifier: AgentToolIdentifier = .init(
         "adapter_echo_tool"
@@ -14,21 +15,24 @@ struct AdapterFlowEchoTool: TypedAgentTool {
     static let description = "Echoes a value back to the model."
     static let risk: ActionRisk = .observe
 
+    var identifier: AgentToolIdentifier {
+        Self.identifier
+    }
+
+    var description: String {
+        Self.description
+    }
+
+    var risk: ActionRisk {
+        Self.risk
+    }
+
     func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            AdapterFlowEchoToolInput.self,
-            from: input
-        )
-
-        return try JSONToolBridge.encode(
-            AdapterFlowEchoToolOutput(
-                text: decoded.text
-            )
+        _ input: Input,
+        context _: AgentToolExecutionContext
+    ) async throws -> Output {
+        AdapterFlowEchoToolOutput(
+            text: input.text
         )
     }
 }

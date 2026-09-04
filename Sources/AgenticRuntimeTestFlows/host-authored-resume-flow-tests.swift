@@ -3,6 +3,8 @@ import AgenticExecution
 import AgenticInterfaces
 import AgenticRuntime
 import AgenticRuntimeCommands
+import Schema
+import SchemaMacros
 import TestFlows
 
 enum AgenticRuntimeHostAuthoredResumeFlowTesting {
@@ -17,28 +19,14 @@ enum AgenticRuntimeHostAuthoredResumeFlowTesting {
         async throws -> [TestFlowDiagnostic]
     {
         let probe = HostAuthoredResumeProbe()
-        let tool = ClosureAgentTool(
-            identifier: "host_authored_resume_probe",
-            description: "Records authored single-step resume execution order."
-        ) { value, _ in
-            let input = try JSONToolBridge.decode(
-                HostAuthoredResumeInput.self,
-                from: value
-            )
-
-            await probe.record(
-                input.marker
-            )
-
-            return value
-        }
+        let tool = HostAuthoredResumeProbeTool(
+            probe: probe
+        )
         let coordinator = AgentToolPlanRunCoordinator(
             invoker: ToolInvoker(
-                registry: ToolRegistry(
-                    tools: [
-                        tool,
-                    ]
-                ),
+                registry: try ToolRegistry {
+                    tool
+                },
                 policy: ToolExecutionPolicy(
                     autonomyMode: .auto_observe
                 )
@@ -177,10 +165,32 @@ private actor HostAuthoredResumeProbe {
     }
 }
 
+@JSONSchema
 private struct HostAuthoredResumeInput:
     Sendable,
     Codable,
     Hashable
 {
     let marker: String
+}
+
+private struct HostAuthoredResumeProbeTool: AgentTool {
+    typealias Input = HostAuthoredResumeInput
+    typealias Output = HostAuthoredResumeInput
+
+    let identifier: AgentToolIdentifier = "host_authored_resume_probe"
+    let description = "Records authored single-step resume execution order."
+    let risk: ActionRisk = .observe
+    let probe: HostAuthoredResumeProbe
+
+    func call(
+        _ input: Input,
+        context _: AgentToolExecutionContext
+    ) async throws -> Output {
+        await probe.record(
+            input.marker
+        )
+
+        return input
+    }
 }

@@ -1,5 +1,6 @@
 import Agentic
 import AgenticApple
+import AgenticExecution
 import AgenticRuntime
 import Foundation
 import Primitives
@@ -143,11 +144,9 @@ enum AgenticRuntimeAdapterFlowTesting {
                 maximumIterations: 2,
                 responseDelivery: .stream
             ),
-            toolRegistry: .init(
-                tools: [
-                    AdapterFlowEchoTool()
-                ]
-            )
+            toolRegistry: try ToolRegistry {
+                AdapterFlowEchoTool()
+            }
         )
 
         let result = try await runner.run(
@@ -264,11 +263,9 @@ enum AgenticRuntimeAdapterFlowTesting {
                 maximumIterations: 2,
                 responseDelivery: .stream
             ),
-            toolRegistry: .init(
-                tools: [
-                    tool
-                ]
-            )
+            toolRegistry: try ToolRegistry {
+                tool
+            }
         )
 
         let result = try await runner.run(
@@ -402,12 +399,10 @@ enum AgenticRuntimeAdapterFlowTesting {
                 maximumIterations: 4,
                 responseDelivery: .stream
             ),
-            toolRegistry: .init(
-                tools: [
-                    readTool,
-                    putTool
-                ]
-            )
+            toolRegistry: try ToolRegistry {
+                readTool
+                putTool
+            }
         )
 
         let result = try await runner.run(
@@ -587,12 +582,10 @@ enum AgenticRuntimeAdapterFlowTesting {
                 maximumIterations: 4,
                 responseDelivery: .stream
             ),
-            toolRegistry: .init(
-                tools: [
-                    readTool,
-                    putTool
-                ]
-            )
+            toolRegistry: try ToolRegistry {
+                readTool
+                putTool
+            }
         )
 
         let result = try await runner.run(

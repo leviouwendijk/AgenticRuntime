@@ -2,7 +2,10 @@ import Agentic
 import AgenticExecution
 import AgenticWorkspace
 import Primitives
+import Schema
+import SchemaMacros
 
+@JSONSchema
 public struct ReadAgentArtifactToolInput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let id: String
@@ -53,6 +56,9 @@ public struct ReadAgentArtifactToolOutput: Sendable, Codable, Hashable {
 }
 
 public struct ReadAgentArtifactTool: AgentTool {
+    public typealias Input = ReadAgentArtifactToolInput
+    public typealias Output = ReadAgentArtifactToolOutput
+
     public static let identifier: AgentToolIdentifier = "read_agent_artifact"
     public static let description = "Read an artifact emitted for a durable Agentic session."
     public static let risk: ActionRisk = .observe
@@ -78,46 +84,36 @@ public struct ReadAgentArtifactTool: AgentTool {
     }
 
     public func preflight(
-        input: JSONValue,
-        workspace: AgentWorkspace?
+        _ input: Input,
+        context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let decoded = try JSONToolBridge.decode(
-            ReadAgentArtifactToolInput.self,
-            from: input
-        )
 
         return .init(
             toolName: name,
             risk: risk,
-            workspaceRoot: workspace?.rootURL.path,
-            summary: "Read artifact \(decoded.id) for session \(decoded.sessionID).",
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: "Read artifact \(input.id) for session \(input.sessionID).",
             sideEffects: []
         )
     }
 
     public func call(
-        input: JSONValue,
-        workspace: AgentWorkspace?
-    ) async throws -> JSONValue {
-        _ = workspace
-
-        let decoded = try JSONToolBridge.decode(
-            ReadAgentArtifactToolInput.self,
-            from: input
-        )
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> Output {
 
         let record = try await catalog.loadArtifact(
-            sessionID: decoded.sessionID,
-            id: decoded.id
+            sessionID: input.sessionID,
+            id: input.id
         )
 
         let content: String?
         let truncated: Bool
 
-        if decoded.includeContent {
+        if input.includeContent {
             let limited = limitedContent(
                 record.content,
-                maxCharacters: decoded.clampedMaxCharacters
+                maxCharacters: input.clampedMaxCharacters
             )
 
             content = limited.content
@@ -127,14 +123,12 @@ public struct ReadAgentArtifactTool: AgentTool {
             truncated = false
         }
 
-        return try JSONToolBridge.encode(
-            ReadAgentArtifactToolOutput(
-                sessionID: decoded.sessionID,
+        return ReadAgentArtifactToolOutput(
+                sessionID: input.sessionID,
                 artifact: record.artifact,
                 content: content,
                 truncated: truncated
             )
-        )
     }
 }
 

@@ -489,10 +489,9 @@ private struct NativeLifecycleInput:
     }
 }
 
-private struct NativeLifecycleTool:
-    TypedInstanceAgentTool
-{
+private struct NativeLifecycleTool: AgentTool {
     typealias Input = NativeLifecycleInput
+    typealias Output = NativeLifecycleInput
 
     let identifier: AgentToolIdentifier
     let description: String
@@ -500,9 +499,9 @@ private struct NativeLifecycleTool:
     let probe: NativeLifecycleToolProbe
 
     func call(
-        input: JSONValue,
-        workspace _: AgentWorkspace?
-    ) async throws -> JSONValue {
+        _ input: Input,
+        context _: AgentToolExecutionContext
+    ) async throws -> Output {
         await probe.recordInvocation()
         return input
     }
