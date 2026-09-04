@@ -124,7 +124,7 @@ public enum AgenticRuntimeToolCommand<
             let runtime = try await AgenticRuntimeToolCommand<Application>
                 .runtime()
             let host = try runtime.host(
-                workspacePath: options.workspace,
+                workspace: options.workspace,
                 sessionID: options.sessionID
             )
 
@@ -168,7 +168,7 @@ public enum AgenticRuntimeToolCommand<
             let runtime = try await AgenticRuntimeToolCommand<Application>
                 .runtime()
             let host = try runtime.host(
-                workspacePath: options.workspace,
+                workspace: options.workspace,
                 sessionID: options.sessionID,
                 approvalHandler: approvalPicker
             )

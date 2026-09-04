@@ -52,13 +52,13 @@ public enum AgenticRuntimeHostCommand<
             let runtime = try await AgenticRuntimeHostCommand<Application>
                 .runtime()
             let host = try runtime.host(
-                workspacePath: options.workspace,
+                workspace: options.workspace,
                 sessionID: options.sessionID
             )
 
             try await HostConsole.run(
                 host: host,
-                context: options.workspace
+                context: options.workspace.path
             )
         }
     }
@@ -103,7 +103,7 @@ public enum AgenticRuntimeHostCommand<
             let runtime = try await AgenticRuntimeHostCommand<Application>
                 .runtime()
             let host = try runtime.host(
-                workspacePath: options.workspace,
+                workspace: options.workspace,
                 sessionID: options.sessionID
             )
             let text = try host
@@ -177,7 +177,7 @@ public enum AgenticRuntimeHostCommand<
             let runtime = try await AgenticRuntimeHostCommand<Application>
                 .runtime()
             let host = try runtime.host(
-                workspacePath: options.workspace,
+                workspace: options.workspace,
                 sessionID: options.sessionID,
                 approvalHandler: approvalPicker
             )

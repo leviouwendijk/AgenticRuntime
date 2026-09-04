@@ -6,9 +6,21 @@ public enum AgenticRuntimeWorkspace {
     public static func resolve(
         _ rawPath: String
     ) throws -> AgentWorkspace {
-        let normalized = rawPath.trimmingCharacters(
-            in: .whitespacesAndNewlines
+        try resolve(
+            .init(
+                path: rawPath
+            )
         )
+    }
+
+    public static func resolve(
+        _ configuration:
+            AgenticRuntimeWorkspaceConfiguration
+    ) throws -> AgentWorkspace {
+        let normalized = configuration.path
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
 
         guard !normalized.isEmpty else {
             throw AgenticRuntimeError.blankWorkspace
@@ -57,7 +69,8 @@ public enum AgenticRuntimeWorkspace {
         }
 
         return try AgentWorkspace(
-            root: root
+            root: root,
+            selection: configuration.selection
         )
     }
 }

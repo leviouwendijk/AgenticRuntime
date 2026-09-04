@@ -40,6 +40,19 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runHostParity()
         },
         TestFlow(
+            "workspace-selection-ingress",
+            tags: [
+                "agentic-runtime",
+                "workspace",
+                "selection",
+                "arguments",
+                "authority",
+            ]
+        ) {
+            try AgenticRuntimeFlowTesting
+                .runWorkspaceSelectionIngress()
+        },
+        TestFlow(
             "workspace-resource-resolution",
             tags: [
                 "agentic-runtime",

@@ -1,3 +1,4 @@
+import AgenticRuntime
 import Arguments
 import Foundation
 
@@ -45,16 +46,15 @@ public struct AgenticRuntimeToolCallOptions:
 {
     public typealias ArgumentPayload = Payload
 
-    public let workspace: String
+    public let workspace:
+        AgenticRuntimeWorkspaceConfiguration
     public let sessionID: String?
 
     public init(
         arguments: Payload
     ) throws {
-        self.workspace = arguments.workspace
-            .trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+        self.workspace =
+            try arguments.workspace.configuration()
 
         let sessionID = arguments.sessionID?
             .trimmingCharacters(
@@ -69,13 +69,9 @@ public struct AgenticRuntimeToolCallOptions:
     public struct Payload:
         ArgumentGroup
     {
-        @Opt(
-            "workspace",
-            short: "w",
-            default: ".",
-            help: "Workspace root used for governed tool invocation. Defaults to the current directory."
-        )
-        public var workspace: String
+        @Group("workspace")
+        public var workspace:
+            AgenticRuntimeWorkspaceArguments
 
         @Opt(
             "session",

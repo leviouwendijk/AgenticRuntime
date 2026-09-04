@@ -27,7 +27,7 @@ public enum AgenticRuntimeConversationCommand<
         )
         var conversation = try AgenticConversationSession(
             runtime: runtime,
-            workspacePath: options.workspace,
+            workspace: options.workspace,
             sessionID: options.sessionID
         )
         try await AgenticConversationConsole.run(

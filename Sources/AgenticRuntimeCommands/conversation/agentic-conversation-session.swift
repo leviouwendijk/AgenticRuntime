@@ -38,7 +38,24 @@ package struct AgenticConversationSession:
         workspacePath: String,
         sessionID: String? = nil
     ) throws {
-        let workspace = try AgenticRuntimeWorkspace.resolve(workspacePath)
+        try self.init(
+            runtime: runtime,
+            workspace: .init(
+                path: workspacePath
+            ),
+            sessionID: sessionID
+        )
+    }
+
+    package init(
+        runtime: AgenticRuntime,
+        workspace configuration:
+            AgenticRuntimeWorkspaceConfiguration,
+        sessionID: String? = nil
+    ) throws {
+        let workspace = try AgenticRuntimeWorkspace.resolve(
+            configuration
+        )
         let profiles = runtime.profiles.profilesByIdentifier.values.sorted {
             let lhsTitle = $0.title ?? $0.identifier.rawValue
             let rhsTitle = $1.title ?? $1.identifier.rawValue

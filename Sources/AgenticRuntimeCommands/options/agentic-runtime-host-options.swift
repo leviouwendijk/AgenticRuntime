@@ -1,3 +1,4 @@
+import AgenticRuntime
 import Arguments
 import Foundation
 
@@ -7,16 +8,15 @@ public struct HostOptions:
 {
     public typealias ArgumentPayload = Payload
 
-    public let workspace: String
+    public let workspace:
+        AgenticRuntimeWorkspaceConfiguration
     public let sessionID: String?
 
     public init(
         arguments: Payload
     ) throws {
-        self.workspace = arguments.workspace
-            .trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+        self.workspace =
+            try arguments.workspace.configuration()
 
         let sessionID = arguments.sessionID?
             .trimmingCharacters(
@@ -31,13 +31,9 @@ public struct HostOptions:
     public struct Payload:
         ArgumentGroup
     {
-        @Opt(
-            "workspace",
-            short: "w",
-            default: ".",
-            help: "Workspace root used by the persistent host."
-        )
-        public var workspace: String
+        @Group("workspace")
+        public var workspace:
+            AgenticRuntimeWorkspaceArguments
 
         @Opt(
             "session",
@@ -55,17 +51,16 @@ public struct AgenticRuntimeHostManifestOptions:
 {
     public typealias ArgumentPayload = Payload
 
-    public let workspace: String
+    public let workspace:
+        AgenticRuntimeWorkspaceConfiguration
     public let sessionID: String?
     public let copy: Bool
 
     public init(
         arguments: Payload
     ) throws {
-        self.workspace = arguments.workspace
-            .trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+        self.workspace =
+            try arguments.workspace.configuration()
 
         let sessionID = arguments.sessionID?
             .trimmingCharacters(
@@ -81,13 +76,9 @@ public struct AgenticRuntimeHostManifestOptions:
     public struct Payload:
         ArgumentGroup
     {
-        @Opt(
-            "workspace",
-            short: "w",
-            default: ".",
-            help: "Workspace root included in the capability manifest. Defaults to the current directory."
-        )
-        public var workspace: String
+        @Group("workspace")
+        public var workspace:
+            AgenticRuntimeWorkspaceArguments
 
         @Opt(
             "session",
@@ -111,17 +102,16 @@ public struct AgenticRuntimeHostBridgeOptions:
 {
     public typealias ArgumentPayload = Payload
 
-    public let workspace: String
+    public let workspace:
+        AgenticRuntimeWorkspaceConfiguration
     public let sessionID: String?
     public let standardInput: Bool
 
     public init(
         arguments: Payload
     ) throws {
-        self.workspace = arguments.workspace
-            .trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
+        self.workspace =
+            try arguments.workspace.configuration()
 
         let sessionID = arguments.sessionID?
             .trimmingCharacters(
@@ -137,13 +127,9 @@ public struct AgenticRuntimeHostBridgeOptions:
     public struct Payload:
         ArgumentGroup
     {
-        @Opt(
-            "workspace",
-            short: "w",
-            default: ".",
-            help: "Workspace root used for governed tool invocation. Defaults to the current directory."
-        )
-        public var workspace: String
+        @Group("workspace")
+        public var workspace:
+            AgenticRuntimeWorkspaceArguments
 
         @Opt(
             "session",
