@@ -1,5 +1,6 @@
 import AgenticInterfaces
 import AgenticRuntime
+import Foundation
 
 package struct AgenticConversationRunProjection {
     package var run: AgenticHostConsoleRunPresentation
@@ -9,61 +10,148 @@ package struct AgenticConversationRunProjection {
         _ result: AgentRunResult,
         title: String
     ) -> Self {
-        var order: [String] = []
-        var eventsByCallID: [String: [AgentRunEvent]] = [:]
-
-        for event in result.events {
-            guard let callID = event.toolCallID else {
-                continue
+        let eventsByCallID = Dictionary(
+            grouping: result.events.compactMap { event -> AgentRunEvent? in
+                event.toolCallID == nil
+                    ? nil
+                    : event
+            },
+            by: { event in
+                event.toolCallID!
             }
-
-            if eventsByCallID[callID] == nil {
-                order.append(callID)
-            }
-            eventsByCallID[callID, default: []].append(event)
-        }
+        )
 
         var documents: [AgenticHostConsoleDocumentPresentation] = []
-        var steps = order.compactMap { callID -> AgenticHostConsoleStepPresentation? in
-            guard let events = eventsByCallID[callID] else {
-                return nil
-            }
+        var steps: [AgenticHostConsoleStepPresentation]
 
-            let title = events.compactMap(\.toolName).last ?? callID
-            let state = stepState(for: events)
-            let detail = events.last?.summary
-            let body = events.map {
-                "[iteration \($0.iteration)] \($0.kind.rawValue): \($0.summary)"
-            }.joined(separator: "\n")
-
-            documents.append(
-                .init(
-                    id: "\(result.sessionID)-\(callID)-details",
-                    runID: result.sessionID,
-                    stepID: callID,
-                    kind: .details,
-                    body: body
-                )
+        if result.toolUses.isEmpty {
+            steps = legacySteps(
+                for: result,
+                eventsByCallID: eventsByCallID,
+                documents: &documents
             )
+        } else {
+            steps = result.toolUses.map { record in
+                let callID = record.toolCall.id
+                let events = eventsByCallID[callID] ?? []
+                let state = stepState(for: record)
+                let projection = record.result?.processing?.projection
 
-            return .init(
-                id: callID,
-                title: title,
-                detail: detail,
-                state: state,
-                fields: [
+                var fields: [AgenticHostConsoleField] = [
                     .init("outcome", state.rawValue),
-                    .init("events", String(events.count)),
-                    .init("iteration", String(events.map(\.iteration).max() ?? 0)),
+                    .init("disposition", record.disposition.rawValue),
                 ]
-            )
+
+                if let preflight = record.preflight {
+                    fields.append(
+                        .init(
+                            "risk",
+                            preflight.risk.rawValue
+                        )
+                    )
+                }
+
+                if let projection {
+                    fields.append(
+                        .init(
+                            "result",
+                            projection.status
+                        )
+                    )
+                }
+
+                if let iteration = events.map(\.iteration).max() {
+                    fields.append(
+                        .init(
+                            "iteration",
+                            String(iteration)
+                        )
+                    )
+                }
+
+                documents.append(
+                    .init(
+                        id: "\(result.sessionID)-\(callID)-details",
+                        runID: result.sessionID,
+                        stepID: callID,
+                        kind: .details,
+                        title: "Tool use",
+                        body: detailsBody(
+                            for: record,
+                            events: events
+                        )
+                    )
+                )
+
+                if let toolResult = record.result {
+                    let observations =
+                        toolResult.processing?.observations
+                            ?? []
+
+                    let stdout = observations
+                        .filter {
+                            $0.kind == .standard_output
+                        }
+                        .map(\.content)
+                        .joined()
+
+                    documents.append(
+                        .init(
+                            id: "\(result.sessionID)-\(callID)-stdout",
+                            runID: result.sessionID,
+                            stepID: callID,
+                            kind: .stdout,
+                            title: "stdout",
+                            body: stdout.isEmpty
+                                ? "stdout is empty."
+                                : stdout
+                        )
+                    )
+
+                    let stderr = observations
+                        .filter {
+                            $0.kind == .standard_error
+                        }
+                        .map(\.content)
+                        .joined()
+
+                    documents.append(
+                        .init(
+                            id: "\(result.sessionID)-\(callID)-stderr",
+                            runID: result.sessionID,
+                            stepID: callID,
+                            kind: .stderr,
+                            title: "stderr",
+                            body: stderr.isEmpty
+                                ? "stderr is empty."
+                                : stderr
+                        )
+                    )
+                }
+
+                return .init(
+                    id: callID,
+                    title: record.toolCall.name,
+                    detail:
+                        projection?.summary
+                            ?? record.preflight?.summary
+                            ?? events.last?.summary,
+                    state: state,
+                    fields: fields
+                )
+            }
         }
 
         if steps.isEmpty {
-            let failed = result.isFailed || result.events.contains {
-                $0.kind == .model_stream_failed
-            }
-            let state: AgenticHostConsoleStepState = failed ? .failed : .completed
+            let failed =
+                result.isFailed
+                    || result.events.contains {
+                        $0.kind == .model_stream_failed
+                    }
+            let state: AgenticHostConsoleStepState =
+                failed
+                    ? .failed
+                    : .completed
             let body = result.events.map {
                 "[iteration \($0.iteration)] \($0.kind.rawValue): \($0.summary)"
             }.joined(separator: "\n")
@@ -73,12 +161,21 @@ package struct AgenticConversationRunProjection {
                 .init(
                     id: stepID,
                     title: "model response",
-                    detail: result.failure?.message
-                        ?? result.response?.message.content.text,
+                    detail:
+                        result.failure?.message
+                            ?? result.response?.message.content.text,
                     state: state,
                     fields: [
-                        .init("outcome", state.rawValue),
-                        .init("events", String(result.events.count)),
+                        .init(
+                            "outcome",
+                            state.rawValue
+                        ),
+                        .init(
+                            "events",
+                            String(
+                                result.events.count
+                            )
+                        ),
                     ]
                 ),
             ]
@@ -103,9 +200,22 @@ package struct AgenticConversationRunProjection {
                     detail: failure.message,
                     state: .failed,
                     fields: [
-                        .init("outcome", AgenticHostConsoleStepState.failed.rawValue),
-                        .init("kind", failure.kind.rawValue),
-                        .init("iteration", String(result.state.iteration)),
+                        .init(
+                            "outcome",
+                            AgenticHostConsoleStepState
+                                .failed
+                                .rawValue
+                        ),
+                        .init(
+                            "kind",
+                            failure.kind.rawValue
+                        ),
+                        .init(
+                            "iteration",
+                            String(
+                                result.state.iteration
+                            )
+                        ),
                     ]
                 )
             )
@@ -127,13 +237,235 @@ package struct AgenticConversationRunProjection {
             run: .init(
                 id: result.sessionID,
                 title: title,
-                summary: result.failure?.message
-                    ?? result.response?.message.content.text,
-                state: runState(for: result),
+                summary:
+                    result.failure?.message
+                        ?? result.response?.message.content.text,
+                state: runState(
+                    for: result
+                ),
                 steps: steps
             ),
             documents: documents
         )
+    }
+
+    private static func legacySteps(
+        for result: AgentRunResult,
+        eventsByCallID: [String: [AgentRunEvent]],
+        documents: inout [AgenticHostConsoleDocumentPresentation]
+    ) -> [AgenticHostConsoleStepPresentation] {
+        var order: [String] = []
+
+        for event in result.events {
+            guard let callID = event.toolCallID else {
+                continue
+            }
+
+            if !order.contains(callID) {
+                order.append(callID)
+            }
+        }
+
+        return order.compactMap { callID in
+            guard let events = eventsByCallID[callID] else {
+                return nil
+            }
+
+            let title =
+                events.compactMap(\.toolName).last
+                    ?? callID
+            let state = stepState(
+                for: events
+            )
+            let detail = events.last?.summary
+            let body = events.map {
+                "[iteration \($0.iteration)] \($0.kind.rawValue): \($0.summary)"
+            }.joined(separator: "\n")
+
+            documents.append(
+                .init(
+                    id: "\(result.sessionID)-\(callID)-details",
+                    runID: result.sessionID,
+                    stepID: callID,
+                    kind: .details,
+                    body: body
+                )
+            )
+
+            return .init(
+                id: callID,
+                title: title,
+                detail: detail,
+                state: state,
+                fields: [
+                    .init(
+                        "outcome",
+                        state.rawValue
+                    ),
+                    .init(
+                        "events",
+                        String(
+                            events.count
+                        )
+                    ),
+                    .init(
+                        "iteration",
+                        String(
+                            events
+                                .map(\.iteration)
+                                .max()
+                                ?? 0
+                        )
+                    ),
+                ]
+            )
+        }
+    }
+
+    private static func detailsBody(
+        for record: AgentToolUseRecord,
+        events: [AgentRunEvent]
+    ) -> String {
+        var sections: [String] = [
+            [
+                "Call",
+                "tool         \(record.toolCall.name)",
+                "id           \(record.toolCall.id)",
+                "disposition  \(record.disposition.rawValue)",
+            ].joined(separator: "\n"),
+            [
+                "Input",
+                prettyEncoded(
+                    record.toolCall.input
+                ),
+            ].joined(separator: "\n"),
+        ]
+
+        if let preflight = record.preflight {
+            var lines = [
+                "Preflight",
+                "risk         \(preflight.risk.rawValue)",
+                "summary      \(preflight.summary)",
+            ]
+
+            if let workspaceRoot = preflight.workspaceRoot {
+                lines.append(
+                    "workspace    \(workspaceRoot)"
+                )
+            }
+
+            if !preflight.targetPaths.isEmpty {
+                lines.append(
+                    "targets      \(preflight.targetPaths.joined(separator: ", "))"
+                )
+            }
+
+            sections.append(
+                lines.joined(separator: "\n")
+            )
+        }
+
+        if let result = record.result {
+            var lines = [
+                "Result",
+                "error        \(result.isError)",
+            ]
+
+            if let projection = result.processing?.projection {
+                lines.append(
+                    "status       \(projection.status)"
+                )
+
+                if let summary = projection.summary {
+                    lines.append(
+                        "summary      \(summary)"
+                    )
+                }
+
+                for fact in projection.facts {
+                    lines.append(
+                        "\(fact.label)  \(fact.value)"
+                    )
+                }
+            }
+
+            lines.append("")
+            lines.append("Output")
+            lines.append(
+                prettyEncoded(
+                    result.output
+                )
+            )
+
+            sections.append(
+                lines.joined(separator: "\n")
+            )
+
+            let observations =
+                result.processing?.observations
+                    .filter {
+                        $0.kind != .standard_output
+                            && $0.kind != .standard_error
+                    }
+                    ?? []
+
+            if !observations.isEmpty {
+                var lines = [
+                    "Observations"
+                ]
+
+                for observation in observations {
+                    lines.append(
+                        "\(observation.label ?? observation.kind.rawValue)  \(observation.content)"
+                    )
+                }
+
+                sections.append(
+                    lines.joined(separator: "\n")
+                )
+            }
+        }
+
+        if !events.isEmpty {
+            sections.append(
+                (
+                    ["Events"]
+                        + events.map {
+                            "[iteration \($0.iteration)] \($0.kind.rawValue): \($0.summary)"
+                        }
+                ).joined(separator: "\n")
+            )
+        }
+
+        return sections.joined(
+            separator: "\n\n"
+        )
+    }
+
+    private static func prettyEncoded<T: Encodable>(
+        _ value: T
+    ) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [
+            .prettyPrinted,
+            .sortedKeys,
+        ]
+
+        guard
+            let data = try? encoder.encode(
+                value
+            ),
+            let text = String(
+                data: data,
+                encoding: .utf8
+            )
+        else {
+            return String(
+                describing: value
+            )
+        }
+
+        return text
     }
 
     private static func runState(
@@ -149,7 +481,8 @@ package struct AgenticConversationRunProjection {
             return .paused
         }
         if result.events.contains(where: {
-            $0.kind == .model_stream_failed || $0.kind == .tool_error
+            $0.kind == .model_stream_failed
+                || $0.kind == .tool_error
         }) {
             return .failed
         }
@@ -157,17 +490,51 @@ package struct AgenticConversationRunProjection {
     }
 
     private static func stepState(
+        for record: AgentToolUseRecord
+    ) -> AgenticHostConsoleStepState {
+        switch record.disposition {
+        case .pending:
+            return .pending
+
+        case .preflighted,
+             .suspended_for_approval,
+             .suspended_for_user_input:
+            return .active
+
+        case .executed:
+            return record.result?.isError == true
+                ? .failed
+                : .completed
+
+        case .skipped_after_mutation,
+             .skipped_after_denial,
+             .skipped_by_user,
+             .skipped_after_user_input:
+            return .skipped
+
+        case .failed_preflight,
+             .failed_execution:
+            return .failed
+        }
+    }
+
+    private static func stepState(
         for events: [AgentRunEvent]
     ) -> AgenticHostConsoleStepState {
-        if events.contains(where: { $0.kind == .tool_error }) {
+        if events.contains(where: {
+            $0.kind == .tool_error
+        }) {
             return .failed
         }
         if events.contains(where: {
-            $0.kind == .tool_denied || $0.kind == .tool_skipped
+            $0.kind == .tool_denied
+                || $0.kind == .tool_skipped
         }) {
             return .skipped
         }
-        if events.contains(where: { $0.kind == .tool_result }) {
+        if events.contains(where: {
+            $0.kind == .tool_result
+        }) {
             return .completed
         }
         return .active

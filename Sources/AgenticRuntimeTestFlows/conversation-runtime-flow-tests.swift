@@ -305,11 +305,58 @@ enum AgenticRuntimeConversationFlowTesting {
             "retained run output"
         )
         try Expect.equal(
-            conversation.snapshot.hostConsole.documents.first?.kind,
-            Optional(
-                AgenticHostConsoleDocumentKind.details
-            ),
-            "run details document"
+            result.toolUses.map(\.toolCall.id),
+            [
+                findCall.id,
+                echoCall.id,
+            ],
+            "run result retains exact model tool calls"
+        )
+
+        let documents =
+            conversation.snapshot.hostConsole.documents
+        let findDetails = documents.first {
+            $0.stepID == findCall.id
+                && $0.kind == .details
+        }
+        let echoDetails = documents.first {
+            $0.stepID == echoCall.id
+                && $0.kind == .details
+        }
+        let echoStdout = documents.first {
+            $0.stepID == echoCall.id
+                && $0.kind == .stdout
+        }
+
+        try Expect.contains(
+            findDetails?.body ?? "",
+            "\"maximumResults\"",
+            "find_tools details expose exact model input"
+        )
+        try Expect.contains(
+            findDetails?.body ?? "",
+            AdapterFlowEchoTool.identifier.rawValue,
+            "find_tools details expose exact discovery query"
+        )
+        try Expect.contains(
+            echoDetails?.body ?? "",
+            "\"text\" : \"conversation payload\"",
+            "echo details expose exact model input"
+        )
+        try Expect.contains(
+            echoDetails?.body ?? "",
+            "Echoed conversation payload.",
+            "echo details expose semantic result projection"
+        )
+        try Expect.contains(
+            echoDetails?.body ?? "",
+            "echo detail: conversation payload",
+            "echo details expose non-stream observation"
+        )
+        try Expect.contains(
+            echoStdout?.body ?? "",
+            "echo stdout: conversation payload",
+            "echo stdout is projected as a dedicated stream document"
         )
 
         return [

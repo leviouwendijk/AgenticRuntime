@@ -29,10 +29,42 @@ struct AdapterFlowEchoTool: AgentTool {
 
     func call(
         _ input: Input,
-        context _: AgentToolExecutionContext
+        context: AgentToolExecutionContext
     ) async throws -> Output {
-        AdapterFlowEchoToolOutput(
+        await context.observe(
+            .init(
+                kind: .standard_output,
+                label: "stdout",
+                content: "echo stdout: \(input.text)"
+            )
+        )
+        await context.observe(
+            .init(
+                kind: .detail,
+                label: "echo",
+                content: "echo detail: \(input.text)"
+            )
+        )
+
+        return AdapterFlowEchoToolOutput(
             text: input.text
+        )
+    }
+
+    func process(
+        _ output: Output,
+        input _: Input,
+        context _: AgentToolExecutionContext
+    ) -> AgentToolResultProjection? {
+        .init(
+            status: "passed",
+            summary: "Echoed conversation payload.",
+            facts: [
+                .init(
+                    label: "text",
+                    value: output.text
+                ),
+            ]
         )
     }
 }
