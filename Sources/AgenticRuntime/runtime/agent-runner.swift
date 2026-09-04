@@ -179,6 +179,28 @@ extension AgentRunner {
             policy: configuration.toolExposure.resolvedForRuntime
         )
         var registry = toolRegistry
+        var exposureInspectionSource:
+            AgentToolExposureInspectionSource?
+
+        if registry.registeredTool(
+            identifiedBy: InspectToolRegistryTool.identifier
+        ) != nil,
+           registry.registeredTool(
+               identifiedBy: InspectToolExposureTool.identifier
+           ) == nil {
+            let source =
+                AgentToolExposureInspectionSource(
+                    exposure: exposure
+                )
+
+            try registry.register(
+                InspectToolExposureTool(
+                    source: source
+                )
+            )
+
+            exposureInspectionSource = source
+        }
 
         if configuration.toolExposure.usesDiscovery,
            registry.registeredTool(
@@ -186,9 +208,15 @@ extension AgentRunner {
            ) == nil {
             try registry.register(
                 FindToolsTool(
-                    registry: toolRegistry,
+                    registry: registry,
                     exposure: exposure
                 )
+            )
+        }
+
+        if let exposureInspectionSource {
+            await exposureInspectionSource.bind(
+                registryInspection: registry.inspect()
             )
         }
 

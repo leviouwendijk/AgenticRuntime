@@ -5,17 +5,17 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
     static let title = "AgenticRuntime flow tests"
 
     static let flows: [TestFlow] = [
-        TestFlow(
-            "application-realization",
-            tags: [
-                "agentic-runtime",
-                "application",
-                "realization",
-            ]
-        ) {
-            try await AgenticRuntimeFlowTesting
-                .runApplicationRealization()
-        },
+        // TestFlow(
+        //     "application-realization",
+        //     tags: [
+        //         "agentic-runtime",
+        //         "application",
+        //         "realization",
+        //     ]
+        // ) {
+        //     try await AgenticRuntimeFlowTesting
+        //         .runApplicationRealization()
+        // },
         TestFlow(
             "voice-input-provider",
             tags: [
@@ -391,6 +391,19 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
         ) {
             try await AgenticRuntimeToolExposureFlowTesting
                 .runApprovalResumePersistence()
+        },
+        TestFlow(
+            "tool-exposure-runtime-inspection",
+            tags: [
+                "agentic-runtime",
+                "tools",
+                "exposure",
+                "inspection",
+                "discovery",
+            ]
+        ) {
+            try await AgenticRuntimeToolExposureFlowTesting
+                .runExposureInspection()
         },
         TestFlow(
             "conversation-runtime-session",

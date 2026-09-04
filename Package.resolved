@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticAdapters.git",
       "state" : {
         "branch" : "master",
-        "revision" : "844649922c972265f9e855a1833014a074f55a5b"
+        "revision" : "74601091a1b5f3310088bcc53772c45844399811"
       }
     },
     {
@@ -25,7 +25,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticExecution.git",
       "state" : {
         "branch" : "master",
-        "revision" : "867c4823c94838f05e7e460064cb9e38a378e8dc"
+        "revision" : "d173e2005674ac660ba94517f4658d25d96541a6"
       }
     },
     {
@@ -61,7 +61,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticTools.git",
       "state" : {
         "branch" : "master",
-        "revision" : "64aabc31687226209880c7599d096616375762b6"
+        "revision" : "b8c26bde9b992bbf159d2f08d12d51f8f9c2c99f"
       }
     },
     {
