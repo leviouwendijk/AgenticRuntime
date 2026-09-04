@@ -1,5 +1,5 @@
 {
-  "originHash" : "bd09a836b57518b09717fdb393bd78e9ab15f77bfa9080380ac42b71595d6476",
+  "originHash" : "3fe657a58681a50155639c375971039dc4657d55fce1968e3b2602592118d2c6",
   "pins" : [
     {
       "identity" : "agentic",
@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "7f516bc655c93f27709277461faef45060854c4a"
+        "revision" : "1319ccd8d7c768571c3e6755a30182db54833686"
       }
     },
     {
@@ -148,10 +148,10 @@
     {
       "identity" : "dsl",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/leviouwendijk/DSL",
+      "location" : "https://github.com/leviouwendijk/DSL.git",
       "state" : {
         "branch" : "master",
-        "revision" : "9efff74e61ff3679fce19f3cbf6df09c3bc23691"
+        "revision" : "30ec6798f883b91f697d060bb001e0e4f7a09225"
       }
     },
     {

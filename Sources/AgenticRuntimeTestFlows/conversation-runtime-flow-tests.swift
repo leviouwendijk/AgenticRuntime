@@ -5,6 +5,7 @@ import AgenticInterfaces
 import AgenticRuntime
 import AgenticRuntimeCommands
 import AgenticTools
+import DSL
 import Foundation
 import Primitives
 import TestFlows
@@ -357,6 +358,65 @@ enum AgenticRuntimeConversationFlowTesting {
             echoStdout?.body ?? "",
             "echo stdout: conversation payload",
             "echo stdout is projected as a dedicated stream document"
+        )
+
+        try Expect.equal(
+            findDetails?.structuredBody == nil,
+            false,
+            "find_tools details retain semantic structured content"
+        )
+        try Expect.equal(
+            echoDetails?.structuredBody == nil,
+            false,
+            "echo details retain semantic structured content"
+        )
+
+        let structuredEncoder = JSONEncoder()
+        structuredEncoder.outputFormatting = [
+            .sortedKeys,
+        ]
+        let findStructuredText = try String(
+            decoding: structuredEncoder.encode(
+                findDetails?.structuredBody
+            ),
+            as: UTF8.self
+        )
+        let echoStructuredText = try String(
+            decoding: structuredEncoder.encode(
+                echoDetails?.structuredBody
+            ),
+            as: UTF8.self
+        )
+
+        try Expect.contains(
+            findStructuredText,
+            "agentic.tool.input",
+            "find_tools structured details preserve semantic input role"
+        )
+        try Expect.contains(
+            findStructuredText,
+            "maximumResults",
+            "find_tools structured details preserve exact input"
+        )
+        try Expect.contains(
+            findStructuredText,
+            AdapterFlowEchoTool.identifier.rawValue,
+            "find_tools structured details preserve discovery query"
+        )
+        try Expect.contains(
+            echoStructuredText,
+            "agentic.tool.result",
+            "echo structured details preserve semantic result role"
+        )
+        try Expect.contains(
+            echoStructuredText,
+            "Echoed conversation payload.",
+            "echo structured details preserve result summary"
+        )
+        try Expect.contains(
+            echoStructuredText,
+            "echo detail: conversation payload",
+            "echo structured details preserve non-stream observation"
         )
 
         return [

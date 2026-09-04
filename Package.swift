@@ -107,6 +107,10 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/leviouwendijk/DSL.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/leviouwendijk/Arguments.git",
             branch: "master"
         ),
@@ -234,6 +238,10 @@ let package = Package(
                     package: "Clipboard"
                 ),
                 .product(
+                    name: "DSL",
+                    package: "DSL"
+                ),
+                .product(
                     name: "Terminal",
                     package: "Terminal"
                 ),
@@ -283,6 +291,10 @@ let package = Package(
                 .product(
                     name: "AgenticIO",
                     package: "AgenticIO"
+                ),
+                .product(
+                    name: "DSL",
+                    package: "DSL"
                 ),
                 .product(
                     name: "TestFlows",

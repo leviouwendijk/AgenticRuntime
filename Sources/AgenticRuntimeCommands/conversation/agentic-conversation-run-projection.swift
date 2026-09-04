@@ -1,5 +1,6 @@
 import AgenticInterfaces
 import AgenticRuntime
+import DSL
 import Foundation
 
 package struct AgenticConversationRunProjection {
@@ -77,6 +78,10 @@ package struct AgenticConversationRunProjection {
                         kind: .details,
                         title: "Tool use",
                         body: detailsBody(
+                            for: record,
+                            events: events
+                        ),
+                        structuredBody: detailsContent(
                             for: record,
                             events: events
                         )
@@ -320,6 +325,243 @@ package struct AgenticConversationRunProjection {
                 ]
             )
         }
+    }
+
+    private static func detailsContent(
+        for record: AgentToolUseRecord,
+        events: [AgentRunEvent]
+    ) -> StructuredContent {
+        var sections: [StructuredContent] = [
+            .group(
+                role: "agentic.tool.call",
+                title: [
+                    .text("Call")
+                ],
+                content: .collection([
+                    labeledContent(
+                        "tool",
+                        record.toolCall.name
+                    ),
+                    labeledContent(
+                        "id",
+                        record.toolCall.id
+                    ),
+                    labeledContent(
+                        "disposition",
+                        record.disposition.rawValue
+                    ),
+                ])
+            ),
+            .group(
+                role: "agentic.tool.input",
+                title: [
+                    .text("Input")
+                ],
+                content: .code(
+                    language: "json",
+                    source: prettyEncoded(
+                        record.toolCall.input
+                    )
+                )
+            ),
+        ]
+
+        if let preflight = record.preflight {
+            var content: [StructuredContent] = [
+                labeledContent(
+                    "risk",
+                    preflight.risk.rawValue
+                ),
+                labeledContent(
+                    "summary",
+                    preflight.summary
+                ),
+            ]
+
+            if let workspaceRoot = preflight.workspaceRoot {
+                content.append(
+                    labeledContent(
+                        "workspace",
+                        workspaceRoot
+                    )
+                )
+            }
+
+            if !preflight.targetPaths.isEmpty {
+                content.append(
+                    .group(
+                        role: "agentic.tool.targets",
+                        title: [
+                            .text("Targets")
+                        ],
+                        content: .list(
+                            style: .unordered,
+                            items: preflight.targetPaths.map { path in
+                                .paragraph([
+                                    .text(path)
+                                ])
+                            }
+                        )
+                    )
+                )
+            }
+
+            sections.append(
+                .group(
+                    role: "agentic.tool.preflight",
+                    title: [
+                        .text("Preflight")
+                    ],
+                    content: .collection(
+                        content
+                    )
+                )
+            )
+        }
+
+        if let result = record.result {
+            var content: [StructuredContent] = [
+                labeledContent(
+                    "error",
+                    String(result.isError)
+                ),
+            ]
+
+            if let projection = result.processing?.projection {
+                content.append(
+                    labeledContent(
+                        "status",
+                        projection.status
+                    )
+                )
+
+                if let summary = projection.summary {
+                    content.append(
+                        labeledContent(
+                            "summary",
+                            summary
+                        )
+                    )
+                }
+
+                if !projection.facts.isEmpty {
+                    content.append(
+                        .group(
+                            role: "agentic.tool.facts",
+                            title: [
+                                .text("Facts")
+                            ],
+                            content: .collection(
+                                projection.facts.map { fact in
+                                    labeledContent(
+                                        fact.label,
+                                        fact.value
+                                    )
+                                }
+                            )
+                        )
+                    )
+                }
+            }
+
+            content.append(
+                .group(
+                    role: "agentic.tool.output",
+                    title: [
+                        .text("Output")
+                    ],
+                    content: .code(
+                        language: "json",
+                        source: prettyEncoded(
+                            result.output
+                        )
+                    )
+                )
+            )
+
+            sections.append(
+                .group(
+                    role: "agentic.tool.result",
+                    title: [
+                        .text("Result")
+                    ],
+                    content: .collection(
+                        content
+                    )
+                )
+            )
+
+            let observations =
+                result.processing?.observations
+                    .filter {
+                        $0.kind != .standard_output
+                            && $0.kind != .standard_error
+                    }
+                    ?? []
+
+            if !observations.isEmpty {
+                sections.append(
+                    .group(
+                        role: "agentic.tool.observations",
+                        title: [
+                            .text("Observations")
+                        ],
+                        content: .list(
+                            style: .unordered,
+                            items: observations.map { observation in
+                                labeledContent(
+                                    observation.label
+                                        ?? observation.kind.rawValue,
+                                    observation.content
+                                )
+                            }
+                        )
+                    )
+                )
+            }
+        }
+
+        if !events.isEmpty {
+            sections.append(
+                .group(
+                    role: "agentic.tool.events",
+                    title: [
+                        .text("Events")
+                    ],
+                    content: .list(
+                        style: .unordered,
+                        items: events.map { event in
+                            .paragraph([
+                                .code(
+                                    "iteration \(event.iteration)"
+                                ),
+                                .text(
+                                    "  \(event.kind.rawValue): \(event.summary)"
+                                ),
+                            ])
+                        }
+                    )
+                )
+            )
+        }
+
+        return .collection(
+            sections
+        )
+    }
+
+    private static func labeledContent(
+        _ label: String,
+        _ value: String
+    ) -> StructuredContent {
+        .paragraph([
+            .strong([
+                .text(label)
+            ]),
+            .text(
+                "  \(value)"
+            ),
+        ])
     }
 
     private static func detailsBody(
