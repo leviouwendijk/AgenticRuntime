@@ -26,6 +26,9 @@ extension ToolLoopExecutor {
         if var batch = checkpoint.toolBatch {
             batch.completeIfTerminal()
             checkpoint.toolBatch = batch
+            checkpoint.archiveToolUses(
+                batch.records
+            )
         }
 
         checkpoint.clearToolBatch()

@@ -8,6 +8,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
     public let failure: AgentRunFailure?
     public let state: AgentLoopState
     public let events: [AgentRunEvent]
+    public let toolUses: [AgentToolUseRecord]
     public let costRecord: AgentCostRecord?
 
     public init(
@@ -18,6 +19,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         failure: AgentRunFailure? = nil,
         state: AgentLoopState,
         events: [AgentRunEvent] = [],
+        toolUses: [AgentToolUseRecord] = [],
         costRecord: AgentCostRecord? = nil
     ) {
         self.sessionID = sessionID
@@ -27,6 +29,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         self.failure = failure
         self.state = state
         self.events = events
+        self.toolUses = toolUses
         self.costRecord = costRecord
     }
 
@@ -35,6 +38,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         response: AgentResponse,
         state: AgentLoopState,
         events: [AgentRunEvent] = [],
+        toolUses: [AgentToolUseRecord] = [],
         costRecord: AgentCostRecord? = nil
     ) -> Self {
         .init(
@@ -44,6 +48,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
             pendingApproval: nil,
             state: state,
             events: events,
+            toolUses: toolUses,
             costRecord: costRecord
         )
     }
@@ -54,6 +59,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         suspension: AgentSuspension,
         state: AgentLoopState,
         events: [AgentRunEvent] = [],
+        toolUses: [AgentToolUseRecord] = [],
         costRecord: AgentCostRecord? = nil
     ) -> Self {
         .init(
@@ -63,6 +69,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
             pendingApproval: suspension.pendingApproval,
             state: state,
             events: events,
+            toolUses: toolUses,
             costRecord: costRecord
         )
     }
@@ -73,6 +80,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         pendingApproval: PendingApproval,
         state: AgentLoopState,
         events: [AgentRunEvent] = [],
+        toolUses: [AgentToolUseRecord] = [],
         costRecord: AgentCostRecord? = nil
     ) -> Self {
         .suspended(
@@ -83,6 +91,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
             ),
             state: state,
             events: events,
+            toolUses: toolUses,
             costRecord: costRecord
         )
     }
@@ -93,6 +102,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         pendingUserInput: PendingUserInput,
         state: AgentLoopState,
         events: [AgentRunEvent] = [],
+        toolUses: [AgentToolUseRecord] = [],
         costRecord: AgentCostRecord? = nil
     ) -> Self {
         .suspended(
@@ -103,6 +113,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
             ),
             state: state,
             events: events,
+            toolUses: toolUses,
             costRecord: costRecord
         )
     }
@@ -113,6 +124,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         response: AgentResponse? = nil,
         state: AgentLoopState,
         events: [AgentRunEvent] = [],
+        toolUses: [AgentToolUseRecord] = [],
         costRecord: AgentCostRecord? = nil
     ) -> Self {
         .init(
@@ -123,6 +135,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
             failure: failure,
             state: state,
             events: events,
+            toolUses: toolUses,
             costRecord: costRecord
         )
     }

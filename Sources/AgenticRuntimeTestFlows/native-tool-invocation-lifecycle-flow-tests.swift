@@ -121,6 +121,28 @@ private extension AgenticRuntimeFlowTesting {
             ],
             "native live approval journals the tool result into durable loop state"
         )
+        try Expect.equal(
+            result.toolUses.map(\.id),
+            [
+                "native-live-approval-call",
+            ],
+            "native live approval preserves the exact tool call in run trace"
+        )
+        try Expect.equal(
+            result.toolUses.first?.disposition,
+            Optional(AgentToolUseDisposition.executed),
+            "native live approval preserves executed disposition"
+        )
+        try Expect.equal(
+            result.toolUses.first?.preflight != nil,
+            true,
+            "native live approval preserves preflight"
+        )
+        try Expect.equal(
+            result.toolUses.first?.result?.toolCallID,
+            Optional("native-live-approval-call"),
+            "native live approval preserves semantic tool result"
+        )
     }
 
     static func proveNativeDurableApproval() async throws {
@@ -213,6 +235,23 @@ private extension AgenticRuntimeFlowTesting {
             "unresolved native review is not recorded as a model failure"
         )
         try Expect.equal(
+            initial.toolUses.map(\.id),
+            [
+                "native-durable-approval-call",
+            ],
+            "suspended native review is visible in the run trace"
+        )
+        try Expect.equal(
+            initial.toolUses.first?.disposition,
+            Optional(AgentToolUseDisposition.suspended_for_approval),
+            "suspended native review preserves its disposition"
+        )
+        try Expect.equal(
+            initial.toolUses.first?.preflight != nil,
+            true,
+            "suspended native review preserves preflight"
+        )
+        try Expect.equal(
             await toolProbe.invocationCount(),
             0,
             "durable native approval does not execute before approval"
@@ -244,6 +283,23 @@ private extension AgenticRuntimeFlowTesting {
             await modelProbe.invocationCount(),
             2,
             "durable approval reconstructs through a second provider invocation"
+        )
+        try Expect.equal(
+            resumed.toolUses.map(\.id),
+            [
+                "native-durable-approval-call",
+            ],
+            "resumed native approval retains one durable tool-use record"
+        )
+        try Expect.equal(
+            resumed.toolUses.first?.disposition,
+            Optional(AgentToolUseDisposition.executed),
+            "resumed native approval upgrades the trace to executed"
+        )
+        try Expect.equal(
+            resumed.toolUses.first?.result?.toolCallID,
+            Optional("native-durable-approval-call"),
+            "resumed native approval preserves its result"
         )
     }
 
@@ -362,6 +418,14 @@ private extension AgenticRuntimeFlowTesting {
                 "native-discovered-echo-call",
             ],
             "find_tools and the discovered tool both remain in durable state"
+        )
+        try Expect.equal(
+            result.toolUses.map(\.id),
+            [
+                "native-find-tools-call",
+                "native-discovered-echo-call",
+            ],
+            "native discovery preserves both exact model tool calls in run trace"
         )
     }
 }

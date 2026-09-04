@@ -85,6 +85,7 @@ public actor AgentRunner {
                 response: response,
                 state: checkpoint.state,
                 events: checkpoint.events,
+                toolUses: checkpoint.resolvedToolUses,
                 costRecord: checkpoint.costRecord
             )
 
@@ -121,6 +122,7 @@ public actor AgentRunner {
                 response: checkpoint.lastResponse,
                 state: checkpoint.state,
                 events: checkpoint.events,
+                toolUses: checkpoint.resolvedToolUses,
                 costRecord: checkpoint.costRecord
             )
         }
@@ -235,6 +237,7 @@ extension AgentRunner {
                 pendingApproval: pendingApproval,
                 state: checkpoint.state,
                 events: checkpoint.events,
+                toolUses: checkpoint.resolvedToolUses,
                 costRecord: checkpoint.costRecord
             )
 
@@ -245,6 +248,7 @@ extension AgentRunner {
                 pendingUserInput: pendingUserInput,
                 state: checkpoint.state,
                 events: checkpoint.events,
+                toolUses: checkpoint.resolvedToolUses,
                 costRecord: checkpoint.costRecord
             )
         }

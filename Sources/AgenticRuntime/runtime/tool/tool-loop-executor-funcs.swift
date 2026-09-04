@@ -196,6 +196,7 @@ extension ToolLoopExecutor {
                 pendingApproval: pendingApproval,
                 state: checkpoint.state,
                 events: checkpoint.events,
+                toolUses: checkpoint.resolvedToolUses,
                 costRecord: checkpoint.costRecord
             )
 
@@ -206,6 +207,7 @@ extension ToolLoopExecutor {
                 pendingUserInput: pendingUserInput,
                 state: checkpoint.state,
                 events: checkpoint.events,
+                toolUses: checkpoint.resolvedToolUses,
                 costRecord: checkpoint.costRecord
             )
         }

@@ -35,6 +35,7 @@ extension ToolLoopExecutor {
                     response: checkpoint.lastResponse,
                     state: checkpoint.state,
                     events: checkpoint.events,
+                    toolUses: checkpoint.resolvedToolUses,
                     costRecord: checkpoint.costRecord
                 )
             }
@@ -57,6 +58,7 @@ extension ToolLoopExecutor {
                         response: response,
                         state: checkpoint.state,
                         events: checkpoint.events,
+                        toolUses: checkpoint.resolvedToolUses,
                         costRecord: checkpoint.costRecord
                     )
                 }
@@ -103,6 +105,7 @@ extension ToolLoopExecutor {
                     response: checkpoint.lastResponse,
                     state: checkpoint.state,
                     events: checkpoint.events,
+                    toolUses: checkpoint.resolvedToolUses,
                     costRecord: checkpoint.costRecord
                 )
 
@@ -118,6 +121,7 @@ extension ToolLoopExecutor {
                     response: response,
                     state: checkpoint.state,
                     events: checkpoint.events,
+                    toolUses: checkpoint.resolvedToolUses,
                     costRecord: checkpoint.costRecord
                 )
             }
