@@ -165,26 +165,51 @@ public struct ExecutePreparedIntentTool: AgentTool {
                     observationSink: context.observationSink
                 )
             )
+            let executionStatus: PreparedIntentExecutionStatus =
+                toolResult.isError
+                    ? .failed
+                    : .succeeded
+            let executionSummary =
+                toolResult.isError
+                    ? "Prepared intent replay through \(toolName) returned a reported failure."
+                    : "Executed prepared intent by replaying \(toolName)."
             let executed = try await manager.recordExecution(
                 id: executableIntent.id,
                 record: .init(
                     intentID: executableIntent.id,
                     executionToolName: toolName,
-                    status: .succeeded,
-                    summary: "Executed prepared intent by replaying \(toolName).",
+                    status: executionStatus,
+                    summary: executionSummary,
                     startedAt: startedAt,
                     completedAt: Date(),
                     result: toolResult.output,
+                    errorMessage:
+                        toolResult.isError
+                            ? "Replayed tool reported a failure result."
+                            : nil,
                     metadata: metadata
                 )
             )
+            let output = ExecutePreparedIntentToolOutput(
+                intent: executed,
+                toolCall: toolCall,
+                toolResult: toolResult
+            )
 
-            return ExecutePreparedIntentToolOutput(
-                    intent: executed,
-                    toolCall: toolCall,
-                    toolResult: toolResult
+            if toolResult.isError {
+                throw AgentToolReportedFailure(
+                    output: output
                 )
+            }
+
+            return output
+        } catch let failure as AgentToolReportedFailure<Output> {
+            throw failure
         } catch {
+            let toolFailure =
+                (error as? AgentToolCallError)?
+                    .failure
+
             _ = try? await manager.recordExecution(
                 id: executableIntent.id,
                 record: .init(
@@ -195,9 +220,12 @@ public struct ExecutePreparedIntentTool: AgentTool {
                     startedAt: startedAt,
                     completedAt: Date(),
                     result: nil,
-                    errorMessage: String(
-                        describing: error
-                    ),
+                    toolFailure: toolFailure,
+                    errorMessage:
+                        toolFailure?.message
+                            ?? errorText(
+                                error
+                            ),
                     metadata: [
                         "execution_mode": AgentToolExecutionMode.prepared_intent_replay.rawValue,
                         "prepared_intent_id": executableIntent.id.rawValue,
@@ -308,6 +336,20 @@ private extension ExecutePreparedIntentTool {
         metadata["toolName"] = toolName
 
         return metadata
+    }
+
+    func errorText(
+        _ error: any Error
+    ) -> String {
+        if let localized = error as? any LocalizedError,
+           let description = localized.errorDescription
+        {
+            return description
+        }
+
+        return String(
+            describing: error
+        )
     }
 
     func normalized(

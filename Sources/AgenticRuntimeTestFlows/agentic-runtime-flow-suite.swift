@@ -207,6 +207,20 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runRetainedInputAndBridgeOutput()
         },
         TestFlow(
+            "prepared-intent-tool-failure-persistence",
+            tags: [
+                "agentic-runtime",
+                "prepared-intent",
+                "tools",
+                "failure",
+                "phase",
+                "persistence",
+            ]
+        ) {
+            try await AgenticRuntimePreparedIntentFailureFlowTesting
+                .run()
+        },
+        TestFlow(
             "tool-plan-deferred-pause",
             tags: [
                 "agentic-runtime",
