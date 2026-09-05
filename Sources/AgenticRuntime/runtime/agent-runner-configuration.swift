@@ -15,7 +15,8 @@ public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
     public init(
         maximumIterations: Int = 12,
         appendToolResultsAsMessages: Bool = true,
-        autonomyMode: AutonomyMode = .review_privileged,
+        // autonomyMode: AutonomyMode = .review_privileged,
+        autonomyMode: AutonomyMode = .auto_observe,
         executionLimits: ExecutionLimits = .unlimited,
         historyPersistenceMode: HistoryPersistenceMode = .disabled,
         compactionStrategy: CompactionStrategy? = nil,
