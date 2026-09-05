@@ -6,6 +6,7 @@ import Foundation
 package struct AgenticConversationRunProjection {
     package var run: AgenticHostConsoleRunPresentation
     package var documents: [AgenticHostConsoleDocumentPresentation]
+    package var interruptions: [AgenticHostConsoleInterruptionPresentation]
 
     package static func project(
         _ state: AgentRunStateSnapshot,
@@ -25,7 +26,11 @@ package struct AgenticConversationRunProjection {
                     ),
                     steps: []
                 ),
-                documents: []
+                documents: [],
+                interruptions: approvalInterruptions(
+                    sessionID: state.sessionID,
+                    pendingApproval: state.pendingApproval
+                )
             )
         }
 
@@ -138,6 +143,21 @@ package struct AgenticConversationRunProjection {
                         )
                     )
                 )
+
+                if let diffPreview = record.preflight?.diffPreview,
+                   !diffPreview.isEmpty
+                {
+                    documents.append(
+                        .init(
+                            id: "\(result.sessionID)-\(callID)-diff",
+                            runID: result.sessionID,
+                            stepID: callID,
+                            kind: .diff,
+                            title: diffPreview.title ?? "Diff",
+                            body: diffPreview.text
+                        )
+                    )
+                }
 
                 if let toolResult = record.result {
                     let observations =
@@ -301,8 +321,39 @@ package struct AgenticConversationRunProjection {
                 ),
                 steps: steps
             ),
-            documents: documents
+            documents: documents,
+            interruptions: approvalInterruptions(
+                sessionID: result.sessionID,
+                pendingApproval: result.pendingApproval
+            )
         )
+    }
+
+    private static func approvalInterruptions(
+        sessionID: String,
+        pendingApproval: PendingApproval?
+    ) -> [AgenticHostConsoleInterruptionPresentation] {
+        guard let pendingApproval else {
+            return []
+        }
+
+        let stepID = pendingApproval.toolCall.id
+
+        return [
+            .init(
+                id: "\(sessionID)-\(stepID)-approval",
+                runID: sessionID,
+                stepID: stepID,
+                kind: .approval,
+                title: "Approval required",
+                summary: pendingApproval.preflight.summary,
+                actions: [
+                    .approve,
+                    .deny,
+                    .skip,
+                ]
+            ),
+        ]
     }
 
     private static func legacySteps(

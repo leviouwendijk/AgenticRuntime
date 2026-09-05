@@ -397,6 +397,50 @@ private enum AgenticConversationConsole {
                     )
 
                 case .run(let workflowEvent):
+                    if case .actionRequested(
+                        interruptionID: let interruptionID,
+                        runID: let runID,
+                        stepID: let stepID,
+                        action: let action
+                    ) = workflowEvent {
+                        guard activeSubmission == nil else {
+                            await conversation.setActivity(
+                                "model response already pending"
+                            )
+                            control.update(
+                                await conversation.presentationSnapshot()
+                            )
+                            break
+                        }
+
+                        await conversation.setActivity(
+                            "applying \(action.title.lowercased())"
+                        )
+                        control.update(
+                            await conversation.presentationSnapshot()
+                        )
+                        render()
+
+                        activeSubmission = Task {
+                            do {
+                                _ = try await conversation.resolveHostAction(
+                                    interruptionID: interruptionID,
+                                    runID: runID,
+                                    stepID: stepID,
+                                    action: action
+                                )
+                            } catch is CancellationError {
+                            } catch {
+                                await conversation.setActivity(
+                                    "Action failed: \(error.localizedDescription)"
+                                )
+                            }
+
+                            await completion.markCompleted()
+                        }
+                        break
+                    }
+
                     await service(
                         workflowEvent,
                         conversation: conversation

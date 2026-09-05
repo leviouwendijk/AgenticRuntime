@@ -82,6 +82,51 @@ private actor ConversationRuntimeStateSink: AgentRunStateSink {
     }
 }
 
+private actor ConversationApprovalToolProbe {
+    private var invocationCount = 0
+
+    func recordInvocation() {
+        invocationCount += 1
+    }
+
+    func count() -> Int {
+        invocationCount
+    }
+}
+
+private struct ConversationApprovalTool: AgentTool {
+    typealias Input = AdapterFlowEchoToolInput
+    typealias Output = AdapterFlowEchoToolOutput
+
+    static let identifier: AgentToolIdentifier = "conversation_approval_tool"
+    static let description = "Bounded mutation fixture for conversation approval routing."
+    static let risk: ActionRisk = .boundedmutate
+
+    let probe: ConversationApprovalToolProbe
+
+    var identifier: AgentToolIdentifier {
+        Self.identifier
+    }
+
+    var description: String {
+        Self.description
+    }
+
+    var risk: ActionRisk {
+        Self.risk
+    }
+
+    func call(
+        _ input: Input,
+        context _: AgentToolExecutionContext
+    ) async throws -> Output {
+        await probe.recordInvocation()
+        return AdapterFlowEchoToolOutput(
+            text: input.text
+        )
+    }
+}
+
 enum AgenticRuntimeConversationFlowTesting {
     static func run() async throws -> [TestFlowDiagnostic] {
         let findCall = AgentToolCall(
@@ -562,6 +607,10 @@ enum AgenticRuntimeConversationFlowTesting {
             "stream-capable model allows streaming selection"
         )
 
+        try await proveEmbeddedApprovalAction(
+            workspaceRoot: workspaceRoot
+        )
+
         return [
             .field(
                 "workspace",
@@ -587,6 +636,187 @@ enum AgenticRuntimeConversationFlowTesting {
                 result.events
             ),
         ]
+    }
+
+    private static func proveEmbeddedApprovalAction(
+        workspaceRoot: URL
+    ) async throws {
+        let probe = ConversationApprovalToolProbe()
+        let call = AgentToolCall(
+            id: "conversation-approval-call",
+            name: ConversationApprovalTool.identifier.rawValue,
+            input: try JSONToolBridge.encode(
+                AdapterFlowEchoToolInput(
+                    text: "approved payload"
+                )
+            )
+        )
+        let toolResponse = AgentResponse(
+            message: .init(
+                role: .assistant,
+                content: .init(
+                    blocks: [
+                        .tool_call(
+                            call
+                        ),
+                    ]
+                )
+            ),
+            stopReason: .tool_use
+        )
+        let finalResponse = AgentResponse(
+            message: .init(
+                role: .assistant,
+                text: "conversation approval resumed"
+            ),
+            stopReason: .end_turn
+        )
+        let adapter = AdapterFlowScriptedModelAdapter(
+            streamBatches: [
+                [
+                    .toolcall(
+                        call
+                    ),
+                    .completed(
+                        toolResponse
+                    ),
+                ],
+                [
+                    .completed(
+                        finalResponse
+                    ),
+                ],
+            ]
+        )
+        let application = Agentic.application(
+            "conversation-approval-runtime-fixture"
+        ) {
+            tools {
+                ConversationApprovalTool(
+                    probe: probe
+                )
+            }
+            modelProvider(
+                ConversationRuntimeModelProvider(
+                    modelAdapter: adapter
+                )
+            )
+        }
+        let runtime = try await AgenticRuntime(
+            application: application
+        )
+        let conversation = try AgenticConversationSession(
+            runtime: runtime,
+            workspacePath: workspaceRoot.path,
+            sessionID: "conversation-approval-runtime"
+        )
+        let initial = try await conversation.submit(
+            .init(
+                body: "Request the bounded mutation.",
+                contents: [],
+                modelProfileID: "conversation-scripted",
+                skillIDs: [],
+                toolExposure: .all,
+                responseDelivery: .stream,
+                autonomyMode: .auto_observe
+            )
+        )
+        let suspendedSnapshot = await conversation.snapshot
+        let interruption: AgenticHostConsoleInterruptionPresentation = try Expect.notNil(
+            suspendedSnapshot.hostConsole.interruptions.first(
+                where: { interruption in
+                    interruption.runID == initial.sessionID
+                }
+            ),
+            "conversation approval interruption"
+        )
+
+        try Expect.equal(
+            initial.isAwaitingApproval,
+            true,
+            "conversation bounded mutation suspends for approval"
+        )
+        try Expect.equal(
+            await probe.count(),
+            0,
+            "conversation bounded mutation does not execute before approval"
+        )
+        try Expect.equal(
+            interruption.stepID,
+            call.id,
+            "conversation approval interruption retains exact tool call"
+        )
+        try Expect.equal(
+            interruption.actions,
+            [
+                AgenticHostConsoleAction.approve,
+                .deny,
+                .skip,
+            ],
+            "conversation approval interruption exposes resolvable actions"
+        )
+        try Expect.equal(
+            suspendedSnapshot.hostConsole.documents.contains(
+                where: { document in
+                    document.runID == initial.sessionID
+                        && document.stepID == call.id
+                        && document.kind == .details
+                }
+            ),
+            true,
+            "conversation approval exposes staged tool details"
+        )
+
+        let resumed = try await conversation.resolveHostAction(
+            interruptionID: interruption.id,
+            runID: interruption.runID,
+            stepID: interruption.stepID,
+            action: .approve
+        )
+        let completedSnapshot = await conversation.snapshot
+        let completedRun: AgenticHostConsoleRunPresentation = try Expect.notNil(
+            completedSnapshot.hostConsole.runs.first(
+                where: { run in
+                    run.id == resumed.sessionID
+                }
+            ),
+            "completed conversation approval run"
+        )
+
+        try Expect.equal(
+            resumed.isCompleted,
+            true,
+            "approved conversation run resumes to completion"
+        )
+        try Expect.equal(
+            await probe.count(),
+            1,
+            "approved conversation bounded mutation executes exactly once"
+        )
+        try Expect.equal(
+            completedRun.state,
+            AgenticHostConsoleRunState.completed,
+            "approved conversation run projects completed state"
+        )
+        try Expect.equal(
+            completedSnapshot.hostConsole.interruptions.contains(
+                where: { interruption in
+                    interruption.runID == resumed.sessionID
+                }
+            ),
+            false,
+            "resolved conversation approval interruption is removed"
+        )
+        try Expect.equal(
+            completedSnapshot.messages.last?.body,
+            Optional("conversation approval resumed"),
+            "approved conversation run updates the attached assistant message"
+        )
+        try Expect.equal(
+            await adapter.recordedRequests().count,
+            2,
+            "approved conversation run continues the model after tool execution"
+        )
     }
 
     static func runToolExposureSelection() async throws -> [TestFlowDiagnostic] {

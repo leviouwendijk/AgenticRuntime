@@ -9,6 +9,9 @@ import Foundation
 package enum AgenticConversationSessionError: Error, LocalizedError {
     case noModelProfiles
     case missingSkills([String])
+    case runUnavailable(String)
+    case staleApproval(runID: String, stepID: String)
+    case unsupportedHostAction(String)
 
     package var errorDescription: String? {
         switch self {
@@ -16,7 +19,37 @@ package enum AgenticConversationSessionError: Error, LocalizedError {
             return "The application has no registered model profiles."
         case .missingSkills(let identifiers):
             return "Unknown selected skill(s): \(identifiers.joined(separator: ", "))."
+        case .runUnavailable(let runID):
+            return "Conversation run '\(runID)' is no longer resumable."
+        case .staleApproval(let runID, let stepID):
+            return "Approval for run '\(runID)' step '\(stepID)' is no longer current."
+        case .unsupportedHostAction(let action):
+            return "Conversation runs do not support host action '\(action)'."
         }
+    }
+}
+
+private actor AgenticConversationHistoryStore: AgentHistoryStore {
+    private var checkpoints: [String: AgentHistoryCheckpoint] = [:]
+
+    func loadCheckpoint(
+        sessionID: String
+    ) async throws -> AgentHistoryCheckpoint? {
+        checkpoints[sessionID]
+    }
+
+    func saveCheckpoint(
+        _ checkpoint: AgentHistoryCheckpoint
+    ) async throws {
+        checkpoints[checkpoint.id] = checkpoint
+    }
+
+    func deleteCheckpoint(
+        sessionID: String
+    ) async throws {
+        checkpoints.removeValue(
+            forKey: sessionID
+        )
     }
 }
 
@@ -32,6 +65,8 @@ package actor AgenticConversationSession:
     private var nextOrdinal: Int
     private var runInputs: [String: String]
     private var runOutputs: [String: String]
+    private let historyStore: AgenticConversationHistoryStore
+    private var runnersByRunID: [String: AgentRunner]
     private var activeRunID: String?
     private var activeRunTitle: String?
     private var liveRunState: AgentRunStateSnapshot?
@@ -93,6 +128,8 @@ package actor AgenticConversationSession:
         self.nextOrdinal = 1
         self.runInputs = [:]
         self.runOutputs = [:]
+        self.historyStore = AgenticConversationHistoryStore()
+        self.runnersByRunID = [:]
         self.activeRunID = nil
         self.activeRunTitle = nil
         self.liveRunState = nil
@@ -314,36 +351,136 @@ package actor AgenticConversationSession:
             configuration: .init(
                 maximumIterations: 12,
                 autonomyMode: submission.autonomyMode,
+                historyPersistenceMode: .checkpointmutation,
                 toolExposure: toolExposure,
                 responseDelivery: snapshot.selectedResponseDelivery
             ),
             toolRegistry: runtime.tools,
             workspace: workspace,
+            historyStore: historyStore,
             stateSinks: [
                 self,
             ]
         )
+        runnersByRunID[runID] = runner
+
         let result = try await runner.run(
             request,
             sessionID: runID
         )
 
+        return try await consume(
+            result,
+            runID: runID,
+            runTitle: runTitle,
+            renderedInput: renderedInput
+        )
+    }
+
+    @discardableResult
+    package func resolveHostAction(
+        interruptionID: String,
+        runID: String,
+        stepID: String,
+        action: AgenticHostConsoleAction
+    ) async throws -> AgentRunResult {
+        let decision: ApprovalDecision
+
+        switch action {
+        case .approve:
+            decision = .approved
+        case .deny:
+            decision = .denied
+        case .skip:
+            decision = .skipped
+        case .continueRun,
+             .stopRun,
+             .retry,
+             .createFixBranch:
+            throw AgenticConversationSessionError.unsupportedHostAction(
+                action.rawValue
+            )
+        }
+
+        guard let interruption = snapshot.hostConsole.interruptions.first(
+            where: { candidate in
+                candidate.id == interruptionID
+                    && candidate.runID == runID
+                    && candidate.stepID == stepID
+                    && candidate.kind == .approval
+                    && candidate.actions.contains(action)
+            }
+        ) else {
+            throw AgenticConversationSessionError.staleApproval(
+                runID: runID,
+                stepID: stepID
+            )
+        }
+        _ = interruption
+
+        guard let checkpoint = try await historyStore.loadCheckpoint(
+            sessionID: runID
+        ),
+              checkpoint.pendingApproval?.toolCall.id == stepID
+        else {
+            throw AgenticConversationSessionError.staleApproval(
+                runID: runID,
+                stepID: stepID
+            )
+        }
+
+        guard let runner = runnersByRunID[runID] else {
+            throw AgenticConversationSessionError.runUnavailable(
+                runID
+            )
+        }
+
+        let runTitle = snapshot.hostConsole.runs.first(
+            where: { run in
+                run.id == runID
+            }
+        )?.title ?? runID
+
+        activeRunID = runID
+        activeRunTitle = runTitle
+        liveRunState = nil
+        liveAssistantText = nil
+        snapshot.activity = "applying \(action.title.lowercased())"
+
+        let result = try await runner.resume(
+            sessionID: runID,
+            approvalDecision: decision,
+            metadata: [
+                "conversation_host_action": action.rawValue,
+                "conversation_interruption_id": interruptionID,
+                "conversation_step_id": stepID,
+            ]
+        )
+
+        return try await consume(
+            result,
+            runID: runID,
+            runTitle: runTitle
+        )
+    }
+
+    private func consume(
+        _ result: AgentRunResult,
+        runID: String,
+        runTitle: String,
+        renderedInput: String? = nil
+    ) async throws -> AgentRunResult {
         transcript = result.state.messages.filter {
             $0.role != .system
         }
 
         let projection = AgenticConversationRunProjection.project(
             result,
-            title: "conversation turn \(turnOrdinal)"
+            title: runTitle
         )
-        upsertRun(
-            projection.run
-        )
-        snapshot.hostConsole.documents.removeAll { document in
-            document.runID == runID
-        }
-        snapshot.hostConsole.documents.append(
-            contentsOf: projection.documents
+        refreshRunProjection(
+            projection,
+            runID: runID
         )
 
         let responseText = result.response?.message.content.text
@@ -367,6 +504,7 @@ package actor AgenticConversationSession:
             runID: runID,
             body: body
         )
+
         if let failure = result.failure {
             snapshot.activity = "run failed"
             upsertFailureStatus(
@@ -385,7 +523,10 @@ package actor AgenticConversationSession:
         activeRunID = nil
         activeRunTitle = nil
 
-        runInputs[runID] = renderedInput
+        if let renderedInput {
+            runInputs[runID] = renderedInput
+        }
+
         let encoder = JSONEncoder()
         encoder.outputFormatting = [
             .prettyPrinted,
@@ -396,6 +537,15 @@ package actor AgenticConversationSession:
             decoding: try encoder.encode(result),
             as: UTF8.self
         )
+
+        if result.isCompleted || result.isFailed {
+            runnersByRunID.removeValue(
+                forKey: runID
+            )
+            try await historyStore.deleteCheckpoint(
+                sessionID: runID
+            )
+        }
 
         return result
     }
@@ -477,14 +627,9 @@ package actor AgenticConversationSession:
             title: activeRunTitle ?? state.sessionID
         )
 
-        upsertRun(
-            projection.run
-        )
-        snapshot.hostConsole.documents.removeAll { document in
-            document.runID == state.sessionID
-        }
-        snapshot.hostConsole.documents.append(
-            contentsOf: projection.documents
+        refreshRunProjection(
+            projection,
+            runID: state.sessionID
         )
 
         if let visibleBody,
@@ -575,6 +720,27 @@ package actor AgenticConversationSession:
         }
 
         snapshot.messages[index].body = body
+    }
+
+    private func refreshRunProjection(
+        _ projection: AgenticConversationRunProjection,
+        runID: String
+    ) {
+        upsertRun(
+            projection.run
+        )
+        snapshot.hostConsole.documents.removeAll { document in
+            document.runID == runID
+        }
+        snapshot.hostConsole.documents.append(
+            contentsOf: projection.documents
+        )
+        snapshot.hostConsole.interruptions.removeAll { interruption in
+            interruption.runID == runID
+        }
+        snapshot.hostConsole.interruptions.append(
+            contentsOf: projection.interruptions
+        )
     }
 
     private func upsertRun(
