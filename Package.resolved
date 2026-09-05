@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticAdapters.git",
       "state" : {
         "branch" : "master",
-        "revision" : "853505766b19c6e9b07a61da622e03fdbfdf70e9"
+        "revision" : "8713f7eaeab6728ff313c8127197d577845f193c"
       }
     },
     {
@@ -25,7 +25,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticExecution.git",
       "state" : {
         "branch" : "master",
-        "revision" : "d173e2005674ac660ba94517f4658d25d96541a6"
+        "revision" : "2ef11661392cf133052395ea388879b3adfd6db3"
       }
     },
     {
@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "cfea4ed8211b88f1345366e0adca5d6a43168c5d"
+        "revision" : "6ed1590906f068012de9662f81b078f181102dd8"
       }
     },
     {
@@ -133,7 +133,7 @@
       "location" : "https://github.com/leviouwendijk/Cryptography.git",
       "state" : {
         "branch" : "master",
-        "revision" : "3be08763e9ecd9f1d965cb75c56d078bf906240f"
+        "revision" : "a2defab97ca01f4a05975b1265e0b67ed863094f"
       }
     },
     {

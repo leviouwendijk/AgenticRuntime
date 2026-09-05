@@ -247,6 +247,11 @@ enum AgenticRuntimeConversationFlowTesting {
             "final response"
         )
         try Expect.equal(
+            AgentRunnerConfiguration.default.autonomyMode,
+            AutonomyMode.auto_observe,
+            "runner configuration defaults to auto observe"
+        )
+        try Expect.equal(
             requests.count,
             3,
             "model request count"
@@ -296,6 +301,11 @@ enum AgenticRuntimeConversationFlowTesting {
             "conversation response delivery metadata"
         )
         try Expect.equal(
+            requests.first?.metadata["conversation_autonomy_mode"],
+            AutonomyMode.auto_observe.rawValue,
+            "conversation autonomy metadata"
+        )
+        try Expect.equal(
             conversationSnapshot.selectedResponseDelivery,
             AgentModelResponseDelivery.stream,
             "conversation retains streaming response delivery"
@@ -304,6 +314,11 @@ enum AgenticRuntimeConversationFlowTesting {
             conversationSnapshot.selectedToolExposure,
             AgenticConversationToolExposure.discovery,
             "conversation retains discovery exposure selection"
+        )
+        try Expect.equal(
+            conversationSnapshot.selectedAutonomyMode,
+            AutonomyMode.auto_observe,
+            "conversation retains auto-observe autonomy selection"
         )
         try Expect.contains(
             requests.first?.messages.first?.content.text ?? "",

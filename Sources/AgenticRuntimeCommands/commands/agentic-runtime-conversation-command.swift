@@ -232,6 +232,15 @@ private enum AgenticConversationConsole {
                         await conversation.presentationSnapshot()
                     )
 
+                case .autonomySelectionChanged(let mode):
+                    guard activeSubmission == nil else {
+                        break
+                    }
+                    await conversation.selectAutonomy(mode)
+                    control.update(
+                        await conversation.presentationSnapshot()
+                    )
+
                 case .toolExposureSelectionChanged(let exposure):
                     guard activeSubmission == nil else {
                         break

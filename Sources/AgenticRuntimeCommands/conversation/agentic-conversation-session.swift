@@ -115,6 +115,7 @@ package actor AgenticConversationSession:
                 selectedProfile.capabilities.contains(.streaming)
                     ? .stream
                     : .buffered,
+            selectedAutonomyMode: .auto_observe,
             skills: skills,
             hostConsole: .init(
                 context: workspace.rootURL.path
@@ -153,6 +154,13 @@ package actor AgenticConversationSession:
 
         snapshot.selectedResponseDelivery = delivery
         snapshot.activity = "\(delivery.rawValue) response delivery selected"
+    }
+
+    package func selectAutonomy(
+        _ mode: AutonomyMode
+    ) {
+        snapshot.selectedAutonomyMode = mode
+        snapshot.activity = "\(mode.rawValue) autonomy selected"
     }
 
     package func selectSkills(
@@ -197,6 +205,7 @@ package actor AgenticConversationSession:
     ) async throws -> AgentRunResult {
         selectModel(submission.modelProfileID)
         selectResponseDelivery(submission.responseDelivery)
+        selectAutonomy(submission.autonomyMode)
         selectSkills(submission.skillIDs)
         selectToolExposure(submission.toolExposure)
 
@@ -297,12 +306,14 @@ package actor AgenticConversationSession:
                 "conversation_tool_exposure": submission.toolExposure.rawValue,
                 "conversation_response_delivery":
                     snapshot.selectedResponseDelivery.rawValue,
+                "conversation_autonomy_mode": submission.autonomyMode.rawValue,
             ]
         )
         let runner = AgentRunner(
             adapter: adapter,
             configuration: .init(
                 maximumIterations: 12,
+                autonomyMode: submission.autonomyMode,
                 toolExposure: toolExposure,
                 responseDelivery: snapshot.selectedResponseDelivery
             ),

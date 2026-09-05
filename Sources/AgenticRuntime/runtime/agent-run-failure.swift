@@ -36,14 +36,26 @@ public struct AgentRunFailure: Sendable, Codable, Hashable {
         _ error: Error
     ) -> Self {
         let nsError = error as NSError
+        var metadata = [
+            "error_domain": nsError.domain,
+            "error_code": String(nsError.code),
+        ]
+
+        for (key, value) in nsError.userInfo {
+            guard key.hasPrefix("agentic_"),
+                  let value = value as? String
+            else {
+                continue
+            }
+
+            metadata[String(key.dropFirst("agentic_".count))] =
+                value
+        }
 
         return .init(
             kind: .model_invocation_failed,
             message: error.localizedDescription,
-            metadata: [
-                "error_domain": nsError.domain,
-                "error_code": String(nsError.code),
-            ]
+            metadata: metadata
         )
     }
 }
