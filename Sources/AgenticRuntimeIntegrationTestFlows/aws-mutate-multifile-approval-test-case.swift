@@ -22,7 +22,7 @@ enum AWSMutateMultiFileApprovalTestCase {
     static func run(
         _ arguments: [String]
     ) async throws {
-        let configuration = try AWSRefactorApprovalConfiguration.parse(
+        let configuration = try AWSMutationApprovalConfiguration.parse(
             arguments
         )
         let workspaceRoot = try AgenticInterfaceTestEnvironment.workspaceRoot()
@@ -120,7 +120,6 @@ enum AWSMutateMultiFileApprovalTestCase {
         13. For private members inside the struct body, inserted source lines normally start with 4 spaces.
         14. For statements inside function bodies, replacement source lines normally start with 8 spaces.
         15. Do not include expected, expectedLines, or read_file display gutters.
-        16. Never call edit_file or write_file in this test.
         17. After one successful mutate_files result, stop calling tools and briefly summarize.
 
         Required edits in \(AWSMultiFileMutationFixture.userFormatterPath):
@@ -171,7 +170,6 @@ enum AWSMutateMultiFileApprovalTestCase {
                         Then call read_file for \(AWSMultiFileMutationFixture.dogFormatterPath).
                         Only after both reads succeed, call mutate_files exactly once.
                         Never call mutate_files before both files have been read.
-                        Never call edit_file or write_file in this test.
 
                         The single mutate_files call must contain exactly two edit_text entries.
                         Entry 1 must target \(AWSMultiFileMutationFixture.userFormatterPath) and contain exactly two operations.
@@ -311,7 +309,7 @@ enum AWSMutateMultiFileApprovalTestCase {
 
             let resumed = try await runner.resume(
                 sessionID: initialResult.sessionID,
-                approvalDecision: .skipped,
+                approvalDecision: ApprovalDecision.skipped,
                 metadata: [
                     "summary": "skipped AWS multi-file mutate_files refactor from aginttest terminal interface"
                 ]

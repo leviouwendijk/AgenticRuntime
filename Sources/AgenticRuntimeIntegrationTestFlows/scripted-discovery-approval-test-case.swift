@@ -105,7 +105,6 @@ enum ScriptedProjectDiscoveryApprovalTestCase {
 
         You are not being given file names up front.
         Discover project files, read what you think is relevant, and then stage one coherent mutate_files pass.
-        Do not call write_file or edit_file.
         """
 
         try await presenter.present(
@@ -129,8 +128,7 @@ enum ScriptedProjectDiscoveryApprovalTestCase {
                         4. Then read the second relevant formatter source file.
                         5. After both formatter reads have succeeded, call mutate_files exactly once.
                         6. Never call mutate_files before both formatter files have been read.
-                        7. Never call write_file or edit_file in this test.
-                        8. After one successful mutate_files result, stop calling tools and summarize.
+                        7. After one successful mutate_files result, stop calling tools and summarize.
                         """
                     ),
                     .init(

@@ -32,7 +32,6 @@ struct AgenticInterfaceTestCatalog: Sendable {
     static func standard() -> Self {
         .init(
             tests: [
-                AppleWriteApprovalTestCase.make(),
                 AppleMutateApprovalTestCase.make(),
 
                 ScriptedMutateFilesApprovalTestCase.makeDeny(),
@@ -74,7 +73,6 @@ struct AgenticInterfaceTestCatalog: Sendable {
                 ModeCommandInvocationTestCase.makeRejectsUnknownModeBeforeExecution(),
 
                 AWSAdapterCallTestCase.make(),
-                AWSRefactorApprovalTestCase.make(),
                 AWSMutateRefactorApprovalTestCase.make(),
                 AWSMutateMultiFileApprovalTestCase.make(),
                 AWSModelRoutingAdvisorTestCase.make(),

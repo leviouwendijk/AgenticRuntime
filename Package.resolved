@@ -7,7 +7,7 @@
       "location" : "https://github.com/leviouwendijk/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "8b47dae6140dc551f63a2efb41ecdc8fa30f2abf"
+        "revision" : "851b38f0ff563cef4d2416c167a0e1e93617177c"
       }
     },
     {
@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticAdapters.git",
       "state" : {
         "branch" : "master",
-        "revision" : "74601091a1b5f3310088bcc53772c45844399811"
+        "revision" : "853505766b19c6e9b07a61da622e03fdbfdf70e9"
       }
     },
     {
@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "1319ccd8d7c768571c3e6755a30182db54833686"
+        "revision" : "cfea4ed8211b88f1345366e0adca5d6a43168c5d"
       }
     },
     {
@@ -43,7 +43,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticIO.git",
       "state" : {
         "branch" : "master",
-        "revision" : "024141ce5124d38c2fae9f1648fcb11b4ce92dde"
+        "revision" : "253bdfaab0e5fba0181592a16a8b374657f8615d"
       }
     },
     {
@@ -106,7 +106,7 @@
       "location" : "https://github.com/leviouwendijk/AWSConnector.git",
       "state" : {
         "branch" : "master",
-        "revision" : "4793806c37c357d7bb7b6819bdc12bc3d2710f1c"
+        "revision" : "eafa6908e30c91df3644999d5f00b3c479f7cd39"
       }
     },
     {
@@ -133,7 +133,7 @@
       "location" : "https://github.com/leviouwendijk/Cryptography.git",
       "state" : {
         "branch" : "master",
-        "revision" : "ba5df7a99c519e0c6448303b4c6490dbf08a356a"
+        "revision" : "3be08763e9ecd9f1d965cb75c56d078bf906240f"
       }
     },
     {

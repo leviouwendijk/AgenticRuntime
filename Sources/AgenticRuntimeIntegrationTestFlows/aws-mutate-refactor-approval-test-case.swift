@@ -22,7 +22,7 @@ enum AWSMutateRefactorApprovalTestCase {
     static func run(
         _ arguments: [String]
     ) async throws {
-        let configuration = try AWSRefactorApprovalConfiguration.parse(
+        let configuration = try AWSMutationApprovalConfiguration.parse(
             arguments
         )
         let workspaceRoot = try AgenticInterfaceTestEnvironment.workspaceRoot()
@@ -31,7 +31,7 @@ enum AWSMutateRefactorApprovalTestCase {
         )
 
         try AgenticInterfaceTestEnvironment.writeWorkspaceFile(
-            AWSRefactorFixture.content,
+            AWSMutationRefactorFixture.content,
             to: configuration.targetPath
         )
 
@@ -141,7 +141,6 @@ enum AWSMutateRefactorApprovalTestCase {
                         For replace_lines operations, include range and lines.
                         For delete_lines operations, include range.
                         Never include expected or expectedLines.
-                        Never call edit_file or write_file in this test.
                         After one successful mutate_files result, stop calling tools and summarize.
                         Make one small reviewable edit.
                         """
@@ -247,7 +246,7 @@ enum AWSMutateRefactorApprovalTestCase {
 
             let resumed = try await runner.resume(
                 sessionID: initialResult.sessionID,
-                approvalDecision: .skipped,
+                approvalDecision: ApprovalDecision.skipped,
                 metadata: [
                     "summary": "skipped AWS mutate_files refactor from aginttest terminal interface"
                 ]

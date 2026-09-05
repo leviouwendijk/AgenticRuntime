@@ -174,7 +174,7 @@ enum AWSModelRoutingAdvisorTestCase {
             - which advice the advisor gave
             - why this proves model routing delegation works
 
-            Do not call mutate_files, write_file, or edit_file.
+            Do not call mutate_files.
             """
 
         try await presenter.present(

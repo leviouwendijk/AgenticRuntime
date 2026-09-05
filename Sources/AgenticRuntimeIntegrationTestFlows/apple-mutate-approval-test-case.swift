@@ -21,7 +21,7 @@ enum AppleMutateApprovalTestCase {
     static func run(
         _ arguments: [String]
     ) async throws {
-        let configuration = try AppleWriteApprovalConfiguration.parse(
+        let configuration = try AppleMutationApprovalConfiguration.parse(
             arguments
         )
         let workspaceRoot = try AgenticInterfaceTestEnvironment.workspaceRoot()
@@ -155,7 +155,7 @@ enum AppleMutateApprovalTestCase {
 
             let resumed = try await runner.resume(
                 sessionID: initialResult.sessionID,
-                approvalDecision: .approved,
+                approvalDecision: ApprovalDecision.approved,
                 metadata: [
                     "summary": "approved apple mutate_files from aginttest terminal interface"
                 ]
@@ -174,7 +174,7 @@ enum AppleMutateApprovalTestCase {
 
             let resumed = try await runner.resume(
                 sessionID: initialResult.sessionID,
-                approvalDecision: .denied,
+                approvalDecision: ApprovalDecision.denied,
                 metadata: [
                     "summary": "denied apple mutate_files from aginttest terminal interface"
                 ]
@@ -193,7 +193,7 @@ enum AppleMutateApprovalTestCase {
 
             let resumed = try await runner.resume(
                 sessionID: initialResult.sessionID,
-                approvalDecision: .skipped,
+                approvalDecision: ApprovalDecision.skipped,
                 metadata: [
                     "summary": "skipped from aginttest terminal interface"
                 ]
