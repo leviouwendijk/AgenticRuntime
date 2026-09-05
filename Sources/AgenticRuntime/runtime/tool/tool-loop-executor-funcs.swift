@@ -534,6 +534,11 @@ extension ToolLoopExecutor {
         checkpoint.exposedToolIdentifiers = try await toolExposure.identifiers(
             in: toolRegistry
         )
+        checkpoint.touch()
+
+        await publishRunState(
+            checkpoint
+        )
 
         guard configuration.persistsHistory else {
             return
@@ -543,11 +548,27 @@ extension ToolLoopExecutor {
             return
         }
 
-        checkpoint.touch()
-
         try await historyStore.saveCheckpoint(
             checkpoint
         )
+    }
+
+    func publishRunState(
+        _ checkpoint: AgentHistoryCheckpoint
+    ) async {
+        guard !stateSinks.isEmpty else {
+            return
+        }
+
+        let snapshot = AgentRunStateSnapshot(
+            checkpoint: checkpoint
+        )
+
+        for sink in stateSinks {
+            await sink.publish(
+                snapshot
+            )
+        }
     }
 
     func appendRunEvent(

@@ -15,6 +15,7 @@ public extension AgentRunner {
         approvalHandler: (any ToolApprovalHandler)? = nil,
         historyStore: (any AgentHistoryStore)? = nil,
         eventSinks: [any AgentRunEventSink] = [],
+        stateSinks: [any AgentRunStateSink] = [],
         costTracker: AgentCostTracker? = nil
     ) {
         self.init(
@@ -29,6 +30,7 @@ public extension AgentRunner {
             approvalHandler: approvalHandler,
             historyStore: historyStore,
             eventSinks: eventSinks,
+            stateSinks: stateSinks,
             costTracker: costTracker
         )
     }

@@ -14,6 +14,7 @@ public struct ToolLoopExecutor: Sendable {
     public let approvalHandler: (any ToolApprovalHandler)?
     public let historyStore: (any AgentHistoryStore)?
     public let eventSinks: [any AgentRunEventSink]
+    public let stateSinks: [any AgentRunStateSink]
     public let costTracker: AgentCostTracker?
 
     public init(
@@ -26,6 +27,7 @@ public struct ToolLoopExecutor: Sendable {
         approvalHandler: (any ToolApprovalHandler)? = nil,
         historyStore: (any AgentHistoryStore)? = nil,
         eventSinks: [any AgentRunEventSink] = [],
+        stateSinks: [any AgentRunStateSink] = [],
         costTracker: AgentCostTracker? = nil
     ) {
         self.adapter = adapter
@@ -37,6 +39,7 @@ public struct ToolLoopExecutor: Sendable {
         self.approvalHandler = approvalHandler
         self.historyStore = historyStore
         self.eventSinks = eventSinks
+        self.stateSinks = stateSinks
         self.costTracker = costTracker
     }
 

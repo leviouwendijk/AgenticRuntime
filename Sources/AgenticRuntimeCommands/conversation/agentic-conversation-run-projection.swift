@@ -8,6 +8,57 @@ package struct AgenticConversationRunProjection {
     package var documents: [AgenticHostConsoleDocumentPresentation]
 
     package static func project(
+        _ state: AgentRunStateSnapshot,
+        title: String
+    ) -> Self {
+        guard !state.toolUses.isEmpty else {
+            return .init(
+                run: .init(
+                    id: state.sessionID,
+                    title: title,
+                    summary:
+                        state.failure?.message
+                            ?? state.lastResponse?.message.content.text
+                            ?? state.partialResponse?.message.content.text,
+                    state: runState(
+                        for: state.phase
+                    ),
+                    steps: []
+                ),
+                documents: []
+            )
+        }
+
+        var projection = project(
+            AgentRunResult(
+                sessionID: state.sessionID,
+                response: state.lastResponse,
+                suspension: state.suspension,
+                pendingApproval: state.pendingApproval,
+                failure: state.failure,
+                state: state.state,
+                events: state.events,
+                toolUses: state.toolUses,
+                costRecord: state.costRecord
+            ),
+            title: title
+        )
+
+        projection.run.state = runState(
+            for: state.phase
+        )
+
+        if projection.run.summary == nil {
+            projection.run.summary =
+                state.failure?.message
+                    ?? state.lastResponse?.message.content.text
+                    ?? state.partialResponse?.message.content.text
+        }
+
+        return projection
+    }
+
+    package static func project(
         _ result: AgentRunResult,
         title: String
     ) -> Self {
@@ -708,6 +759,30 @@ package struct AgenticConversationRunProjection {
         }
 
         return text
+    }
+
+    private static func runState(
+        for phase: AgentHistoryPhase
+    ) -> AgenticHostConsoleRunState {
+        switch phase {
+        case .ready_for_model,
+             .receiving_model_response,
+             .processing_tool_calls:
+            return .active
+
+        case .suspended,
+             .interrupted:
+            return .paused
+
+        case .awaiting_approval:
+            return .awaitingApproval
+
+        case .failed:
+            return .failed
+
+        case .completed:
+            return .completed
+        }
     }
 
     private static func runState(

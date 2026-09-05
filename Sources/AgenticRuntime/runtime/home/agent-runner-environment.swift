@@ -12,6 +12,7 @@ public extension AgentRunner {
         toolRegistry: ToolRegistry = .init(),
         extensions: [any AgentHarnessExtension] = [],
         approvalHandler: (any ToolApprovalHandler)? = nil,
+        stateSinks: [any AgentRunStateSink] = [],
         costTracker: AgentCostTracker? = nil,
         enableHistoryPersistence: Bool = true
     ) throws {
@@ -38,6 +39,7 @@ public extension AgentRunner {
             approvalHandler: approvalHandler,
             historyStore: stores.historyStore,
             eventSinks: stores.eventSinks,
+            stateSinks: stateSinks,
             costTracker: costTracker
         )
     }

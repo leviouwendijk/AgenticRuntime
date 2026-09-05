@@ -28,6 +28,18 @@ private struct ConversationRuntimeProfileProvider:
                 latency: .low,
                 privacy: .local_private
             ),
+            .init(
+                identifier: "conversation-buffered",
+                adapterIdentifier: "conversation-scripted",
+                model: "buffered",
+                title: "Z Conversation Buffered",
+                capabilities: [
+                    .text,
+                ],
+                cost: .free,
+                latency: .low,
+                privacy: .local_private
+            ),
         ]
     }
 }
@@ -51,6 +63,22 @@ private struct ConversationRuntimeModelProvider:
 
     var profileProvider: (any AgentModelProfileProvider)? {
         ConversationRuntimeProfileProvider()
+    }
+}
+
+private actor ConversationRuntimeStateSink: AgentRunStateSink {
+    private var values: [AgentRunStateSnapshot] = []
+
+    func publish(
+        _ snapshot: AgentRunStateSnapshot
+    ) async {
+        values.append(
+            snapshot
+        )
+    }
+
+    func snapshots() -> [AgentRunStateSnapshot] {
+        values
     }
 }
 
@@ -108,7 +136,17 @@ enum AgenticRuntimeConversationFlowTesting {
             ),
             stopReason: .end_turn
         )
+        let bufferedResponse = AgentResponse(
+            message: .init(
+                role: .assistant,
+                text: "conversation buffered ok"
+            ),
+            stopReason: .end_turn
+        )
         let scriptedAdapter = AdapterFlowScriptedModelAdapter(
+            bufferedResponses: [
+                bufferedResponse,
+            ],
             streamBatches: [
                 [
                     .toolcall(
@@ -161,7 +199,7 @@ enum AgenticRuntimeConversationFlowTesting {
             try? FileManager.default.removeItem(at: workspaceRoot)
         }
 
-        var conversation = try AgenticConversationSession(
+        let conversation = try AgenticConversationSession(
             runtime: runtime,
             workspacePath: workspaceRoot.path,
             sessionID: "conversation-runtime"
@@ -180,18 +218,26 @@ enum AgenticRuntimeConversationFlowTesting {
             ],
             modelProfileID: "conversation-scripted",
             skillIDs: [],
-            toolExposure: .discovery
+            toolExposure: .discovery,
+            responseDelivery: .stream
         )
         let result = try await conversation.submit(
             submission
         )
         let requests = await scriptedAdapter.recordedRequests()
+        let conversationSnapshot = await conversation.snapshot
+        let retainedInput = await conversation.input(
+            for: result.sessionID
+        )
+        let retainedOutput = await conversation.output(
+            for: result.sessionID
+        )
         let run: AgenticHostConsoleRunPresentation = try Expect.notNil(
-            conversation.snapshot.hostConsole.runs.first,
+            conversationSnapshot.hostConsole.runs.first,
             "attached host run"
         )
         let assistant: AgenticConversationMessagePresentation = try Expect.notNil(
-            conversation.snapshot.messages.last,
+            conversationSnapshot.messages.last,
             "assistant message"
         )
 
@@ -245,7 +291,17 @@ enum AgenticRuntimeConversationFlowTesting {
             "conversation tool exposure metadata"
         )
         try Expect.equal(
-            conversation.snapshot.selectedToolExposure,
+            requests.first?.metadata["conversation_response_delivery"],
+            "stream",
+            "conversation response delivery metadata"
+        )
+        try Expect.equal(
+            conversationSnapshot.selectedResponseDelivery,
+            AgentModelResponseDelivery.stream,
+            "conversation retains streaming response delivery"
+        )
+        try Expect.equal(
+            conversationSnapshot.selectedToolExposure,
             AgenticConversationToolExposure.discovery,
             "conversation retains discovery exposure selection"
         )
@@ -291,17 +347,17 @@ enum AgenticRuntimeConversationFlowTesting {
             "attached tool outcome"
         )
         try Expect.contains(
-            conversation.input(for: result.sessionID) ?? "",
+            retainedInput ?? "",
             "# Transcribed content: Pinned note",
             "retained transcribed content heading"
         )
         try Expect.contains(
-            conversation.input(for: result.sessionID) ?? "",
+            retainedInput ?? "",
             "exact pinned body",
             "retained run input"
         )
         try Expect.contains(
-            conversation.output(for: result.sessionID) ?? "",
+            retainedOutput ?? "",
             "\"sessionID\" : \"conversation-runtime-turn-1\"",
             "retained run output"
         )
@@ -315,7 +371,7 @@ enum AgenticRuntimeConversationFlowTesting {
         )
 
         let documents =
-            conversation.snapshot.hostConsole.documents
+            conversationSnapshot.hostConsole.documents
         let findDetails = documents.first {
             $0.stepID == findCall.id
                 && $0.kind == .details
@@ -419,10 +475,82 @@ enum AgenticRuntimeConversationFlowTesting {
             "echo structured details preserve non-stream observation"
         )
 
+        let bufferedResult = try await conversation.submit(
+            AgenticConversationSubmission(
+                body: "Use buffered delivery.",
+                contents: [],
+                modelProfileID: "conversation-scripted",
+                skillIDs: [],
+                toolExposure: .discovery,
+                responseDelivery: .buffered
+            )
+        )
+        let requestsAfterBuffered = await scriptedAdapter.recordedRequests()
+        let snapshotAfterBuffered = await conversation.snapshot
+
+        try Expect.equal(
+            bufferedResult.response?.message.content.text,
+            "conversation buffered ok",
+            "buffered conversation response"
+        )
+        try Expect.equal(
+            requestsAfterBuffered.count,
+            4,
+            "buffered conversation adds one model request"
+        )
+        try Expect.equal(
+            requestsAfterBuffered.last?.metadata[
+                "conversation_response_delivery"
+            ],
+            "buffered",
+            "buffered response delivery metadata"
+        )
+        try Expect.equal(
+            snapshotAfterBuffered.selectedResponseDelivery,
+            AgentModelResponseDelivery.buffered,
+            "buffered selection remains visible in conversation state"
+        )
+
+        await conversation.selectModel(
+            "conversation-buffered"
+        )
+        let nonStreamingModelSnapshot = await conversation.snapshot
+
+        try Expect.equal(
+            nonStreamingModelSnapshot.selectedResponseDelivery,
+            AgentModelResponseDelivery.buffered,
+            "non-streaming model coerces response delivery to buffered"
+        )
+
+        await conversation.selectResponseDelivery(
+            .stream
+        )
+        let rejectedStreamingSnapshot = await conversation.snapshot
+
+        try Expect.equal(
+            rejectedStreamingSnapshot.selectedResponseDelivery,
+            AgentModelResponseDelivery.buffered,
+            "non-streaming model rejects streaming selection"
+        )
+
+        await conversation.selectModel(
+            "conversation-scripted"
+        )
+        await conversation.selectResponseDelivery(
+            .stream
+        )
+        let restoredStreamingSnapshot = await conversation.snapshot
+
+        try Expect.equal(
+            restoredStreamingSnapshot.selectedResponseDelivery,
+            AgentModelResponseDelivery.stream,
+            "stream-capable model allows streaming selection"
+        )
+
         return [
             .field(
                 "workspace",
-                conversation.snapshot.workspace
+                conversationSnapshot.workspace
             ),
             .field(
                 "model_calls",
@@ -493,7 +621,7 @@ enum AgenticRuntimeConversationFlowTesting {
             )
         }
 
-        var conversation = try AgenticConversationSession(
+        let conversation = try AgenticConversationSession(
             runtime: runtime,
             workspacePath: workspaceRoot.path,
             sessionID: "conversation-tool-exposure-runtime"
@@ -509,6 +637,7 @@ enum AgenticRuntimeConversationFlowTesting {
         )
 
         let requests = await adapter.recordedRequests()
+        let conversationSnapshot = await conversation.snapshot
         let first = try Expect.notNil(
             requests.first,
             "all-tools conversation request"
@@ -528,7 +657,7 @@ enum AgenticRuntimeConversationFlowTesting {
             "all exposure metadata"
         )
         try Expect.equal(
-            conversation.snapshot.selectedToolExposure,
+            conversationSnapshot.selectedToolExposure,
             AgenticConversationToolExposure.all,
             "conversation retains all-tools selection"
         )
@@ -545,7 +674,7 @@ enum AgenticRuntimeConversationFlowTesting {
             ),
             .field(
                 "exposure",
-                conversation.snapshot.selectedToolExposure.rawValue
+                conversationSnapshot.selectedToolExposure.rawValue
             ),
         ]
     }
@@ -837,7 +966,7 @@ enum AgenticRuntimeConversationFlowTesting {
             )
         }
 
-        var conversation = try AgenticConversationSession(
+        let conversation = try AgenticConversationSession(
             runtime: runtime,
             workspacePath: workspaceRoot.path,
             sessionID: "conversation-failed-runtime"
@@ -851,12 +980,19 @@ enum AgenticRuntimeConversationFlowTesting {
             )
         )
         let requests = await conversationAdapter.recordedRequests()
+        let conversationSnapshot = await conversation.snapshot
+        let retainedInput = await conversation.input(
+            for: result.sessionID
+        )
+        let retainedOutput = await conversation.output(
+            for: result.sessionID
+        )
         let run: AgenticHostConsoleRunPresentation = try Expect.notNil(
-            conversation.snapshot.hostConsole.runs.first,
+            conversationSnapshot.hostConsole.runs.first,
             "failed conversation retains attached host run"
         )
         let assistant: AgenticConversationMessagePresentation = try Expect.notNil(
-            conversation.snapshot.messages.last,
+            conversationSnapshot.messages.last,
             "failed conversation retains assistant presentation"
         )
         let failure: AgentRunFailure = try Expect.notNil(
@@ -909,22 +1045,22 @@ enum AgenticRuntimeConversationFlowTesting {
             "failed run exposes terminal failure step"
         )
         try Expect.equal(
-            conversation.snapshot.activity,
+            conversationSnapshot.activity,
             "run failed",
             "failed conversation activity"
         )
         try Expect.contains(
-            conversation.input(for: result.sessionID) ?? "",
+            retainedInput ?? "",
             "Keep using the echo tool",
             "failed run retains input"
         )
         try Expect.contains(
-            conversation.output(for: result.sessionID) ?? "",
+            retainedOutput ?? "",
             "maximum_iterations_exceeded",
             "failed run retains encoded failure output"
         )
         try Expect.contains(
-            conversation.snapshot.hostConsole.documents.last?.body ?? "",
+            conversationSnapshot.hostConsole.documents.last?.body ?? "",
             "maximum_iterations_exceeded",
             "failed run exposes terminal failure details"
         )
@@ -945,7 +1081,7 @@ enum AgenticRuntimeConversationFlowTesting {
         let invocationFailureRuntime = try await AgenticRuntime(
             application: invocationFailureApplication
         )
-        var invocationFailureConversation = try AgenticConversationSession(
+        let invocationFailureConversation = try AgenticConversationSession(
             runtime: invocationFailureRuntime,
             workspacePath: workspaceRoot.path,
             sessionID: "conversation-model-invocation-failed-runtime"
@@ -960,16 +1096,23 @@ enum AgenticRuntimeConversationFlowTesting {
             )
         )
         let invocationFailureRequests = await invocationFailureAdapter.recordedRequests()
+        let invocationFailureSnapshot = await invocationFailureConversation.snapshot
+        let invocationFailureInput = await invocationFailureConversation.input(
+            for: invocationFailureResult.sessionID
+        )
+        let invocationFailureOutput = await invocationFailureConversation.output(
+            for: invocationFailureResult.sessionID
+        )
         let invocationFailure = try Expect.notNil(
             invocationFailureResult.failure,
             "conversation model invocation failure"
         )
         let invocationFailureRun = try Expect.notNil(
-            invocationFailureConversation.snapshot.hostConsole.runs.first,
+            invocationFailureSnapshot.hostConsole.runs.first,
             "conversation model invocation failure retains host run"
         )
         let invocationFailureAssistant = try Expect.notNil(
-            invocationFailureConversation.snapshot.messages.last,
+            invocationFailureSnapshot.messages.last,
             "conversation model invocation failure retains assistant message"
         )
 
@@ -1015,16 +1158,12 @@ enum AgenticRuntimeConversationFlowTesting {
             "conversation model invocation failure retains run attachment"
         )
         try Expect.contains(
-            invocationFailureConversation.input(
-                for: invocationFailureResult.sessionID
-            ) ?? "",
+            invocationFailureInput ?? "",
             "Trigger a model invocation failure.",
             "conversation model invocation failure retains input"
         )
         try Expect.contains(
-            invocationFailureConversation.output(
-                for: invocationFailureResult.sessionID
-            ) ?? "",
+            invocationFailureOutput ?? "",
             "model_invocation_failed",
             "conversation model invocation failure retains encoded output"
         )
@@ -1052,6 +1191,127 @@ enum AgenticRuntimeConversationFlowTesting {
             ),
             AdapterRuntimeFlowDiagnostics.events(
                 result.events
+            ),
+        ]
+    }
+
+    static func runLiveStateObservation() async throws -> [TestFlowDiagnostic] {
+        let response = AgentResponse(
+            message: .init(
+                role: .assistant,
+                text: "live state ok"
+            ),
+            stopReason: .end_turn
+        )
+        let adapter = AdapterFlowScriptedModelAdapter(
+            streamBatches: [
+                [
+                    .messagedelta(
+                        .text("live ")
+                    ),
+                    .messagedelta(
+                        .text("state ok")
+                    ),
+                    .completed(
+                        response
+                    ),
+                ],
+            ]
+        )
+        let sink = ConversationRuntimeStateSink()
+        let runner = AgentRunner(
+            adapter: adapter,
+            configuration: .init(
+                maximumIterations: 1,
+                responseDelivery: .stream
+            ),
+            stateSinks: [
+                sink,
+            ]
+        )
+        let result = try await runner.run(
+            AgentRequest(
+                messages: [
+                    .init(
+                        role: .user,
+                        text: "stream a response"
+                    ),
+                ]
+            ),
+            sessionID: "conversation-live-state"
+        )
+        let snapshots = await sink.snapshots()
+        let startedAt: Date = try Expect.notNil(
+            snapshots.first?.startedAt,
+            "live state start time"
+        )
+        let receivingSnapshot: AgentRunStateSnapshot = try Expect.notNil(
+            snapshots.first(where: { snapshot in
+                snapshot.phase == .receiving_model_response
+            }),
+            "live receiving snapshot"
+        )
+        let liveProjection = AgenticConversationRunProjection.project(
+            receivingSnapshot,
+            title: "live conversation run"
+        )
+
+        try Expect.equal(
+            liveProjection.run.state,
+            AgenticHostConsoleRunState.active,
+            "live projection remains active while receiving model response"
+        )
+        try Expect.equal(
+            liveProjection.run.steps.isEmpty,
+            true,
+            "live model response does not synthesize a completed step before tool use"
+        )
+
+        try Expect.equal(
+            snapshots.first?.phase,
+            Optional(AgentHistoryPhase.ready_for_model),
+            "live state begins ready for model"
+        )
+        try Expect.equal(
+            snapshots.contains { snapshot in
+                snapshot.phase == .receiving_model_response
+            },
+            true,
+            "live state exposes receiving phase"
+        )
+        try Expect.equal(
+            snapshots.contains { snapshot in
+                snapshot.partialResponse?.message.content.text == "live "
+            },
+            true,
+            "live state exposes partial assistant text before completion"
+        )
+        try Expect.equal(
+            snapshots.allSatisfy { snapshot in
+                snapshot.startedAt == startedAt
+            },
+            true,
+            "live state preserves stable start time"
+        )
+        try Expect.equal(
+            snapshots.last?.phase,
+            Optional(AgentHistoryPhase.completed),
+            "live state publishes completed phase"
+        )
+        try Expect.equal(
+            result.response?.message.content.text,
+            "live state ok",
+            "live state observation does not alter the run result"
+        )
+
+        return [
+            .field(
+                "snapshots",
+                String(snapshots.count)
+            ),
+            .field(
+                "final_phase",
+                snapshots.last?.phase.rawValue ?? "missing"
             ),
         ]
     }

@@ -25,30 +25,28 @@ public enum AgenticRuntimeConversationCommand<
         let runtime = try await AgenticRuntime.resolve(
             Application.self
         )
-        var conversation = try AgenticConversationSession(
+        let conversation = try AgenticConversationSession(
             runtime: runtime,
             workspace: options.workspace,
             sessionID: options.sessionID
         )
         try await AgenticConversationConsole.run(
-            conversation: &conversation,
+            conversation: conversation,
             voiceInput: runtime.application.voiceInputProvider
         )
     }
 }
 
 private actor AgenticConversationTurnCompletion {
-    private var completed: AgenticConversationSession?
+    private var completed = false
 
-    func store(
-        _ conversation: AgenticConversationSession
-    ) {
-        completed = conversation
+    func markCompleted() {
+        completed = true
     }
 
-    func take() -> AgenticConversationSession? {
+    func take() -> Bool {
         defer {
-            completed = nil
+            completed = false
         }
 
         return completed
@@ -57,7 +55,7 @@ private actor AgenticConversationTurnCompletion {
 
 private enum AgenticConversationConsole {
     static func run(
-        conversation: inout AgenticConversationSession,
+        conversation: AgenticConversationSession,
         voiceInput: (any VoiceInputProvider)?
     ) async throws {
         let stream = TerminalStream.standardError
@@ -83,15 +81,15 @@ private enum AgenticConversationConsole {
             await voiceInput?.availability()
             ?? .unconfigured
 
-        conversation.setVoiceAvailability(
+        await conversation.setVoiceAvailability(
             voiceAvailability
         )
-        conversation.setVoiceState(
+        await conversation.setVoiceState(
             .idle
         )
 
         var control = AgenticConversationControl(
-            snapshot: conversation.snapshot
+            snapshot: await conversation.presentationSnapshot()
         )
         let completion =
             AgenticConversationTurnCompletion()
@@ -126,32 +124,30 @@ private enum AgenticConversationConsole {
             )
             var needsRender = false
 
-            if let completed =
-                await completion.take()
-            {
-                conversation = completed
+            if await completion.take() {
                 activeSubmission = nil
                 control.endPendingTurn()
                 control.update(
-                    conversation.snapshot
+                    await conversation.presentationSnapshot()
                 )
                 needsRender = true
             }
 
-            if activeSubmission != nil,
-               control.advancePendingTurn()
-            {
+            if activeSubmission != nil {
+                control.update(
+                    await conversation.presentationSnapshot()
+                )
                 needsRender = true
             }
 
-            if conversation.snapshot.voiceState == .recording,
+            if (await conversation.snapshot).voiceState == .recording,
                let voiceInput
             {
-                conversation.setVoiceStatus(
+                await conversation.setVoiceStatus(
                     await voiceInput.status()
                 )
                 control.update(
-                    conversation.snapshot
+                    await conversation.presentationSnapshot()
                 )
                 needsRender = true
             }
@@ -181,101 +177,111 @@ private enum AgenticConversationConsole {
 
                 case .submissionRequested(let submission):
                     guard activeSubmission == nil else {
-                        conversation.setActivity(
+                        await conversation.setActivity(
                             "model response already pending"
                         )
                         control.update(
-                            conversation.snapshot
+                            await conversation.presentationSnapshot()
                         )
                         break
                     }
 
-                    conversation.setActivity(
+                    await conversation.setActivity(
                         "invoking model"
                     )
                     control.beginPendingTurn(
                         submission
                     )
                     control.update(
-                        conversation.snapshot
+                        await conversation.presentationSnapshot()
                     )
                     render()
 
-                    let startingConversation =
-                        conversation
-
                     activeSubmission = Task {
-                        var submittedConversation =
-                            startingConversation
-
                         do {
-                            _ = try await submittedConversation.submit(
+                            _ = try await conversation.submit(
                                 submission
                             )
                         } catch is CancellationError {
-                            return
                         } catch {
-                            submittedConversation.recordFailure(
+                            await conversation.recordFailure(
                                 error
                             )
                         }
 
-                        await completion.store(
-                            submittedConversation
-                        )
+                        await completion.markCompleted()
                     }
 
                 case .modelSelectionChanged(let identifier):
                     guard activeSubmission == nil else {
                         break
                     }
-                    conversation.selectModel(identifier)
-                    control.update(conversation.snapshot)
+                    await conversation.selectModel(identifier)
+                    control.update(
+                        await conversation.presentationSnapshot()
+                    )
+
+                case .responseDeliverySelectionChanged(let delivery):
+                    guard activeSubmission == nil else {
+                        break
+                    }
+                    await conversation.selectResponseDelivery(
+                        delivery
+                    )
+                    control.update(
+                        await conversation.presentationSnapshot()
+                    )
 
                 case .toolExposureSelectionChanged(let exposure):
                     guard activeSubmission == nil else {
                         break
                     }
-                    conversation.selectToolExposure(exposure)
-                    control.update(conversation.snapshot)
+                    await conversation.selectToolExposure(exposure)
+                    control.update(
+                        await conversation.presentationSnapshot()
+                    )
 
                 case .skillSelectionChanged(let identifiers):
                     guard activeSubmission == nil else {
                         break
                     }
-                    conversation.selectSkills(identifiers)
-                    control.update(conversation.snapshot)
+                    await conversation.selectSkills(identifiers)
+                    control.update(
+                        await conversation.presentationSnapshot()
+                    )
 
                 case .feedbackRequested(let message):
-                    conversation.setActivity(message)
-                    control.update(conversation.snapshot)
+                    await conversation.setActivity(message)
+                    control.update(
+                        await conversation.presentationSnapshot()
+                    )
 
                 case .voiceStartRequested:
                     guard let voiceInput else {
-                        conversation.setVoiceAvailability(
+                        await conversation.setVoiceAvailability(
                             .unconfigured
                         )
-                        conversation.setVoiceState(
+                        await conversation.setVoiceState(
                             .idle
                         )
-                        conversation.setActivity(
+                        await conversation.setActivity(
                             "Voice input unavailable — no transcription provider configured."
                         )
                         control.update(
-                            conversation.snapshot
+                            await conversation.presentationSnapshot()
                         )
                         break
                     }
 
                     do {
                         try await voiceInput.start()
-                        conversation.setVoiceStatus(
+                        await conversation.setVoiceStatus(
                             await voiceInput.status()
                         )
-                        conversation.setVoiceState(
+                        await conversation.setVoiceState(
                             .recording
                         )
-                        conversation.setActivity(
+                        await conversation.setActivity(
                             "recording voice input"
                         )
                     } catch {
@@ -283,48 +289,48 @@ private enum AgenticConversationConsole {
                             String(
                                 describing: error
                             )
-                        conversation.setVoiceState(
+                        await conversation.setVoiceState(
                             .failed(
                                 message
                             )
                         )
-                        conversation.setActivity(
+                        await conversation.setActivity(
                             "Voice input failed: \(message)"
                         )
                     }
 
                     control.update(
-                        conversation.snapshot
+                        await conversation.presentationSnapshot()
                     )
 
                 case .voiceStopRequested:
                     guard let voiceInput else {
-                        conversation.setVoiceAvailability(
+                        await conversation.setVoiceAvailability(
                             .unconfigured
                         )
-                        conversation.setVoiceState(
+                        await conversation.setVoiceState(
                             .idle
                         )
-                        conversation.setActivity(
+                        await conversation.setActivity(
                             "Voice input unavailable — no transcription provider configured."
                         )
                         control.update(
-                            conversation.snapshot
+                            await conversation.presentationSnapshot()
                         )
                         break
                     }
 
-                    conversation.setVoiceStatus(
+                    await conversation.setVoiceStatus(
                         nil
                     )
-                    conversation.setVoiceState(
+                    await conversation.setVoiceState(
                         .transcribing
                     )
-                    conversation.setActivity(
+                    await conversation.setActivity(
                         "transcribing voice input"
                     )
                     control.update(
-                        conversation.snapshot
+                        await conversation.presentationSnapshot()
                     )
                     render()
 
@@ -332,14 +338,14 @@ private enum AgenticConversationConsole {
                         let transcription =
                             try await voiceInput.stop()
 
-                        conversation.setVoiceState(
+                        await conversation.setVoiceState(
                             .idle
                         )
-                        conversation.setActivity(
+                        await conversation.setActivity(
                             "transcription ready"
                         )
                         control.update(
-                            conversation.snapshot
+                            await conversation.presentationSnapshot()
                         )
 
                         _ = control.applyTranscription(
@@ -350,16 +356,16 @@ private enum AgenticConversationConsole {
                             String(
                                 describing: error
                             )
-                        conversation.setVoiceState(
+                        await conversation.setVoiceState(
                             .failed(
                                 message
                             )
                         )
-                        conversation.setActivity(
+                        await conversation.setActivity(
                             "Voice input failed: \(message)"
                         )
                         control.update(
-                            conversation.snapshot
+                            await conversation.presentationSnapshot()
                         )
                     }
 
@@ -368,25 +374,27 @@ private enum AgenticConversationConsole {
                         await voiceInput.cancel()
                     }
 
-                    conversation.setVoiceStatus(
+                    await conversation.setVoiceStatus(
                         nil
                     )
-                    conversation.setVoiceState(
+                    await conversation.setVoiceState(
                         .idle
                     )
-                    conversation.setActivity(
+                    await conversation.setActivity(
                         "voice input cancelled"
                     )
                     control.update(
-                        conversation.snapshot
+                        await conversation.presentationSnapshot()
                     )
 
                 case .run(let workflowEvent):
-                    service(
+                    await service(
                         workflowEvent,
-                        conversation: &conversation
+                        conversation: conversation
                     )
-                    control.update(conversation.snapshot)
+                    control.update(
+                        await conversation.presentationSnapshot()
+                    )
 
                 case .contentPinned,
                      .attachmentOpened,
@@ -404,8 +412,8 @@ private enum AgenticConversationConsole {
 
     private static func service(
         _ event: AgenticHostConsoleWorkflowEvent,
-        conversation: inout AgenticConversationSession
-    ) {
+        conversation: AgenticConversationSession
+    ) async {
         let copied: Bool
         let success: String
         let failure: String
@@ -420,8 +428,8 @@ private enum AgenticConversationConsole {
             failure = "Clipboard write failed."
 
         case .runInputCopyRequested(runID: let runID):
-            guard let text = conversation.input(for: runID) else {
-                conversation.setActivity("Run input is not available.")
+            guard let text = await conversation.input(for: runID) else {
+                await conversation.setActivity("Run input is not available.")
                 return
             }
             copied = Clipboard.system.write(text)
@@ -429,8 +437,8 @@ private enum AgenticConversationConsole {
             failure = "Could not copy run input."
 
         case .runOutputCopyRequested(runID: let runID):
-            guard let text = conversation.output(for: runID) else {
-                conversation.setActivity("Run output is not available.")
+            guard let text = await conversation.output(for: runID) else {
+                await conversation.setActivity("Run output is not available.")
                 return
             }
             copied = Clipboard.system.write(text)
@@ -438,13 +446,13 @@ private enum AgenticConversationConsole {
             failure = "Could not copy run output."
 
         case .feedbackRequested(message: let message):
-            conversation.setActivity(message)
+            await conversation.setActivity(message)
             return
 
         default:
             return
         }
 
-        conversation.setActivity(copied ? success : failure)
+        await conversation.setActivity(copied ? success : failure)
     }
 }

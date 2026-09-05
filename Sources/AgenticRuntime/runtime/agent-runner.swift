@@ -15,6 +15,7 @@ public actor AgentRunner {
     public let approvalHandler: (any ToolApprovalHandler)?
     public let historyStore: (any AgentHistoryStore)?
     public let eventSinks: [any AgentRunEventSink]
+    public let stateSinks: [any AgentRunStateSink]
     public let costTracker: AgentCostTracker?
 
     public init(
@@ -26,6 +27,7 @@ public actor AgentRunner {
         approvalHandler: (any ToolApprovalHandler)? = nil,
         historyStore: (any AgentHistoryStore)? = nil,
         eventSinks: [any AgentRunEventSink] = [],
+        stateSinks: [any AgentRunStateSink] = [],
         costTracker: AgentCostTracker? = nil
     ) {
         self.adapter = adapter
@@ -36,6 +38,7 @@ public actor AgentRunner {
         self.approvalHandler = approvalHandler
         self.historyStore = historyStore
         self.eventSinks = eventSinks
+        self.stateSinks = stateSinks
         self.costTracker = costTracker
     }
 
@@ -238,6 +241,7 @@ extension AgentRunner {
             approvalHandler: approvalHandler,
             historyStore: historyStore,
             eventSinks: eventSinks,
+            stateSinks: stateSinks,
             costTracker: costTracker
         )
     }
@@ -292,6 +296,7 @@ public extension AgentRunner {
         approvalHandler: (any ToolApprovalHandler)? = nil,
         historyStore: (any AgentHistoryStore)? = nil,
         eventSinks: [any AgentRunEventSink] = [],
+        stateSinks: [any AgentRunStateSink] = [],
         costTracker: AgentCostTracker? = nil
     ) {
         self.init(
@@ -304,6 +309,7 @@ public extension AgentRunner {
             approvalHandler: approvalHandler,
             historyStore: historyStore,
             eventSinks: eventSinks,
+            stateSinks: stateSinks,
             costTracker: costTracker
         )
     }
@@ -315,6 +321,7 @@ public extension AgentRunner {
         modeApplication: ModeRuntimeApplication,
         extensions: [any AgentHarnessExtension] = [],
         approvalHandler: (any ToolApprovalHandler)? = nil,
+        stateSinks: [any AgentRunStateSink] = [],
         costTracker: AgentCostTracker? = nil,
         enableHistoryPersistence: Bool = true
     ) throws {
@@ -327,6 +334,7 @@ public extension AgentRunner {
             toolRegistry: modeApplication.toolRegistry,
             extensions: extensions,
             approvalHandler: approvalHandler,
+            stateSinks: stateSinks,
             costTracker: costTracker,
             enableHistoryPersistence: enableHistoryPersistence
         )

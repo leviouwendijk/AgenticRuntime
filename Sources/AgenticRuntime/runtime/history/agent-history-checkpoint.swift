@@ -28,6 +28,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
     public var failure: AgentRunFailure?
     public var costRecord: AgentCostRecord?
     public var exposedToolIdentifiers: [AgentToolIdentifier]?
+    public let startedAt: Date
     public var updatedAt: Date
 
     private enum CodingKeys: String, CodingKey {
@@ -45,6 +46,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         case failure
         case costRecord
         case exposedToolIdentifiers
+        case startedAt
         case updatedAt
     }
 
@@ -111,10 +113,15 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
             [AgentToolIdentifier].self,
             forKey: .exposedToolIdentifiers
         )
-        updatedAt = try container.decode(
+        let decodedUpdatedAt = try container.decode(
             Date.self,
             forKey: .updatedAt
         )
+        startedAt = try container.decodeIfPresent(
+            Date.self,
+            forKey: .startedAt
+        ) ?? decodedUpdatedAt
+        updatedAt = decodedUpdatedAt
     }
 
     public init(
@@ -132,7 +139,8 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         failure: AgentRunFailure? = nil,
         costRecord: AgentCostRecord? = nil,
         exposedToolIdentifiers: [AgentToolIdentifier]? = nil,
-        updatedAt: Date = Date()
+        startedAt: Date = Date(),
+        updatedAt: Date? = nil
     ) {
         self.id = id
         self.originalRequest = originalRequest
@@ -148,7 +156,8 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         self.failure = failure
         self.costRecord = costRecord
         self.exposedToolIdentifiers = exposedToolIdentifiers
-        self.updatedAt = updatedAt
+        self.startedAt = startedAt
+        self.updatedAt = updatedAt ?? startedAt
     }
 }
 

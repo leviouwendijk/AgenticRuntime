@@ -439,5 +439,19 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticRuntimeConversationFlowTesting
                 .runFailureObservability()
         },
+        TestFlow(
+            "conversation-runtime-live-state",
+            tags: [
+                "agentic-runtime",
+                "conversation",
+                "agent-runner",
+                "streaming",
+                "observability",
+                "live-state",
+            ]
+        ) {
+            try await AgenticRuntimeConversationFlowTesting
+                .runLiveStateObservation()
+        },
     ]
 }

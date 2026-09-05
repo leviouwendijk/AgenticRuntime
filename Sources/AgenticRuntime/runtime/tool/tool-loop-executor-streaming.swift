@@ -79,6 +79,11 @@ extension ToolLoopExecutor {
                     checkpointState: &checkpointState
                 )
 
+                checkpoint.touch()
+                await publishRunState(
+                    checkpoint
+                )
+
                 if checkpointState.shouldSave(
                     event: event,
                     policy: configuration.streamCheckpointPolicy
