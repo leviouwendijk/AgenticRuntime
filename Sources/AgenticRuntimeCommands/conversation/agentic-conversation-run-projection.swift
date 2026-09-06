@@ -17,10 +17,7 @@ package struct AgenticConversationRunProjection {
                 run: .init(
                     id: state.sessionID,
                     title: title,
-                    summary:
-                        state.failure?.message
-                            ?? state.lastResponse?.message.content.text
-                            ?? state.partialResponse?.message.content.text,
+                    summary: state.failure?.message,
                     state: runState(
                         for: state.phase
                     ),
@@ -54,10 +51,7 @@ package struct AgenticConversationRunProjection {
         )
 
         if projection.run.summary == nil {
-            projection.run.summary =
-                state.failure?.message
-                    ?? state.lastResponse?.message.content.text
-                    ?? state.partialResponse?.message.content.text
+            projection.run.summary = state.failure?.message
         }
 
         return projection
@@ -218,54 +212,6 @@ package struct AgenticConversationRunProjection {
             }
         }
 
-        if steps.isEmpty {
-            let failed =
-                result.isFailed
-                    || result.events.contains {
-                        $0.kind == .model_stream_failed
-                    }
-            let state: AgenticHostConsoleStepState =
-                failed
-                    ? .failed
-                    : .completed
-            let body = result.events.map {
-                "[iteration \($0.iteration)] \($0.kind.rawValue): \($0.summary)"
-            }.joined(separator: "\n")
-            let stepID = "\(result.sessionID)-model"
-
-            steps = [
-                .init(
-                    id: stepID,
-                    title: "model response",
-                    detail:
-                        result.failure?.message
-                            ?? result.response?.message.content.text,
-                    state: state,
-                    fields: [
-                        .init(
-                            "outcome",
-                            state.rawValue
-                        ),
-                        .init(
-                            "events",
-                            String(
-                                result.events.count
-                            )
-                        ),
-                    ]
-                ),
-            ]
-            documents.append(
-                .init(
-                    id: "\(stepID)-details",
-                    runID: result.sessionID,
-                    stepID: stepID,
-                    kind: .details,
-                    body: body
-                )
-            )
-        }
-
         if let failure = result.failure {
             let stepID = "\(result.sessionID)-failure"
 
@@ -315,7 +261,7 @@ package struct AgenticConversationRunProjection {
                 title: title,
                 summary:
                     result.failure?.message
-                        ?? result.response?.message.content.text,
+                        ?? steps.last?.detail,
                 state: runState(
                     for: result
                 ),

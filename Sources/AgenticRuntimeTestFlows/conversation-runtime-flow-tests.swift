@@ -406,6 +406,11 @@ enum AgenticRuntimeConversationFlowTesting {
             ),
             "attached tool outcome"
         )
+        try Expect.equal(
+            run.summary,
+            run.steps.last?.detail,
+            "attached run summarizes operational work instead of assistant prose"
+        )
         try Expect.contains(
             retainedInput ?? "",
             "# Transcribed content: Pinned note",
@@ -569,6 +574,30 @@ enum AgenticRuntimeConversationFlowTesting {
             snapshotAfterBuffered.selectedResponseDelivery,
             AgentModelResponseDelivery.buffered,
             "buffered selection remains visible in conversation state"
+        )
+
+        let bufferedAssistant:
+            AgenticConversationMessagePresentation = try Expect.notNil(
+                snapshotAfterBuffered.messages.last,
+                "buffered assistant presentation"
+            )
+        let bufferedRun:
+            AgenticHostConsoleRunPresentation = try Expect.notNil(
+                snapshotAfterBuffered.hostConsole.runs.first(where: { run in
+                    run.id == bufferedResult.sessionID
+                }),
+                "buffered host run"
+            )
+
+        try Expect.equal(
+            bufferedAssistant.attachments,
+            [],
+            "response-only conversation does not retain a run attachment"
+        )
+        try Expect.equal(
+            bufferedRun.steps.isEmpty,
+            true,
+            "response-only conversation does not synthesize a model response stage"
         )
 
         await conversation.selectModel(

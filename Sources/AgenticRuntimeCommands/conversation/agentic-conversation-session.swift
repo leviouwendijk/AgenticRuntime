@@ -505,6 +505,20 @@ package actor AgenticConversationSession:
             body: body
         )
 
+        let showsRunAttachment =
+            !result.toolUses.isEmpty
+                || !projection.run.steps.isEmpty
+                || !projection.documents.isEmpty
+                || !projection.interruptions.isEmpty
+                || result.isAwaitingApproval
+                || result.isSuspended
+                || result.isFailed
+
+        setRunAttachmentVisible(
+            showsRunAttachment,
+            runID: runID
+        )
+
         if let failure = result.failure {
             snapshot.activity = "run failed"
             upsertFailureStatus(
@@ -720,6 +734,27 @@ package actor AgenticConversationSession:
         }
 
         snapshot.messages[index].body = body
+    }
+
+    private func setRunAttachmentVisible(
+        _ visible: Bool,
+        runID: String
+    ) {
+        guard !visible,
+              let index = snapshot.messages.firstIndex(where: { message in
+                  message.id == "\(runID)-assistant"
+              })
+        else {
+            return
+        }
+
+        snapshot.messages[index].attachments.removeAll { attachment in
+            guard case .run(let attachedRunID) = attachment else {
+                return false
+            }
+
+            return attachedRunID == runID
+        }
     }
 
     private func refreshRunProjection(
