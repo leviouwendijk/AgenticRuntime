@@ -297,6 +297,10 @@ let package = Package(
                     package: "DSL"
                 ),
                 .product(
+                    name: "Difference",
+                    package: "Difference"
+                ),
+                .product(
                     name: "TestFlows",
                     package: "TestFlows"
                 ),

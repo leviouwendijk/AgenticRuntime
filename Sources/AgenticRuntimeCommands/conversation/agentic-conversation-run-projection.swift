@@ -2,6 +2,7 @@ import AgenticInterfaces
 import AgenticRuntime
 import DSL
 import Foundation
+import Terminal
 
 package struct AgenticConversationRunProjection {
     package var run: AgenticHostConsoleRunPresentation
@@ -141,6 +142,23 @@ package struct AgenticConversationRunProjection {
                 if let diffPreview = record.preflight?.diffPreview,
                    !diffPreview.isEmpty
                 {
+                    let renderedDiff: String
+
+                    if let layout = diffPreview.layout {
+                        renderedDiff = TerminalDifferenceRenderer.render(
+                            layout,
+                            options: .init(
+                                base: .init(
+                                    showHeader: true,
+                                    showUnchangedLines: false,
+                                    contextLineCount: diffPreview.contextLineCount
+                                )
+                            )
+                        )
+                    } else {
+                        renderedDiff = diffPreview.text
+                    }
+
                     documents.append(
                         .init(
                             id: "\(result.sessionID)-\(callID)-diff",
@@ -148,7 +166,7 @@ package struct AgenticConversationRunProjection {
                             stepID: callID,
                             kind: .diff,
                             title: diffPreview.title ?? "Diff",
-                            body: diffPreview.text
+                            body: renderedDiff
                         )
                     )
                 }

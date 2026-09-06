@@ -261,6 +261,7 @@ enum AgenticRuntimeAdapterFlowTesting {
             adapter: adapter,
             configuration: .init(
                 maximumIterations: 2,
+                autonomyMode: .auto_bounded_mutate,
                 responseDelivery: .stream
             ),
             toolRegistry: try ToolRegistry {
@@ -397,6 +398,7 @@ enum AgenticRuntimeAdapterFlowTesting {
             adapter: adapter,
             configuration: .init(
                 maximumIterations: 4,
+                autonomyMode: .auto_bounded_mutate,
                 responseDelivery: .stream
             ),
             toolRegistry: try ToolRegistry {
@@ -580,6 +582,7 @@ enum AgenticRuntimeAdapterFlowTesting {
             adapter: adapter,
             configuration: .init(
                 maximumIterations: 4,
+                autonomyMode: .auto_bounded_mutate,
                 responseDelivery: .stream
             ),
             toolRegistry: try ToolRegistry {

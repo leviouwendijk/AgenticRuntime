@@ -5,6 +5,7 @@ import AgenticInterfaces
 import AgenticRuntime
 import AgenticRuntimeCommands
 import AgenticTools
+import Difference
 import DSL
 import Foundation
 import Primitives
@@ -114,6 +115,49 @@ private struct ConversationApprovalTool: AgentTool {
 
     var risk: ActionRisk {
         Self.risk
+    }
+
+    func preflight(
+        _ input: Input,
+        context: AgentToolExecutionContext
+    ) async throws -> ToolPreflight {
+        let layout = DifferenceLayout(
+            lines: [
+                .init(
+                    role: .headerOld,
+                    text: "a/conversation.txt"
+                ),
+                .init(
+                    role: .headerNew,
+                    text: "b/conversation.txt"
+                ),
+                .init(
+                    role: .delete,
+                    text: "old",
+                    oldLine: 1
+                ),
+                .init(
+                    role: .insert,
+                    text: "new",
+                    newLine: 1
+                ),
+            ]
+        )
+
+        return ToolPreflight(
+            toolName: name,
+            risk: risk,
+            workspaceRoot: context.workspace?.rootURL.path,
+            summary: description,
+            diffPreview: .init(
+                title: "Conversation diff preview",
+                contextLineCount: 3,
+                text: "--- a/conversation.txt\n+++ b/conversation.txt\n-old\n+new",
+                layout: layout,
+                insertedLineCount: 1,
+                deletedLineCount: 1
+            )
+        )
     }
 
     func call(
@@ -794,6 +838,33 @@ enum AgenticRuntimeConversationFlowTesting {
             ),
             true,
             "conversation approval exposes staged tool details"
+        )
+
+        let diffDocument: AgenticHostConsoleDocumentPresentation = try Expect.notNil(
+            suspendedSnapshot.hostConsole.documents.first(
+                where: { document in
+                    document.runID == initial.sessionID
+                        && document.stepID == call.id
+                        && document.kind == .diff
+                }
+            ),
+            "conversation approval diff document"
+        )
+
+        try Expect.contains(
+            diffDocument.body,
+            "1:-",
+            "conversation approval diff uses Difference old-line gutter"
+        )
+        try Expect.contains(
+            diffDocument.body,
+            "-:1",
+            "conversation approval diff uses Difference new-line gutter"
+        )
+        try Expect.contains(
+            diffDocument.body,
+            "\u{001B}[",
+            "conversation approval diff retains Terminal Difference styling"
         )
 
         let resumed = try await conversation.resolveHostAction(
