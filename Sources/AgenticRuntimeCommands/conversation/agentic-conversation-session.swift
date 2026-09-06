@@ -306,9 +306,7 @@ package actor AgenticConversationSession:
                 id: "\(runID)-assistant",
                 role: .assistant,
                 body: "invoking model",
-                attachments: [
-                    .run(runID: runID),
-                ]
+                attachments: []
             )
         )
         upsertRun(
@@ -587,6 +585,10 @@ package actor AgenticConversationSession:
                     })?.steps ?? []
                 )
             )
+            setRunAttachmentVisible(
+                true,
+                runID: runID
+            )
             upsertFailureStatus(
                 runID: runID,
                 summary: "runtime error",
@@ -643,6 +645,21 @@ package actor AgenticConversationSession:
 
         refreshRunProjection(
             projection,
+            runID: state.sessionID
+        )
+
+        let showsRunAttachment =
+            !state.toolUses.isEmpty
+                || !projection.run.steps.isEmpty
+                || !projection.documents.isEmpty
+                || !projection.interruptions.isEmpty
+                || state.pendingApproval != nil
+                || state.pendingUserInput != nil
+                || state.suspension != nil
+                || state.failure != nil
+
+        setRunAttachmentVisible(
+            showsRunAttachment,
             runID: state.sessionID
         )
 
@@ -713,21 +730,14 @@ package actor AgenticConversationSession:
         body: String
     ) {
         guard let index = snapshot.messages.firstIndex(where: { message in
-            message.attachments.contains { attachment in
-                guard case .run(let attachedRunID) = attachment else {
-                    return false
-                }
-                return attachedRunID == runID
-            }
+            message.id == "\(runID)-assistant"
         }) else {
             snapshot.messages.append(
                 .init(
                     id: "\(runID)-assistant",
                     role: .assistant,
                     body: body,
-                    attachments: [
-                        .run(runID: runID),
-                    ]
+                    attachments: []
                 )
             )
             return
@@ -740,20 +750,39 @@ package actor AgenticConversationSession:
         _ visible: Bool,
         runID: String
     ) {
-        guard !visible,
-              let index = snapshot.messages.firstIndex(where: { message in
-                  message.id == "\(runID)-assistant"
-              })
-        else {
+        guard let index = snapshot.messages.firstIndex(where: { message in
+            message.id == "\(runID)-assistant"
+        }) else {
             return
         }
 
-        snapshot.messages[index].attachments.removeAll { attachment in
-            guard case .run(let attachedRunID) = attachment else {
-                return false
+        let containsRunAttachment =
+            snapshot.messages[index].attachments.contains { attachment in
+                guard case .run(let attachedRunID) = attachment else {
+                    return false
+                }
+
+                return attachedRunID == runID
             }
 
-            return attachedRunID == runID
+        if visible {
+            guard !containsRunAttachment else {
+                return
+            }
+
+            snapshot.messages[index].attachments.append(
+                .run(
+                    runID: runID
+                )
+            )
+        } else {
+            snapshot.messages[index].attachments.removeAll { attachment in
+                guard case .run(let attachedRunID) = attachment else {
+                    return false
+                }
+
+                return attachedRunID == runID
+            }
         }
     }
 

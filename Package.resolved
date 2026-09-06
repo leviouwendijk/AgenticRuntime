@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "a696d3e59ba2f977450ad664520ecc3248125c95"
+        "revision" : "f449791f8fe8659ca357d12561914bddb5d0419f"
       }
     },
     {
@@ -367,7 +367,7 @@
       "location" : "https://github.com/leviouwendijk/Terminal.git",
       "state" : {
         "branch" : "master",
-        "revision" : "6997114d0d33870103ff9578fe34c07f6700b4db"
+        "revision" : "62ab374b79ce8cf8254f2f3d9503b21daf5e4c25"
       }
     },
     {

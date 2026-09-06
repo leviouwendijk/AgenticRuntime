@@ -592,7 +592,7 @@ enum AgenticRuntimeConversationFlowTesting {
         try Expect.equal(
             bufferedAssistant.attachments,
             [],
-            "response-only conversation does not retain a run attachment"
+            "response-only conversation never needs a run attachment"
         )
         try Expect.equal(
             bufferedRun.steps.isEmpty,
