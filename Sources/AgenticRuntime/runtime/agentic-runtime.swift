@@ -8,6 +8,7 @@ public struct AgenticRuntime:
 {
     public let application: AgenticApplication
     public let tools: ToolRegistry
+    public let toolCatalog: AgentToolCatalog
     public let skills: SkillRegistry
     public let adapters: AgentModelAdapterCatalog
     public let profiles: AgentModelProfileCatalog
@@ -18,6 +19,10 @@ public struct AgenticRuntime:
         let tools = try Agentic.tool.registry {
             application.toolRegistrations
         }
+        let toolCatalog = try AgenticRuntimeToolCatalog.materialize(
+            registrations: application.toolRegistrations,
+            registry: tools
+        )
 
         let skills = try Agentic.skill.registry {
             application.skillRegistrations
@@ -50,6 +55,7 @@ public struct AgenticRuntime:
 
         self.application = application
         self.tools = tools
+        self.toolCatalog = toolCatalog
         self.skills = skills
         self.adapters = modelCatalogs.adapters
         self.profiles = modelCatalogs.profiles

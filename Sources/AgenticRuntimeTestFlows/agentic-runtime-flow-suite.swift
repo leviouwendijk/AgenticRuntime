@@ -17,6 +17,20 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
         //         .runApplicationRealization()
         // },
         TestFlow(
+            "application-tool-catalog",
+            tags: [
+                "agentic-runtime",
+                "application",
+                "tools",
+                "catalog",
+                "exposure",
+                "intrinsics",
+            ]
+        ) {
+            try await AgenticRuntimeFlowTesting
+                .runToolCatalogRealization()
+        },
+        TestFlow(
             "voice-input-provider",
             tags: [
                 "agentic-runtime",
@@ -350,6 +364,21 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
         ) {
             try await AgenticRuntimeFlowTesting
                 .runNativeToolInvocationLifecycle()
+        },
+        TestFlow(
+            "tool-exposure-resolver",
+            tags: [
+                "agentic-runtime",
+                "tools",
+                "exposure",
+                "resolver",
+                "skills",
+                "selection",
+                "discovery",
+            ]
+        ) {
+            try await AgenticRuntimeToolExposureFlowTesting
+                .runResolverSemantics()
         },
         TestFlow(
             "tool-exposure-runtime-explicit",

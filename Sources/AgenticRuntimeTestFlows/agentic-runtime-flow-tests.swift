@@ -4,6 +4,7 @@ import AgenticRuntime
 import AgenticExecution
 import AgenticWorkspace
 import AgenticIO
+import AgenticTools
 import Foundation
 import TestFlows
 
@@ -18,7 +19,13 @@ private struct RuntimeFixtureApplication:
         ]
     ) {
         tools {
-            CoreFileToolSet()
+            collection(
+                "runtime.core",
+                title: "Core",
+                defaultExposure: .included
+            ) {
+                CoreFileToolSet()
+            }
         }
 
         skills {
@@ -33,6 +40,160 @@ private struct RuntimeFixtureApplication:
 }
 
 enum AgenticRuntimeFlowTesting {
+    static func runToolCatalogRealization()
+        async throws -> [TestFlowDiagnostic]
+    {
+        let runtime = try await AgenticRuntime.resolve(
+            RuntimeFixtureApplication.self
+        )
+        let core = try Expect.notNil(
+            runtime.toolCatalog.collection(
+                identifiedBy: .init(
+                    rawValue: "runtime.core"
+                )
+            ),
+            "runtime retains declared Core tool collection"
+        )
+        let intrinsics = try Expect.notNil(
+            runtime.toolCatalog.collection(
+                identifiedBy:
+                    AgentToolCollectionMetadata
+                        .intrinsics
+                        .identifier
+            ),
+            "runtime exposes one semantic Intrinsics collection"
+        )
+
+        try Expect.equal(
+            core.title,
+            "Core",
+            "runtime retains application collection title"
+        )
+        try Expect.equal(
+            core.defaultExposure,
+            .included,
+            "runtime retains application collection default exposure"
+        )
+        try Expect.equal(
+            core.toolIdentifiers.contains(
+                ReadFileTool.identifier
+            ),
+            true,
+            "runtime Core collection resolves to exact tool identifiers"
+        )
+
+        try Expect.equal(
+            intrinsics.defaultExposure,
+            .excluded,
+            "runtime intrinsics remain default excluded"
+        )
+        try Expect.equal(
+            intrinsics.toolIdentifiers.contains(
+                InspectToolRegistryTool.identifier
+            ),
+            true,
+            "registry intrinsic remains catalogued"
+        )
+        try Expect.equal(
+            intrinsics.toolIdentifiers.contains(
+                FindToolsTool.identifier
+            ),
+            true,
+            "runtime catalogs find_tools before executor installation"
+        )
+        try Expect.equal(
+            intrinsics.toolIdentifiers.contains(
+                InspectToolExposureTool.identifier
+            ),
+            true,
+            "runtime catalogs exposure inspection before executor installation"
+        )
+
+        let findToolsEntry = try Expect.notNil(
+            runtime.toolCatalog.entry(
+                identifiedBy: FindToolsTool.identifier
+            ),
+            "find_tools has an addressable runtime catalog entry"
+        )
+        let exposureEntry = try Expect.notNil(
+            runtime.toolCatalog.entry(
+                identifiedBy: InspectToolExposureTool.identifier
+            ),
+            "inspect_tool_exposure has an addressable runtime catalog entry"
+        )
+
+        try Expect.equal(
+            findToolsEntry.origin,
+            .intrinsic,
+            "find_tools is runtime intrinsic rather than application declared"
+        )
+        try Expect.equal(
+            exposureEntry.origin,
+            .intrinsic,
+            "inspect_tool_exposure is runtime intrinsic rather than application declared"
+        )
+
+        try Expect.equal(
+            runtime.tools.registeredTool(
+                identifiedBy: FindToolsTool.identifier
+            ) == nil,
+            true,
+            "cataloging find_tools does not install its executor-bound instance into the base registry"
+        )
+        try Expect.equal(
+            runtime.tools.registeredTool(
+                identifiedBy: InspectToolExposureTool.identifier
+            ) == nil,
+            true,
+            "cataloging exposure inspection does not install its executor-bound instance into the base registry"
+        )
+
+        try Expect.equal(
+            runtime.toolCatalog.defaultExposedIdentifiers.contains(
+                ReadFileTool.identifier
+            ),
+            true,
+            "included application collections contribute to default exposure"
+        )
+        try Expect.equal(
+            runtime.toolCatalog.defaultExposedIdentifiers.contains(
+                FindToolsTool.identifier
+            ),
+            false,
+            "runtime intrinsics do not silently enter default exposure"
+        )
+        try Expect.equal(
+            runtime.toolCatalog.defaultExposedIdentifiers.contains(
+                InspectToolExposureTool.identifier
+            ),
+            false,
+            "runtime exposure inspection does not silently enter default exposure"
+        )
+
+        return [
+            .field(
+                "collections",
+                String(runtime.toolCatalog.collections.count)
+            ),
+            .field(
+                "entries",
+                String(runtime.toolCatalog.entries.count)
+            ),
+            .field(
+                "intrinsics",
+                String(intrinsics.toolIdentifiers.count)
+            ),
+            .field(
+                "default_exposed",
+                String(
+                    runtime.toolCatalog
+                        .defaultExposedIdentifiers
+                        .count
+                )
+            ),
+        ]
+    }
+
     static func runApplicationRealization()
         async throws -> [TestFlowDiagnostic]
     {

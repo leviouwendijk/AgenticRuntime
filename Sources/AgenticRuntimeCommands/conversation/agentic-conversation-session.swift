@@ -265,15 +265,31 @@ package actor AgenticConversationSession:
         let toolExposure: AgentToolExposurePolicy
         switch submission.toolExposure {
         case .discovery:
-            toolExposure = .discoveryOnly
+            toolExposure =
+                AgentToolExposureResolver.resolve(
+                    base: .catalogDefaults,
+                    skills: selection.loadedSkills,
+                    dynamicDiscovery: true,
+                    catalog: runtime.toolCatalog
+                )
 
         case .all:
-            toolExposure = .all
+            toolExposure =
+                AgentToolExposureResolver.resolve(
+                    base: .all,
+                    skills: selection.loadedSkills,
+                    dynamicDiscovery: false,
+                    catalog: runtime.toolCatalog
+                )
 
         case .skillSeeded:
-            toolExposure = .skillSeeded(
-                selection.loadedSkills
-            )
+            toolExposure =
+                AgentToolExposureResolver.resolve(
+                    base: .none,
+                    skills: selection.loadedSkills,
+                    dynamicDiscovery: true,
+                    catalog: runtime.toolCatalog
+                )
         }
 
         let renderedInput = Self.renderedInput(submission)
@@ -933,7 +949,7 @@ package actor AgenticConversationSession:
         switch toolExposure {
         case .discovery:
             sections.append(
-                "Tool exposure is discovery-only. Use find_tools to discover registered capabilities before calling them."
+                "Default application tools and required tools from selected skills are exposed immediately. Use find_tools to discover additional registered capabilities."
             )
 
         case .all:
@@ -948,7 +964,7 @@ package actor AgenticConversationSession:
                 )
             } else {
                 sections.append(
-                    "Tools referenced by selected skills are exposed immediately. Use find_tools to discover additional registered capabilities."
+                    "Required tools from selected skills are exposed immediately. Use find_tools to discover additional registered capabilities."
                 )
             }
         }

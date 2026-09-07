@@ -179,7 +179,7 @@ extension AgentRunner {
         restoring checkpoint: AgentHistoryCheckpoint? = nil
     ) async throws -> ToolLoopExecutor {
         let exposure = AgentToolExposure(
-            policy: configuration.toolExposure.resolvedForRuntime
+            policy: configuration.toolExposure
         )
         var registry = toolRegistry
         var exposureInspectionSource:

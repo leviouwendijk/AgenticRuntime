@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticAdapters.git",
       "state" : {
         "branch" : "master",
-        "revision" : "8713f7eaeab6728ff313c8127197d577845f193c"
+        "revision" : "63f3c23611e881f25a5a4347fffb39c72e36292a"
       }
     },
     {
@@ -25,7 +25,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticExecution.git",
       "state" : {
         "branch" : "master",
-        "revision" : "2ef11661392cf133052395ea388879b3adfd6db3"
+        "revision" : "798235f854e7275aeafbcf039dca2a5c22159c66"
       }
     },
     {
@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "f449791f8fe8659ca357d12561914bddb5d0419f"
+        "revision" : "dfb6b23aad667e62e6e295ffaa57e462312d7497"
       }
     },
     {
@@ -43,7 +43,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticIO.git",
       "state" : {
         "branch" : "master",
-        "revision" : "253bdfaab0e5fba0181592a16a8b374657f8615d"
+        "revision" : "774632fa25f77a7b49477e6bb62679d0904390a2"
       }
     },
     {
@@ -133,7 +133,7 @@
       "location" : "https://github.com/leviouwendijk/Cryptography.git",
       "state" : {
         "branch" : "master",
-        "revision" : "a2defab97ca01f4a05975b1265e0b67ed863094f"
+        "revision" : "10e8288325e537cb37fdceb9a3c64273027ce944"
       }
     },
     {
@@ -286,7 +286,7 @@
       "location" : "https://github.com/leviouwendijk/Primitives.git",
       "state" : {
         "branch" : "master",
-        "revision" : "3b9e65785ecb8aa493c55893f61619b6967ce10d"
+        "revision" : "99df450665a2a6b4d9f91cda59b6bcc17e0b2d6f"
       }
     },
     {
@@ -376,7 +376,7 @@
       "location" : "https://github.com/leviouwendijk/Terminal.git",
       "state" : {
         "branch" : "master",
-        "revision" : "62ab374b79ce8cf8254f2f3d9503b21daf5e4c25"
+        "revision" : "77ea187c59b76ae0a804ce65b9beb2ca7c451339"
       }
     },
     {
