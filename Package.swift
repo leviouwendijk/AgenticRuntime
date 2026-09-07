@@ -238,6 +238,10 @@ let package = Package(
                     package: "AgenticInterfaces"
                 ),
                 .product(
+                    name: "AgenticTools",
+                    package: "AgenticTools"
+                ),
+                .product(
                     name: "Arguments",
                     package: "Arguments"
                 ),

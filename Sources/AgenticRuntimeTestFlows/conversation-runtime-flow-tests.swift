@@ -994,6 +994,319 @@ enum AgenticRuntimeConversationFlowTesting {
         ]
     }
 
+    static func runCustomToolExposureSelection()
+        async throws -> [TestFlowDiagnostic]
+    {
+        let store = AdapterFlowScratchpadStore()
+        let skill = AgentSkill(
+            identifier: "conversation-custom-required-skill",
+            name: "Conversation Custom Required Skill",
+            summary: "Requires scratchpad read access.",
+            body: "Use scratchpad read when required.",
+            metadata: .init(
+                tools: .init(
+                    required: [
+                        .tool(
+                            AdapterFlowScratchpadReadTool.identifier
+                        ),
+                    ]
+                )
+            )
+        )
+        let response = AgentResponse(
+            message: .init(
+                role: .assistant,
+                text: "custom tool exposure ok"
+            ),
+            stopReason: .end_turn
+        )
+        let adapter = AdapterFlowScriptedModelAdapter(
+            streamBatches: [
+                [
+                    .completed(response),
+                ],
+                [
+                    .completed(response),
+                ],
+            ]
+        )
+        let application = Agentic.application(
+            "conversation-custom-tool-exposure-runtime-fixture"
+        ) {
+            tools {
+                collection(
+                    "conversation.defaults",
+                    title: "Defaults",
+                    defaultExposure: .included
+                ) {
+                    AdapterFlowEchoTool()
+                }
+                collection(
+                    "conversation.custom",
+                    title: "Custom",
+                    defaultExposure: .excluded
+                ) {
+                    AdapterFlowScratchpadReadTool(
+                        store: store
+                    )
+                    AdapterFlowScratchpadTool(
+                        store: store
+                    )
+                }
+            }
+            skills {
+                skill
+            }
+            modelProvider(
+                ConversationRuntimeModelProvider(
+                    modelAdapter: adapter
+                )
+            )
+        }
+        let runtime = try await AgenticRuntime(
+            application: application
+        )
+        let workspaceRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "agentic-conversation-custom-tool-exposure-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        try FileManager.default.createDirectory(
+            at: workspaceRoot,
+            withIntermediateDirectories: true
+        )
+        defer {
+            try? FileManager.default.removeItem(
+                at: workspaceRoot
+            )
+        }
+
+        let conversation = try AgenticConversationSession(
+            runtime: runtime,
+            workspacePath: workspaceRoot.path,
+            sessionID: "conversation-custom-tool-exposure-runtime"
+        )
+        let initialSnapshot = await conversation.snapshot
+        let defaultsCollection = try Expect.notNil(
+            initialSnapshot.toolCollections.first { collection in
+                collection.id == "conversation.defaults"
+            },
+            "conversation projects default tool collection"
+        )
+        let customCollection = try Expect.notNil(
+            initialSnapshot.toolCollections.first { collection in
+                collection.id == "conversation.custom"
+            },
+            "conversation projects excluded selectable collection"
+        )
+        let intrinsicCollection = try Expect.notNil(
+            initialSnapshot.toolCollections.first { collection in
+                collection.id
+                    == AgentToolCollectionMetadata
+                        .intrinsics
+                        .identifier
+                        .rawValue
+            },
+            "conversation projects runtime intrinsics"
+        )
+        let findToolsPresentation = try Expect.notNil(
+            intrinsicCollection.tools.first { tool in
+                tool.id == FindToolsTool.identifier
+            },
+            "conversation projects find_tools"
+        )
+
+        try Expect.equal(
+            defaultsCollection.tools.map(\.id),
+            [
+                AdapterFlowEchoTool.identifier,
+            ],
+            "default collection projects exact model-facing identifiers"
+        )
+        try Expect.equal(
+            customCollection.tools.map(\.id).sorted {
+                $0.rawValue < $1.rawValue
+            },
+            [
+                AdapterFlowScratchpadTool.identifier,
+                AdapterFlowScratchpadReadTool.identifier,
+            ].sorted {
+                $0.rawValue < $1.rawValue
+            },
+            "excluded collection remains selectable in presentation"
+        )
+        try Expect.equal(
+            findToolsPresentation.selectionRole,
+            .dynamicDiscovery,
+            "find_tools is presented as derived dynamic-discovery control"
+        )
+        try Expect.equal(
+            initialSnapshot.customToolSelection,
+            AgenticConversationToolSelection(
+                identifiers: [
+                    AdapterFlowEchoTool.identifier,
+                ],
+                dynamicDiscovery: true
+            ),
+            "initial Custom state snapshots exact application defaults"
+        )
+
+        let fixedSelection = AgenticConversationToolSelection(
+            identifiers: [
+                AdapterFlowScratchpadTool.identifier,
+            ],
+            dynamicDiscovery: false
+        )
+        await conversation.selectCustomToolSelection(
+            fixedSelection
+        )
+        await conversation.selectToolExposure(
+            .all
+        )
+        let switchedSnapshot = await conversation.snapshot
+
+        try Expect.equal(
+            switchedSnapshot.selectedToolExposure,
+            .all,
+            "switching exposure mode changes only the active mode"
+        )
+        try Expect.equal(
+            switchedSnapshot.customToolSelection,
+            fixedSelection,
+            "switching away from Custom preserves exact Custom state"
+        )
+
+        _ = try await conversation.submit(
+            .init(
+                body: "Use fixed custom exposure.",
+                contents: [],
+                modelProfileID: "conversation-scripted",
+                skillIDs: [
+                    skill.identifier,
+                ],
+                toolExposure: .custom,
+                customToolSelection: fixedSelection
+            )
+        )
+
+        let dynamicSelection = AgenticConversationToolSelection(
+            identifiers: [
+                AdapterFlowScratchpadTool.identifier,
+            ],
+            dynamicDiscovery: true
+        )
+        _ = try await conversation.submit(
+            .init(
+                body: "Use discoverable custom exposure.",
+                contents: [],
+                modelProfileID: "conversation-scripted",
+                skillIDs: [
+                    skill.identifier,
+                ],
+                toolExposure: .custom,
+                customToolSelection: dynamicSelection
+            )
+        )
+
+        let requests = await adapter.recordedRequests()
+        try Expect.equal(
+            requests.count,
+            2,
+            "Custom exposure produces two model requests"
+        )
+        let fixedRequest = try Expect.notNil(
+            requests.first,
+            "fixed Custom request"
+        )
+        let dynamicRequest = try Expect.notNil(
+            requests.dropFirst().first,
+            "discoverable Custom request"
+        )
+        let fixedAdvertised = fixedRequest.tools.map(\.name).sorted()
+        let dynamicAdvertised = dynamicRequest.tools.map(\.name).sorted()
+
+        try Expect.equal(
+            fixedAdvertised,
+            [
+                AdapterFlowScratchpadTool.identifier.rawValue,
+                AdapterFlowScratchpadReadTool.identifier.rawValue,
+            ].sorted(),
+            "Custom discovery-off advertises exact selection plus required skill tools"
+        )
+        try Expect.equal(
+            fixedAdvertised.contains(
+                AdapterFlowEchoTool.identifier.rawValue
+            ),
+            false,
+            "Custom selection does not inherit application defaults"
+        )
+        try Expect.equal(
+            fixedAdvertised.contains(
+                FindToolsTool.identifier.rawValue
+            ),
+            false,
+            "Custom discovery-off does not advertise find_tools"
+        )
+        try Expect.contains(
+            fixedRequest.messages.first?.content.text ?? "",
+            "Dynamic tool discovery is disabled.",
+            "fixed Custom system prompt states discovery is disabled"
+        )
+        try Expect.equal(
+            dynamicAdvertised,
+            [
+                AdapterFlowScratchpadTool.identifier.rawValue,
+                AdapterFlowScratchpadReadTool.identifier.rawValue,
+                FindToolsTool.identifier.rawValue,
+            ].sorted(),
+            "Custom discovery-on adds find_tools to selection plus required skill tools"
+        )
+        try Expect.contains(
+            dynamicRequest.messages.first?.content.text ?? "",
+            "Use find_tools to discover additional registered capabilities.",
+            "discoverable Custom system prompt exposes discovery path"
+        )
+        try Expect.equal(
+            fixedRequest.metadata["conversation_tool_exposure"],
+            "custom",
+            "Custom exposure metadata uses canonical enum raw value"
+        )
+
+        let finalSnapshot = await conversation.snapshot
+        try Expect.equal(
+            finalSnapshot.selectedToolExposure,
+            .custom,
+            "conversation retains Custom as active exposure mode"
+        )
+        try Expect.equal(
+            finalSnapshot.customToolSelection,
+            dynamicSelection,
+            "conversation retains latest independent Custom selection state"
+        )
+
+        return [
+            .field(
+                "collections",
+                String(initialSnapshot.toolCollections.count)
+            ),
+            .field(
+                "fixed",
+                fixedAdvertised.joined(separator: ",")
+            ),
+            .field(
+                "dynamic",
+                dynamicAdvertised.joined(separator: ",")
+            ),
+            .field(
+                "custom_retained",
+                String(
+                    finalSnapshot.customToolSelection
+                        == dynamicSelection
+                )
+            ),
+        ]
+    }
+
     static func runToolExposureSelection() async throws -> [TestFlowDiagnostic] {
         let response = AgentResponse(
             message: .init(

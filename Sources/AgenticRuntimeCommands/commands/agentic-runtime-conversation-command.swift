@@ -250,6 +250,17 @@ private enum AgenticConversationConsole {
                         await conversation.presentationSnapshot()
                     )
 
+                case .customToolSelectionChanged(let selection):
+                    guard activeSubmission == nil else {
+                        break
+                    }
+                    await conversation.selectCustomToolSelection(
+                        selection
+                    )
+                    control.update(
+                        await conversation.presentationSnapshot()
+                    )
+
                 case .skillSelectionChanged(let identifiers):
                     guard activeSubmission == nil else {
                         break

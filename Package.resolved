@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "dfb6b23aad667e62e6e295ffaa57e462312d7497"
+        "revision" : "379c58da5bc092ea9c43543cea7533816cddf499"
       }
     },
     {
@@ -106,7 +106,7 @@
       "location" : "https://github.com/leviouwendijk/AWSConnector.git",
       "state" : {
         "branch" : "master",
-        "revision" : "eafa6908e30c91df3644999d5f00b3c479f7cd39"
+        "revision" : "3a9994ebba46d9fd4197585617d62e0b1dff66ce"
       }
     },
     {

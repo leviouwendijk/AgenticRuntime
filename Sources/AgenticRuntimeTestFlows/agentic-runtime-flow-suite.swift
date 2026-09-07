@@ -441,6 +441,23 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticRuntimeConversationFlowTesting.run()
         },
         TestFlow(
+            "conversation-runtime-custom-tool-exposure",
+            tags: [
+                "agentic-runtime",
+                "conversation",
+                "tools",
+                "catalog",
+                "exposure",
+                "custom",
+                "skills",
+                "discovery",
+                "settings",
+            ]
+        ) {
+            try await AgenticRuntimeConversationFlowTesting
+                .runCustomToolExposureSelection()
+        },
+        TestFlow(
             "conversation-runtime-tool-exposure-selection",
             tags: [
                 "agentic-runtime",

@@ -154,6 +154,14 @@ package actor AgenticConversationSession:
                     : .buffered,
             selectedAutonomyMode: .auto_observe,
             skills: skills,
+            toolCollections:
+                AgenticConversationToolCatalogPresentation.collections(
+                    runtime.toolCatalog
+                ),
+            customToolSelection:
+                AgenticConversationToolCatalogPresentation.defaultSelection(
+                    runtime.toolCatalog
+                ),
             hostConsole: .init(
                 context: workspace.rootURL.path
             )
@@ -214,6 +222,13 @@ package actor AgenticConversationSession:
         snapshot.activity = "\(exposure.title.lowercased()) tool exposure selected"
     }
 
+    package func selectCustomToolSelection(
+        _ selection: AgenticConversationToolSelection
+    ) {
+        snapshot.customToolSelection = selection
+        snapshot.activity = "custom tool selection changed"
+    }
+
     package func setActivity(_ activity: String) {
         snapshot.activity = activity
     }
@@ -245,6 +260,12 @@ package actor AgenticConversationSession:
         selectAutonomy(submission.autonomyMode)
         selectSkills(submission.skillIDs)
         selectToolExposure(submission.toolExposure)
+
+        if submission.toolExposure == .custom {
+            selectCustomToolSelection(
+                submission.customToolSelection
+            )
+        }
 
         let profile = try runtime.profiles.profile(
             submission.modelProfileID
@@ -282,12 +303,24 @@ package actor AgenticConversationSession:
                     catalog: runtime.toolCatalog
                 )
 
-        case .skillSeeded:
+        case .skill_seeded:
             toolExposure =
                 AgentToolExposureResolver.resolve(
                     base: .none,
                     skills: selection.loadedSkills,
                     dynamicDiscovery: true,
+                    catalog: runtime.toolCatalog
+                )
+
+        case .custom:
+            toolExposure =
+                AgentToolExposureResolver.resolve(
+                    base: .selected(
+                        submission.customToolSelection.identifiers
+                    ),
+                    skills: selection.loadedSkills,
+                    dynamicDiscovery:
+                        submission.customToolSelection.dynamicDiscovery,
                     catalog: runtime.toolCatalog
                 )
         }
@@ -340,7 +373,9 @@ package actor AgenticConversationSession:
                 text: Self.systemPrompt(
                     workspace: workspace,
                     skills: selection.loadedSkills,
-                    toolExposure: submission.toolExposure
+                    toolExposure: submission.toolExposure,
+                    customToolSelection:
+                        submission.customToolSelection
                 )
             ),
         ]
@@ -932,7 +967,8 @@ package actor AgenticConversationSession:
     private static func systemPrompt(
         workspace: AgentWorkspace,
         skills: [AgentSkill],
-        toolExposure: AgenticConversationToolExposure
+        toolExposure: AgenticConversationToolExposure,
+        customToolSelection: AgenticConversationToolSelection
     ) -> String {
         var sections = [
             "You are operating in an Agentic terminal conversation.",
@@ -957,14 +993,25 @@ package actor AgenticConversationSession:
                 "All registered model-facing tools are exposed immediately."
             )
 
-        case .skillSeeded:
+        case .skill_seeded:
             if skills.isEmpty {
                 sections.append(
-                    "No skill tools are currently seeded. Use find_tools to discover registered capabilities."
+                    "No required skill tools are currently seeded. Use find_tools to discover registered capabilities."
                 )
             } else {
                 sections.append(
                     "Required tools from selected skills are exposed immediately. Use find_tools to discover additional registered capabilities."
+                )
+            }
+
+        case .custom:
+            if customToolSelection.dynamicDiscovery {
+                sections.append(
+                    "Custom selected tools and required tools from selected skills are exposed immediately. Use find_tools to discover additional registered capabilities."
+                )
+            } else {
+                sections.append(
+                    "Only custom selected tools and required tools from selected skills are exposed. Dynamic tool discovery is disabled."
                 )
             }
         }
