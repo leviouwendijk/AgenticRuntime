@@ -111,6 +111,10 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/leviouwendijk/Errors.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/leviouwendijk/Arguments.git",
             branch: "master"
         ),
@@ -199,6 +203,10 @@ let package = Package(
                     name: "AgenticInterfaces",
                     package: "AgenticInterfaces"
                 ),
+                .product(
+                    name: "Errors",
+                    package: "Errors"
+                ),
             ]
         ),
         .target(
@@ -242,6 +250,10 @@ let package = Package(
                     package: "DSL"
                 ),
                 .product(
+                    name: "ErrorsDSL",
+                    package: "Errors"
+                ),
+                .product(
                     name: "Terminal",
                     package: "Terminal"
                 ),
@@ -277,6 +289,10 @@ let package = Package(
                     package: "AgenticAdapters"
                 ),
                 .product(
+                    name: "AgenticOllama",
+                    package: "AgenticAdapters"
+                ),
+                .product(
                     name: "Primitives",
                     package: "Primitives"
                 ),
@@ -297,8 +313,16 @@ let package = Package(
                     package: "DSL"
                 ),
                 .product(
+                    name: "Errors",
+                    package: "Errors"
+                ),
+                .product(
                     name: "Difference",
                     package: "Difference"
+                ),
+                .product(
+                    name: "Terminal",
+                    package: "Terminal"
                 ),
                 .product(
                     name: "TestFlows",

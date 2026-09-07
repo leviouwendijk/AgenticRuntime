@@ -1,6 +1,7 @@
 import AgenticInterfaces
 import AgenticRuntime
 import DSL
+import ErrorsDSL
 import Foundation
 import Terminal
 
@@ -265,10 +266,13 @@ package struct AgenticConversationRunProjection {
                     runID: result.sessionID,
                     stepID: stepID,
                     kind: .details,
+                    title: "Failure details",
                     body: [
                         "kind     \(failure.kind.rawValue)",
                         "message  \(failure.message)",
-                    ].joined(separator: "\n")
+                    ].joined(separator: "\n"),
+                    structuredBody:
+                        failure.report?.structuredContent
                 )
             )
         }
@@ -811,12 +815,6 @@ package struct AgenticConversationRunProjection {
         }
         if result.isSuspended {
             return .paused
-        }
-        if result.events.contains(where: {
-            $0.kind == .model_stream_failed
-                || $0.kind == .tool_error
-        }) {
-            return .failed
         }
         return .completed
     }

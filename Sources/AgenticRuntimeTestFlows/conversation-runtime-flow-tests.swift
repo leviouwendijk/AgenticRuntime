@@ -7,6 +7,7 @@ import AgenticRuntimeCommands
 import AgenticTools
 import Difference
 import DSL
+import Errors
 import Foundation
 import Primitives
 import TestFlows
@@ -919,6 +920,80 @@ enum AgenticRuntimeConversationFlowTesting {
         )
     }
 
+    static func runRecoveredToolErrorProjection() async throws -> [TestFlowDiagnostic] {
+        let result = AgentRunResult.completed(
+            sessionID: "conversation-recovered-tool-error-runtime",
+            response: AgentResponse(
+                message: .init(
+                    role: .assistant,
+                    text: "conversation recovered"
+                ),
+                stopReason: .end_turn
+            ),
+            state: .init(
+                iteration: 4
+            ),
+            events: [
+                .init(
+                    kind: .tool_error,
+                    iteration: 1,
+                    toolCallID: "conversation-hidden-tool-call",
+                    toolName: AdapterFlowEchoTool.identifier.rawValue,
+                    summary: "Tool was rejected before discovery."
+                ),
+                .init(
+                    kind: .tool_result,
+                    iteration: 3,
+                    toolCallID: "conversation-recovered-tool-call",
+                    toolName: AdapterFlowEchoTool.identifier.rawValue,
+                    summary: "Tool completed after discovery."
+                ),
+            ]
+        )
+        let projection = AgenticConversationRunProjection.project(
+            result,
+            title: "Recovered conversation"
+        )
+
+        try Expect.equal(
+            result.isCompleted,
+            true,
+            "historical tool error does not change the structured completed outcome"
+        )
+        try Expect.equal(
+            result.events.contains(
+                where: { event in
+                    event.kind == .tool_error
+                }
+            ),
+            true,
+            "historical tool error remains available as run evidence"
+        )
+        try Expect.equal(
+            projection.run.state,
+            AgenticHostConsoleRunState.completed,
+            "completed result projects a completed host run despite historical tool error"
+        )
+        try Expect.equal(
+            projection.run.steps.count,
+            2,
+            "projection retains historical tool error and recovered tool result steps"
+        )
+
+        return [
+            .field(
+                "run_state",
+                projection.run.state.rawValue
+            ),
+            .field(
+                "history_steps",
+                String(
+                    projection.run.steps.count
+                )
+            ),
+        ]
+    }
+
     static func runToolExposureSelection() async throws -> [TestFlowDiagnostic] {
         let response = AgentResponse(
             message: .init(
@@ -1460,6 +1535,31 @@ enum AgenticRuntimeConversationFlowTesting {
             invocationFailureSnapshot.messages.last,
             "conversation model invocation failure retains assistant message"
         )
+        let invocationFailureReport = try Expect.notNil(
+            invocationFailure.report,
+            "conversation model invocation failure retains error report"
+        )
+        let invocationFailureDetails = try Expect.notNil(
+            invocationFailureSnapshot.hostConsole.documents.first {
+                $0.stepID
+                    == "\(invocationFailureResult.sessionID)-failure"
+                    && $0.kind == .details
+            },
+            "conversation model invocation failure retains failure details"
+        )
+        let encodedInvocationFailure = try JSONEncoder().encode(
+            invocationFailure
+        )
+        let decodedInvocationFailure = try JSONDecoder().decode(
+            AgentRunFailure.self,
+            from: encodedInvocationFailure
+        )
+        let legacyInvocationFailure = try JSONDecoder().decode(
+            AgentRunFailure.self,
+            from: Data(
+                #"{"kind":"model_invocation_failed","message":"legacy failure","metadata":{}}"#.utf8
+            )
+        )
 
         try Expect.equal(
             invocationFailure.kind,
@@ -1475,6 +1575,26 @@ enum AgenticRuntimeConversationFlowTesting {
             invocationFailure.message,
             "Scripted model has no stream batch left.",
             "streaming model failure preserves adapter message"
+        )
+        try Expect.contains(
+            invocationFailureReport.presentation.message,
+            "Scripted model has no stream batch left.",
+            "streaming model failure report preserves presentation"
+        )
+        try Expect.equal(
+            decodedInvocationFailure.report,
+            invocationFailure.report,
+            "model invocation failure report survives Codable round trip"
+        )
+        try Expect.equal(
+            legacyInvocationFailure.report == nil,
+            true,
+            "legacy failure without report remains decodable"
+        )
+        try Expect.equal(
+            invocationFailureDetails.structuredBody == nil,
+            false,
+            "conversation model invocation failure exposes structured error details"
         )
         try Expect.equal(
             invocationFailureResult.events.contains {
@@ -1511,6 +1631,11 @@ enum AgenticRuntimeConversationFlowTesting {
             invocationFailureOutput ?? "",
             "model_invocation_failed",
             "conversation model invocation failure retains encoded output"
+        )
+        try Expect.contains(
+            invocationFailureOutput ?? "",
+            "\"report\"",
+            "conversation model invocation failure retains encoded error report"
         )
 
         return [

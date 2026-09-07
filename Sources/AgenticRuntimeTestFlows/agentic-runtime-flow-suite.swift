@@ -425,6 +425,22 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
                 .runToolExposureSelection()
         },
         TestFlow(
+            "conversation-runtime-recovered-tool-error",
+            tags: [
+                "agentic-runtime",
+                "conversation",
+                "agent-runner",
+                "tools",
+                "exposure",
+                "recovery",
+                "host-console",
+                "observability",
+            ]
+        ) {
+            try await AgenticRuntimeConversationFlowTesting
+                .runRecoveredToolErrorProjection()
+        },
+        TestFlow(
             "conversation-runtime-failed-run",
             tags: [
                 "agentic-runtime",
@@ -452,6 +468,69 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
         ) {
             try await AgenticRuntimeConversationFlowTesting
                 .runLiveStateObservation()
+        },
+        TestFlow(
+            "conversation-live-ollama-consecutive-turns",
+            tags: [
+                "agentic-runtime",
+                "conversation",
+                "ollama",
+                "live",
+                "streaming",
+                "diagnostic",
+            ]
+        ) {
+            try await AgenticRuntimeConversationLiveOllamaFlowTesting
+                .run()
+        },
+        TestFlow(
+            "conversation-live-ollama-task-boundary",
+            tags: [
+                "agentic-runtime",
+                "conversation",
+                "ollama",
+                "live",
+                "streaming",
+                "task",
+                "diagnostic",
+            ]
+        ) {
+            try await AgenticRuntimeConversationLiveOllamaFlowTesting
+                .runTaskBoundary()
+        },
+        TestFlow(
+            "conversation-live-ollama-control-lifecycle",
+            tags: [
+                "agentic-runtime",
+                "conversation",
+                "ollama",
+                "live",
+                "streaming",
+                "task",
+                "control",
+                "diagnostic",
+            ]
+        ) {
+            try await AgenticRuntimeConversationLiveOllamaFlowTesting
+                .runControlLifecycle()
+        },
+        TestFlow(
+            "conversation-live-ollama-console-polling",
+            tags: [
+                "agentic-runtime",
+                "conversation",
+                "ollama",
+                "live",
+                "streaming",
+                "task",
+                "control",
+                "render",
+                "polling",
+                "diagnostic",
+            ]
+        ) {
+            try await AgenticRuntimeConversationLiveOllamaFlowTesting
+                .runConsolePolling()
         },
     ]
 }

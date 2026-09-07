@@ -1,3 +1,4 @@
+import Errors
 import Foundation
 
 public struct AgentRunFailure: Sendable, Codable, Hashable {
@@ -9,15 +10,18 @@ public struct AgentRunFailure: Sendable, Codable, Hashable {
     public let kind: Kind
     public let message: String
     public let metadata: [String: String]
+    public let report: ErrorReport?
 
     public init(
         kind: Kind,
         message: String,
-        metadata: [String: String] = [:]
+        metadata: [String: String] = [:],
+        report: ErrorReport? = nil
     ) {
         self.kind = kind
         self.message = message
         self.metadata = metadata
+        self.report = report
     }
 
     public static func maximumIterationsExceeded(
@@ -55,7 +59,8 @@ public struct AgentRunFailure: Sendable, Codable, Hashable {
         return .init(
             kind: .model_invocation_failed,
             message: error.localizedDescription,
-            metadata: metadata
+            metadata: metadata,
+            report: error.report
         )
     }
 }
