@@ -5,6 +5,21 @@ enum AgenticRuntimeFlowSuite: TestFlowRegistry {
     static let title = "AgenticRuntime flow tests"
 
     static let flows: [TestFlow] = [
+        TestFlow(
+            "interaction-contract",
+            tags: [
+                "agentic-runtime",
+                "interaction",
+                "suspension",
+                "resume",
+                "headless",
+            ]
+        ) {
+            try await AgentInteractionContractFlowTesting
+                .run()
+
+            return []
+        },
         // TestFlow(
         //     "application-realization",
         //     tags: [
