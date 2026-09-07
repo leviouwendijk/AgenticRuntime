@@ -1,5 +1,5 @@
 {
-  "originHash" : "2fffb8231453264eca4d65a70dfa2bbbe900d7acde25f4085305c217b1f30d2c",
+  "originHash" : "d0f70cf874946d7e948468393baf4d7820615c29321c8a55a2f741528e71a3b5",
   "pins" : [
     {
       "identity" : "agentic",
@@ -11,30 +11,12 @@
       }
     },
     {
-      "identity" : "agenticadapters",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/leviouwendijk/AgenticAdapters.git",
-      "state" : {
-        "branch" : "master",
-        "revision" : "4c708e0f257a63b5fcee0628ce009a25037b67e1"
-      }
-    },
-    {
       "identity" : "agenticexecution",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/leviouwendijk/AgenticExecution.git",
       "state" : {
         "branch" : "master",
         "revision" : "798235f854e7275aeafbcf039dca2a5c22159c66"
-      }
-    },
-    {
-      "identity" : "agenticinterfaces",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
-      "state" : {
-        "branch" : "master",
-        "revision" : "62adb4bb8f6fd7dc6ea926484f460bfcfcd2d067"
       }
     },
     {
@@ -101,15 +83,6 @@
       }
     },
     {
-      "identity" : "awsconnector",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/leviouwendijk/AWSConnector.git",
-      "state" : {
-        "branch" : "master",
-        "revision" : "fcfb4929d13043c39321c0ba102f51c9830935b1"
-      }
-    },
-    {
       "identity" : "clipboard",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/leviouwendijk/Clipboard.git",
@@ -125,15 +98,6 @@
       "state" : {
         "branch" : "master",
         "revision" : "bb67a88299a009e1eae4cf3f2c76fe1e3b7842a5"
-      }
-    },
-    {
-      "identity" : "cryptography",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/leviouwendijk/Cryptography.git",
-      "state" : {
-        "branch" : "master",
-        "revision" : "10e8288325e537cb37fdceb9a3c64273027ce944"
       }
     },
     {
@@ -233,15 +197,6 @@
       "state" : {
         "branch" : "master",
         "revision" : "4583182baf00cccbbdd271942819c8e774cf2194"
-      }
-    },
-    {
-      "identity" : "parsers",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/leviouwendijk/Parsers.git",
-      "state" : {
-        "branch" : "master",
-        "revision" : "f2f979c3d2e3b85533dd887bcd90bd0f40d53028"
       }
     },
     {
