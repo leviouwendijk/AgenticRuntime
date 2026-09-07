@@ -201,6 +201,13 @@ package actor AgenticConversationSession:
         snapshot.activity = "\(delivery.rawValue) response delivery selected"
     }
 
+    package func selectInvocationOptions(
+        _ options: AgentModelInvocationOptions
+    ) {
+        snapshot.selectedInvocationOptions = options
+        snapshot.activity = "invocation options selected"
+    }
+
     package func selectAutonomy(
         _ mode: AutonomyMode
     ) {
@@ -257,6 +264,7 @@ package actor AgenticConversationSession:
     ) async throws -> AgentRunResult {
         selectModel(submission.modelProfileID)
         selectResponseDelivery(submission.responseDelivery)
+        selectInvocationOptions(submission.invocationoptions)
         selectAutonomy(submission.autonomyMode)
         selectSkills(submission.skillIDs)
         selectToolExposure(submission.toolExposure)
@@ -384,6 +392,7 @@ package actor AgenticConversationSession:
         let request = AgentRequest(
             model: profile.model,
             messages: requestMessages,
+            invocationoptions: submission.invocationoptions,
             metadata: [
                 "conversation_session_id": baseSessionID,
                 "conversation_run_id": runID,

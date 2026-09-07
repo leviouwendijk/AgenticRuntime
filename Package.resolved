@@ -1,5 +1,5 @@
 {
-  "originHash" : "6895b4c26fe9136bf16938870a3016529462f25635df8f18686268aba32b0a50",
+  "originHash" : "2fffb8231453264eca4d65a70dfa2bbbe900d7acde25f4085305c217b1f30d2c",
   "pins" : [
     {
       "identity" : "agentic",
@@ -7,7 +7,7 @@
       "location" : "https://github.com/leviouwendijk/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "851b38f0ff563cef4d2416c167a0e1e93617177c"
+        "revision" : "c452798d7a02cef14a811a4cca0c590a773db67b"
       }
     },
     {
@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticAdapters.git",
       "state" : {
         "branch" : "master",
-        "revision" : "63f3c23611e881f25a5a4347fffb39c72e36292a"
+        "revision" : "4c708e0f257a63b5fcee0628ce009a25037b67e1"
       }
     },
     {
@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInterfaces.git",
       "state" : {
         "branch" : "master",
-        "revision" : "379c58da5bc092ea9c43543cea7533816cddf499"
+        "revision" : "62adb4bb8f6fd7dc6ea926484f460bfcfcd2d067"
       }
     },
     {
@@ -106,7 +106,7 @@
       "location" : "https://github.com/leviouwendijk/AWSConnector.git",
       "state" : {
         "branch" : "master",
-        "revision" : "3a9994ebba46d9fd4197585617d62e0b1dff66ce"
+        "revision" : "fcfb4929d13043c39321c0ba102f51c9830935b1"
       }
     },
     {

@@ -3,20 +3,21 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-09-07T15:23:22Z",
+  "generated_at" : "2026-09-07T16:42:13Z",
   "passed" : 1,
   "results" : [
     {
-      "display_name" : "tool-exposure-runtime-explicit",
-      "duration_seconds" : 0.0031280517578125,
-      "name" : "tool-exposure-runtime-explicit",
+      "display_name" : "conversation-runtime-session",
+      "duration_seconds" : 0.025278091430664062,
+      "name" : "conversation-runtime-session",
       "status" : "passed",
       "tags" : [
+        "agent-runner",
         "agentic-runtime",
-        "enforcement",
-        "explicit",
-        "exposure",
-        "tools"
+        "conversation",
+        "discovery",
+        "host-console",
+        "tool-use"
       ]
     }
   ],

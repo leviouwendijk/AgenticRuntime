@@ -17,6 +17,7 @@ extension ToolLoopExecutor {
             messages: messages,
             tools: definitions,
             generationConfiguration: request.generationConfiguration,
+            invocationoptions: request.invocationoptions,
             metadata: request.metadata
         )
     }

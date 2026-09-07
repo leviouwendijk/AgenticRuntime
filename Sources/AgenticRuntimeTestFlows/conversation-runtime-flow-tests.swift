@@ -309,7 +309,10 @@ enum AgenticRuntimeConversationFlowTesting {
             modelProfileID: "conversation-scripted",
             skillIDs: [],
             toolExposure: .discovery,
-            responseDelivery: .stream
+            responseDelivery: .stream,
+            invocationoptions: .init(
+                timeoutseconds: 600
+            )
         )
         let result = try await conversation.submit(
             submission
@@ -347,13 +350,25 @@ enum AgenticRuntimeConversationFlowTesting {
             "model request count"
         )
         try Expect.equal(
+            requests.compactMap { request in
+                request.invocationoptions?.timeoutseconds
+            },
+            [
+                600,
+                600,
+                600,
+            ],
+            "conversation invocation timeout survives every model turn"
+        )
+        try Expect.equal(
             requests[0].tools.map(
                 \.name
             ),
             [
+                AdapterFlowEchoTool.identifier.rawValue,
                 FindToolsTool.identifier.rawValue,
             ],
-            "conversation begins with discovery only"
+            "conversation begins with catalog defaults plus discovery"
         )
         try Expect.equal(
             requests[1].tools.map(
@@ -401,6 +416,11 @@ enum AgenticRuntimeConversationFlowTesting {
             "conversation retains streaming response delivery"
         )
         try Expect.equal(
+            conversationSnapshot.selectedInvocationOptions.timeoutseconds,
+            600,
+            "conversation retains invocation timeout selection"
+        )
+        try Expect.equal(
             conversationSnapshot.selectedToolExposure,
             AgenticConversationToolExposure.discovery,
             "conversation retains discovery exposure selection"
@@ -412,7 +432,7 @@ enum AgenticRuntimeConversationFlowTesting {
         )
         try Expect.contains(
             requests.first?.messages.first?.content.text ?? "",
-            "Tool exposure is discovery-only.",
+            "Default application tools and required tools from selected skills are exposed immediately.",
             "discovery system prompt"
         )
         try Expect.equal(
