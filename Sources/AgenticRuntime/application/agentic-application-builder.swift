@@ -8,7 +8,6 @@ public enum AgenticApplicationComponent:
     case skills([AgentSkillRegistration])
     case adapters([AgentModelAdapterRegistration])
     case modelProviders([any AgentModelProvider])
-    case voiceInput(any VoiceInputProvider)
 }
 
 @resultBuilder
@@ -120,11 +119,3 @@ public func modelProvider(
     )
 }
 
-
-public func voiceInput(
-    _ provider: any VoiceInputProvider
-) -> AgenticApplicationComponent {
-    .voiceInput(
-        provider
-    )
-}
