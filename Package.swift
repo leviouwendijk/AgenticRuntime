@@ -14,10 +14,20 @@ let package = Package(
                 "AgenticRuntime",
             ]
         ),
+        .executable(
+            name: "aprtest",
+            targets: [
+                "AgenticProgramRuntimeTestFlows",
+            ]
+        ),
     ],
     dependencies: [
         .package(
             url: "https://github.com/leviouwendijk/Agentic.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/AgenticPrograms.git",
             branch: "master"
         ),
         .package(
@@ -76,6 +86,10 @@ let package = Package(
             url: "https://github.com/leviouwendijk/Errors.git",
             branch: "master"
         ),
+        .package(
+            url: "https://github.com/leviouwendijk/TestFlows.git",
+            branch: "master"
+        ),
     ],
     targets: [
         .target(
@@ -84,6 +98,10 @@ let package = Package(
                 .product(
                     name: "Agentic",
                     package: "Agentic"
+                ),
+                .product(
+                    name: "AgenticPrograms",
+                    package: "AgenticPrograms"
                 ),
                 .product(
                     name: "AgenticExecution",
@@ -151,7 +169,28 @@ let package = Package(
                 ),
             ]
         ),
-
+        .executableTarget(
+            name: "AgenticProgramRuntimeTestFlows",
+            dependencies: [
+                "AgenticRuntime",
+                .product(
+                    name: "Agentic",
+                    package: "Agentic"
+                ),
+                .product(
+                    name: "AgenticPrograms",
+                    package: "AgenticPrograms"
+                ),
+                .product(
+                    name: "Primitives",
+                    package: "Primitives"
+                ),
+                .product(
+                    name: "TestFlows",
+                    package: "TestFlows"
+                ),
+            ]
+        ),
     ],
     swiftLanguageModes: [
         .v6,

@@ -3,25 +3,48 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-09-07T16:42:13Z",
-  "passed" : 1,
+  "generated_at" : "2026-09-08T23:03:21Z",
+  "passed" : 3,
   "results" : [
     {
-      "display_name" : "conversation-runtime-session",
-      "duration_seconds" : 0.025278091430664062,
-      "name" : "conversation-runtime-session",
+      "display_name" : "program-execution-record",
+      "duration_seconds" : 0.00297701358795166,
+      "name" : "program-execution-record",
       "status" : "passed",
       "tags" : [
-        "agent-runner",
         "agentic-runtime",
-        "conversation",
-        "discovery",
-        "host-console",
-        "tool-use"
+        "execution",
+        "program",
+        "trace"
+      ]
+    },
+    {
+      "display_name" : "program-execution-failure-record",
+      "duration_seconds" : 0.0010449886322021484,
+      "name" : "program-execution-failure-record",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "execution",
+        "failure",
+        "program"
+      ]
+    },
+    {
+      "display_name" : "program-inference-execution-record",
+      "duration_seconds" : 0.000513911247253418,
+      "name" : "program-inference-execution-record",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "inference",
+        "program",
+        "realization",
+        "usage"
       ]
     }
   ],
   "skipped" : 0,
-  "title" : "AgenticRuntime flow tests",
-  "total" : 1
+  "title" : "Agentic program runtime flow tests",
+  "total" : 3
 }

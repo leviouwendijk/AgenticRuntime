@@ -1,5 +1,5 @@
 {
-  "originHash" : "d0f70cf874946d7e948468393baf4d7820615c29321c8a55a2f741528e71a3b5",
+  "originHash" : "a4da8948270097ba25d48665ab597525cf4ed36ac63a06a88df4994d86d24abc",
   "pins" : [
     {
       "identity" : "agentic",
@@ -35,6 +35,15 @@
       "state" : {
         "branch" : "master",
         "revision" : "4acf46e9039edfb1e057e5fd6acc9fd43e136c91"
+      }
+    },
+    {
+      "identity" : "agenticprograms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/AgenticPrograms.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "2ea46ad96f37c7e71b5f3130f61b44390c8be033"
       }
     },
     {
@@ -241,7 +250,7 @@
       "location" : "https://github.com/leviouwendijk/Primitives.git",
       "state" : {
         "branch" : "master",
-        "revision" : "99df450665a2a6b4d9f91cda59b6bcc17e0b2d6f"
+        "revision" : "e626fa0746aee024729bf56549e774d13aa17099"
       }
     },
     {
@@ -326,12 +335,21 @@
       }
     },
     {
+      "identity" : "swim",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Swim",
+      "state" : {
+        "branch" : "master",
+        "revision" : "5d78adc0f34d4b62e35a92725fda2ab444bb4e99"
+      }
+    },
+    {
       "identity" : "terminal",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/leviouwendijk/Terminal.git",
       "state" : {
         "branch" : "master",
-        "revision" : "77ea187c59b76ae0a804ce65b9beb2ca7c451339"
+        "revision" : "7cbe455cf097861dcac76a61ab9945cf0557a0f4"
       }
     },
     {
