@@ -261,29 +261,15 @@ extension AgentRunner {
             )
         }
 
-        switch suspension.reason {
-        case .approval(let pendingApproval):
-            return .awaitingApproval(
-                sessionID: checkpoint.id,
-                response: response,
-                pendingApproval: pendingApproval,
-                state: checkpoint.state,
-                events: checkpoint.events,
-                toolUses: checkpoint.resolvedToolUses,
-                costRecord: checkpoint.costRecord
-            )
-
-        case .user_input(let pendingUserInput):
-            return .awaitingUserInput(
-                sessionID: checkpoint.id,
-                response: response,
-                pendingUserInput: pendingUserInput,
-                state: checkpoint.state,
-                events: checkpoint.events,
-                toolUses: checkpoint.resolvedToolUses,
-                costRecord: checkpoint.costRecord
-            )
-        }
+        return .suspended(
+            sessionID: checkpoint.id,
+            response: response,
+            suspension: suspension,
+            state: checkpoint.state,
+            events: checkpoint.events,
+            toolUses: checkpoint.resolvedToolUses,
+            costRecord: checkpoint.costRecord
+        )
     }
 }
 
