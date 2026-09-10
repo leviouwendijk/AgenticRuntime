@@ -5,8 +5,7 @@ import AgenticWorkspace
 import Foundation
 
 public struct ToolLoopExecutor: Sendable {
-    public let modelInvoker: any AgentModelInvoking
-    public let modelSelection: AgentModelSelection
+    public let model: AgentRuntimeServices.Model
     public let configuration: AgentRunnerConfiguration
     public let toolRegistry: ToolRegistry
     public let toolExposure: AgentToolExposure
@@ -19,8 +18,7 @@ public struct ToolLoopExecutor: Sendable {
     public let costTracker: AgentCostTracker?
 
     public init(
-        modelInvoker: any AgentModelInvoking,
-        modelSelection: AgentModelSelection = .executor,
+        model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
         toolRegistry: ToolRegistry = .init(),
         toolExposure: AgentToolExposure = .init(),
@@ -32,8 +30,7 @@ public struct ToolLoopExecutor: Sendable {
         stateSinks: [any AgentRunStateSink] = [],
         costTracker: AgentCostTracker? = nil
     ) {
-        self.modelInvoker = modelInvoker
-        self.modelSelection = modelSelection
+        self.model = model
         self.configuration = configuration
         self.toolRegistry = toolRegistry
         self.toolExposure = toolExposure

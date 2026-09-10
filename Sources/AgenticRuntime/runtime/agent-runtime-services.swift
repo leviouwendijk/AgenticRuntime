@@ -23,6 +23,15 @@ public struct AgentRuntimeServices: Sendable {
             self.invoker = invoker
             self.selection = selection
         }
+
+        public func selecting(
+            _ selection: AgentModelSelection
+        ) -> Self {
+            .init(
+                invoker: invoker,
+                selection: selection
+            )
+        }
     }
 
     /// Program execution capabilities currently consumed by AgentProgramRunner.

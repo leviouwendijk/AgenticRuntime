@@ -35,8 +35,10 @@ extension AgenticProgramRuntimeFlowTesting {
             ]
         )
         let runner = AgentRunner(
-            modelInvoker: invoker,
-            modelSelection: selection
+            model: .init(
+                invoker: invoker,
+                selection: selection
+            )
         )
         let result = try await runner.run(
             request,
@@ -110,8 +112,10 @@ extension AgenticProgramRuntimeFlowTesting {
         configuration.responseDelivery = .stream
 
         let runner = AgentRunner(
-            modelInvoker: invoker,
-            modelSelection: selection,
+            model: .init(
+                invoker: invoker,
+                selection: selection
+            ),
             configuration: configuration
         )
         let result = try await runner.run(
@@ -182,7 +186,9 @@ extension AgenticProgramRuntimeFlowTesting {
             recorder: recorder
         )
         let runner = AgentRunner(
-            modelInvoker: invoker,
+            model: .init(
+                invoker: invoker
+            ),
             modeApplication: application
         )
         let request = AgentRequest(

@@ -58,14 +58,14 @@ extension ToolLoopExecutor {
         do {
             let invocation = AgentModelInvocation(
                 request: preparedRequest,
-                selection: modelSelection,
+                selection: model.selection,
                 context: modelInvocationContext(
                     sessionID: checkpoint.id,
                     journal: journal
                 )
             )
 
-            for try await invocationEvent in modelInvoker.stream(
+            for try await invocationEvent in model.invoker.stream(
                 invocation
             ) {
                 try Task.checkCancellation()

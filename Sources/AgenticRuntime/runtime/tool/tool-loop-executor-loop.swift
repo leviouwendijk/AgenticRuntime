@@ -177,10 +177,10 @@ extension ToolLoopExecutor {
         let journal = AgentModelToolInvocationJournal()
 
         do {
-            let result = try await modelInvoker.buffered(
+            let result = try await model.invoker.buffered(
                 AgentModelInvocation(
                     request: preparedRequest,
-                    selection: modelSelection,
+                    selection: model.selection,
                     context: modelInvocationContext(
                         sessionID: checkpoint.id,
                         journal: journal

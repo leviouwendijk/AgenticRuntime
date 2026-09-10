@@ -6,8 +6,7 @@ import AgenticWorkspace
 import Foundation
 
 public actor AgentRunner {
-    public let modelInvoker: any AgentModelInvoking
-    public let modelSelection: AgentModelSelection
+    public let model: AgentRuntimeServices.Model
     public let configuration: AgentRunnerConfiguration
     public let toolRegistry: ToolRegistry
     public let extensions: [any AgentHarnessExtension]
@@ -19,8 +18,7 @@ public actor AgentRunner {
     public let costTracker: AgentCostTracker?
 
     public init(
-        modelInvoker: any AgentModelInvoking,
-        modelSelection: AgentModelSelection = .executor,
+        model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
         toolRegistry: ToolRegistry = .init(),
         extensions: [any AgentHarnessExtension] = [],
@@ -31,8 +29,7 @@ public actor AgentRunner {
         stateSinks: [any AgentRunStateSink] = [],
         costTracker: AgentCostTracker? = nil
     ) {
-        self.modelInvoker = modelInvoker
-        self.modelSelection = modelSelection
+        self.model = model
         self.configuration = configuration
         self.toolRegistry = toolRegistry
         self.extensions = extensions
@@ -234,8 +231,7 @@ extension AgentRunner {
         }
 
         return ToolLoopExecutor(
-            modelInvoker: modelInvoker,
-            modelSelection: modelSelection,
+            model: model,
             configuration: configuration,
             toolRegistry: registry,
             toolExposure: exposure,
@@ -278,7 +274,7 @@ extension AgentRunner {
 
 public extension AgentRunner {
     init(
-        modelInvoker: any AgentModelInvoking,
+        model: AgentRuntimeServices.Model,
         modeApplication: ModeRuntimeApplication,
         extensions: [any AgentHarnessExtension] = [],
         workspace: AgentWorkspace? = nil,
@@ -289,8 +285,9 @@ public extension AgentRunner {
         costTracker: AgentCostTracker? = nil
     ) {
         self.init(
-            modelInvoker: modelInvoker,
-            modelSelection: modeApplication.modelSelection,
+            model: model.selecting(
+                modeApplication.modelSelection
+            ),
             configuration: modeApplication.configuration,
             toolRegistry: modeApplication.toolRegistry,
             extensions: extensions,
@@ -304,7 +301,7 @@ public extension AgentRunner {
     }
 
     init(
-        modelInvoker: any AgentModelInvoking,
+        model: AgentRuntimeServices.Model,
         environment: AgentRuntimeEnvironment,
         sessionID: String,
         modeApplication: ModeRuntimeApplication,
@@ -315,8 +312,9 @@ public extension AgentRunner {
         enableHistoryPersistence: Bool = true
     ) throws {
         try self.init(
-            modelInvoker: modelInvoker,
-            modelSelection: modeApplication.modelSelection,
+            model: model.selecting(
+                modeApplication.modelSelection
+            ),
             environment: environment,
             sessionID: sessionID,
             configuration: modeApplication.configuration,
