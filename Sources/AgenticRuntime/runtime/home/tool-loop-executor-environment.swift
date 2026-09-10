@@ -8,9 +8,9 @@ public extension ToolLoopExecutor {
         environment: AgentRuntimeEnvironment,
         sessionID: String,
         configuration: AgentRunnerConfiguration = .default,
-        toolRegistry: ToolRegistry = .init(),
+        tooling: AgentRuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        approvalHandler: (any ToolApprovalHandler)? = nil,
+        recording: AgentRuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
     ) throws {
         let stores = try AgentRuntimeStoreResolver(
@@ -27,15 +27,19 @@ public extension ToolLoopExecutor {
             resolvedConfiguration.historyPersistenceMode = .checkpointmutation
         }
 
+        let resolvedRecording = recording.resolving(
+            historyStore: stores.historyStore,
+            eventSinks: stores.eventSinks
+        )
+
         self.init(
             model: model,
             configuration: resolvedConfiguration,
-            toolRegistry: toolRegistry,
+            tooling: tooling.using(
+                workspace: environment.workspace
+            ),
             extensions: extensions,
-            workspace: environment.workspace,
-            approvalHandler: approvalHandler,
-            historyStore: stores.historyStore,
-            eventSinks: stores.eventSinks
+            recording: resolvedRecording
         )
     }
 }

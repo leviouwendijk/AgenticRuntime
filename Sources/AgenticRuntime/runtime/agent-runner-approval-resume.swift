@@ -6,7 +6,7 @@ public extension AgentRunner {
         approvalDecision: ApprovalDecision,
         metadata: [String: String] = [:]
     ) async throws -> AgentRunResult {
-        guard let historyStore else {
+        guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }
 

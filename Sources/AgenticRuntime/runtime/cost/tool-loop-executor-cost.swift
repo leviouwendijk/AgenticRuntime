@@ -7,7 +7,7 @@ extension ToolLoopExecutor {
         to checkpoint: inout AgentHistoryCheckpoint,
         turnIndex: Int
     ) async throws {
-        guard let costTracker else {
+        guard let costTracker = recording.costTracker else {
             return
         }
 
@@ -39,7 +39,7 @@ extension ToolLoopExecutor {
         to checkpoint: inout AgentHistoryCheckpoint,
         turnIndex: Int
     ) async throws {
-        guard let costTracker else {
+        guard let costTracker = recording.costTracker else {
             return
         }
 

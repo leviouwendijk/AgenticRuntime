@@ -100,6 +100,18 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting
                 .runModeModelSelectionPropagation()
         },
+        TestFlow(
+            "runtime-services-recording-propagation",
+            tags: [
+                "agentic-runtime",
+                "services",
+                "recording",
+                "events",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runRuntimeServicesRecordingPropagation()
+        },
     ]
 }
 

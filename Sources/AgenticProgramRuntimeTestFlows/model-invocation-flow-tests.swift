@@ -234,6 +234,79 @@ extension AgenticProgramRuntimeFlowTesting {
             ),
         ]
     }
+
+    static func runRuntimeServicesRecordingPropagation()
+        async throws
+        -> [TestFlowDiagnostic]
+    {
+        let modelRecorder = FixtureModelInvocationRecorder()
+        let eventSink = FixtureRuntimeEventSink()
+        let runner = AgentRunner(
+            model: .init(
+                invoker: FixtureModelInvoker(
+                    recorder: modelRecorder
+                )
+            ),
+            recording: .init(
+                eventSinks: [
+                    eventSink,
+                ]
+            )
+        )
+        let request = AgentRequest(
+            messages: [
+                AgentMessage(
+                    role: .user,
+                    text: "exercise shared recording services"
+                ),
+            ]
+        )
+
+        _ = try await runner.run(
+            request,
+            sessionID: "fixture-runtime-recording-services"
+        )
+
+        let messages = await eventSink.snapshot()
+
+        try Expect.equal(
+            messages.count,
+            2,
+            "shared Recording event sinks receive both the user and assistant messages"
+        )
+        try Expect.equal(
+            messages.last?.content.text,
+            "fixture-response",
+            "ToolLoopExecutor receives recording services from AgentRunner"
+        )
+
+        return [
+            .field(
+                "recorded_messages",
+                String(messages.count)
+            ),
+            .field(
+                "last_message",
+                messages.last?.content.text ?? "<none>"
+            ),
+        ]
+    }
+}
+
+private actor FixtureRuntimeEventSink: AgentRunEventSink {
+    private var messages: [AgentMessage] = []
+
+    func recordMessage(
+        _ message: AgentMessage
+    ) async throws {
+        messages.append(
+            message
+        )
+    }
+
+    func snapshot() -> [AgentMessage] {
+        messages
+    }
 }
 
 private actor FixtureModelInvocationRecorder {

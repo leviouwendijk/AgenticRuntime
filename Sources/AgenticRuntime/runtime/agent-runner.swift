@@ -8,37 +8,22 @@ import Foundation
 public actor AgentRunner {
     public let model: AgentRuntimeServices.Model
     public let configuration: AgentRunnerConfiguration
-    public let toolRegistry: ToolRegistry
+    public let tooling: AgentRuntimeServices.Tooling
     public let extensions: [any AgentHarnessExtension]
-    public let workspace: AgentWorkspace?
-    public let approvalHandler: (any ToolApprovalHandler)?
-    public let historyStore: (any AgentHistoryStore)?
-    public let eventSinks: [any AgentRunEventSink]
-    public let stateSinks: [any AgentRunStateSink]
-    public let costTracker: AgentCostTracker?
+    public let recording: AgentRuntimeServices.Recording
 
     public init(
         model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
-        toolRegistry: ToolRegistry = .init(),
+        tooling: AgentRuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        workspace: AgentWorkspace? = nil,
-        approvalHandler: (any ToolApprovalHandler)? = nil,
-        historyStore: (any AgentHistoryStore)? = nil,
-        eventSinks: [any AgentRunEventSink] = [],
-        stateSinks: [any AgentRunStateSink] = [],
-        costTracker: AgentCostTracker? = nil
+        recording: AgentRuntimeServices.Recording = .init()
     ) {
         self.model = model
         self.configuration = configuration
-        self.toolRegistry = toolRegistry
+        self.tooling = tooling
         self.extensions = extensions
-        self.workspace = workspace
-        self.approvalHandler = approvalHandler
-        self.historyStore = historyStore
-        self.eventSinks = eventSinks
-        self.stateSinks = stateSinks
-        self.costTracker = costTracker
+        self.recording = recording
     }
 
     public func run(
@@ -56,7 +41,7 @@ public actor AgentRunner {
     public func resume(
         sessionID: String
     ) async throws -> AgentRunResult {
-        guard let historyStore else {
+        guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }
 
@@ -149,7 +134,7 @@ public actor AgentRunner {
         answer: UserInputAnswer,
         metadata: [String: String] = [:]
     ) async throws -> AgentRunResult {
-        guard let historyStore else {
+        guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }
 
@@ -180,7 +165,7 @@ extension AgentRunner {
         let exposure = AgentToolExposure(
             policy: configuration.toolExposure
         )
-        var registry = toolRegistry
+        var registry = tooling.registry
         var exposureInspectionSource:
             AgentToolExposureInspectionSource?
 
@@ -233,15 +218,12 @@ extension AgentRunner {
         return ToolLoopExecutor(
             model: model,
             configuration: configuration,
-            toolRegistry: registry,
+            tooling: tooling.using(
+                registry: registry
+            ),
             toolExposure: exposure,
             extensions: extensions,
-            workspace: workspace,
-            approvalHandler: approvalHandler,
-            historyStore: historyStore,
-            eventSinks: eventSinks,
-            stateSinks: stateSinks,
-            costTracker: costTracker
+            recording: recording
         )
     }
 
@@ -276,27 +258,20 @@ public extension AgentRunner {
     init(
         model: AgentRuntimeServices.Model,
         modeApplication: ModeRuntimeApplication,
+        tooling: AgentRuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        workspace: AgentWorkspace? = nil,
-        approvalHandler: (any ToolApprovalHandler)? = nil,
-        historyStore: (any AgentHistoryStore)? = nil,
-        eventSinks: [any AgentRunEventSink] = [],
-        stateSinks: [any AgentRunStateSink] = [],
-        costTracker: AgentCostTracker? = nil
+        recording: AgentRuntimeServices.Recording = .init()
     ) {
         self.init(
             model: model.selecting(
                 modeApplication.modelSelection
             ),
             configuration: modeApplication.configuration,
-            toolRegistry: modeApplication.toolRegistry,
+            tooling: tooling.using(
+                registry: modeApplication.toolRegistry
+            ),
             extensions: extensions,
-            workspace: workspace,
-            approvalHandler: approvalHandler,
-            historyStore: historyStore,
-            eventSinks: eventSinks,
-            stateSinks: stateSinks,
-            costTracker: costTracker
+            recording: recording
         )
     }
 
@@ -305,10 +280,9 @@ public extension AgentRunner {
         environment: AgentRuntimeEnvironment,
         sessionID: String,
         modeApplication: ModeRuntimeApplication,
+        tooling: AgentRuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        approvalHandler: (any ToolApprovalHandler)? = nil,
-        stateSinks: [any AgentRunStateSink] = [],
-        costTracker: AgentCostTracker? = nil,
+        recording: AgentRuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
     ) throws {
         try self.init(
@@ -318,11 +292,11 @@ public extension AgentRunner {
             environment: environment,
             sessionID: sessionID,
             configuration: modeApplication.configuration,
-            toolRegistry: modeApplication.toolRegistry,
+            tooling: tooling.using(
+                registry: modeApplication.toolRegistry
+            ),
             extensions: extensions,
-            approvalHandler: approvalHandler,
-            stateSinks: stateSinks,
-            costTracker: costTracker,
+            recording: recording,
             enableHistoryPersistence: enableHistoryPersistence
         )
     }

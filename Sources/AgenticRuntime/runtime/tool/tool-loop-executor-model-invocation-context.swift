@@ -7,15 +7,15 @@ extension ToolLoopExecutor {
         journal: AgentModelToolInvocationJournal
     ) -> AgentModelInvocationContext {
         let governed = GovernedAgentToolCallResolver(
-            registry: toolRegistry,
+            registry: tooling.registry,
             exposure: toolExposure,
             policy: configuration.toolExecutionPolicy,
             context: AgentToolExecutionContext(
-                workspace: workspace,
+                workspace: tooling.workspace,
                 sessionID: sessionID,
                 executionMode: .model_tool_call
             ),
-            approvalHandler: approvalHandler,
+            approvalHandler: tooling.approvalHandler,
             resolutionObserver: { invocation in
                 await journal.append(
                     invocation
@@ -26,7 +26,7 @@ extension ToolLoopExecutor {
         return AgentModelInvocationContext(
             toolCallResolver: RuntimeAgentToolCallResolver(
                 resolver: governed,
-                registry: toolRegistry,
+                registry: tooling.registry,
                 exposure: toolExposure
             )
         )

@@ -25,12 +25,12 @@ extension ToolLoopExecutor {
     func toolDefinitions(
         fallback: [AgentToolDefinition]
     ) async throws -> [AgentToolDefinition] {
-        guard !toolRegistry.isEmpty else {
+        guard !tooling.registry.isEmpty else {
             return fallback
         }
 
         return try await toolExposure.definitions(
-            in: toolRegistry
+            in: tooling.registry
         )
     }
 
@@ -89,7 +89,7 @@ extension ToolLoopExecutor {
         for preflight: ToolPreflight,
         requirement: ApprovalRequirement
     ) async throws -> ApprovalDecision {
-        guard let approvalHandler else {
+        guard let approvalHandler = tooling.approvalHandler else {
             return requirement.decision
         }
 
@@ -103,9 +103,9 @@ extension ToolLoopExecutor {
         _ toolCall: AgentToolCall
     ) async -> AgentToolResult {
         do {
-            return try await toolRegistry.call(
+            return try await tooling.registry.call(
                 toolCall,
-                workspace: workspace
+                workspace: tooling.workspace
             )
         } catch {
             return makeToolErrorResult(
@@ -519,7 +519,7 @@ extension ToolLoopExecutor {
         _ checkpoint: inout AgentHistoryCheckpoint
     ) async throws {
         checkpoint.exposedToolIdentifiers = try await toolExposure.identifiers(
-            in: toolRegistry
+            in: tooling.registry
         )
         checkpoint.touch()
 
@@ -531,7 +531,7 @@ extension ToolLoopExecutor {
             return
         }
 
-        guard let historyStore else {
+        guard let historyStore = recording.historyStore else {
             return
         }
 
@@ -543,7 +543,7 @@ extension ToolLoopExecutor {
     func publishRunState(
         _ checkpoint: AgentHistoryCheckpoint
     ) async {
-        guard !stateSinks.isEmpty else {
+        guard !recording.stateSinks.isEmpty else {
             return
         }
 
@@ -551,7 +551,7 @@ extension ToolLoopExecutor {
             checkpoint: checkpoint
         )
 
-        for sink in stateSinks {
+        for sink in recording.stateSinks {
             await sink.publish(
                 snapshot
             )
@@ -574,7 +574,7 @@ extension ToolLoopExecutor {
     func recordMessage(
         _ message: AgentMessage
     ) async throws {
-        for sink in eventSinks {
+        for sink in recording.eventSinks {
             try await sink.recordMessage(
                 message
             )
@@ -594,7 +594,7 @@ extension ToolLoopExecutor {
     func recordToolCall(
         _ toolCall: AgentToolCall
     ) async throws {
-        for sink in eventSinks {
+        for sink in recording.eventSinks {
             try await sink.recordToolCall(
                 toolCall
             )
@@ -604,7 +604,7 @@ extension ToolLoopExecutor {
     func recordToolResult(
         _ result: AgentToolResult
     ) async throws {
-        for sink in eventSinks {
+        for sink in recording.eventSinks {
             try await sink.recordToolResult(
                 result
             )
@@ -614,7 +614,7 @@ extension ToolLoopExecutor {
     func recordRunEvent(
         _ event: AgentRunEvent
     ) async throws {
-        for sink in eventSinks {
+        for sink in recording.eventSinks {
             try await sink.recordRunEvent(
                 event
             )

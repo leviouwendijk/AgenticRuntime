@@ -2,7 +2,7 @@ public extension AgentRunner {
     func resume(
         interaction response: AgentInteraction.Response
     ) async throws -> AgentRunResult {
-        guard let historyStore else {
+        guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }
 

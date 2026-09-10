@@ -7,40 +7,25 @@ import Foundation
 public struct ToolLoopExecutor: Sendable {
     public let model: AgentRuntimeServices.Model
     public let configuration: AgentRunnerConfiguration
-    public let toolRegistry: ToolRegistry
+    public let tooling: AgentRuntimeServices.Tooling
     public let toolExposure: AgentToolExposure
     public let extensions: [any AgentHarnessExtension]
-    public let workspace: AgentWorkspace?
-    public let approvalHandler: (any ToolApprovalHandler)?
-    public let historyStore: (any AgentHistoryStore)?
-    public let eventSinks: [any AgentRunEventSink]
-    public let stateSinks: [any AgentRunStateSink]
-    public let costTracker: AgentCostTracker?
+    public let recording: AgentRuntimeServices.Recording
 
     public init(
         model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
-        toolRegistry: ToolRegistry = .init(),
+        tooling: AgentRuntimeServices.Tooling = .init(),
         toolExposure: AgentToolExposure = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        workspace: AgentWorkspace? = nil,
-        approvalHandler: (any ToolApprovalHandler)? = nil,
-        historyStore: (any AgentHistoryStore)? = nil,
-        eventSinks: [any AgentRunEventSink] = [],
-        stateSinks: [any AgentRunStateSink] = [],
-        costTracker: AgentCostTracker? = nil
+        recording: AgentRuntimeServices.Recording = .init()
     ) {
         self.model = model
         self.configuration = configuration
-        self.toolRegistry = toolRegistry
+        self.tooling = tooling
         self.toolExposure = toolExposure
         self.extensions = extensions
-        self.workspace = workspace
-        self.approvalHandler = approvalHandler
-        self.historyStore = historyStore
-        self.eventSinks = eventSinks
-        self.stateSinks = stateSinks
-        self.costTracker = costTracker
+        self.recording = recording
     }
 
     public func run(

@@ -90,9 +90,9 @@ public struct AgentSessionRuntime: Sendable {
     public func makeRunner(
         model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
-        toolRegistry: ToolRegistry = .init(),
+        tooling: AgentRuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        approvalHandler: (any ToolApprovalHandler)? = nil,
+        recording: AgentRuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
     ) throws -> AgentRunner {
         var resolvedConfiguration = configuration
@@ -106,12 +106,14 @@ public struct AgentSessionRuntime: Sendable {
         return AgentRunner(
             model: model,
             configuration: resolvedConfiguration,
-            toolRegistry: toolRegistry,
+            tooling: tooling.using(
+                workspace: environment.workspace
+            ),
             extensions: extensions,
-            workspace: environment.workspace,
-            approvalHandler: approvalHandler,
-            historyStore: stores.historyStore,
-            eventSinks: stores.eventSinks
+            recording: recording.resolving(
+                historyStore: stores.historyStore,
+                eventSinks: stores.eventSinks
+            )
         )
     }
 
@@ -119,9 +121,9 @@ public struct AgentSessionRuntime: Sendable {
         _ request: AgentRequest,
         model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
-        toolRegistry: ToolRegistry = .init(),
+        tooling: AgentRuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        approvalHandler: (any ToolApprovalHandler)? = nil,
+        recording: AgentRuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
     ) async throws -> AgentRunResult {
         try saveMetadata(
@@ -133,9 +135,9 @@ public struct AgentSessionRuntime: Sendable {
         let runner = try makeRunner(
             model: model,
             configuration: configuration,
-            toolRegistry: toolRegistry,
+            tooling: tooling,
             extensions: extensions,
-            approvalHandler: approvalHandler,
+            recording: recording,
             enableHistoryPersistence: enableHistoryPersistence
         )
 
@@ -158,9 +160,9 @@ public struct AgentSessionRuntime: Sendable {
     public func resume(
         model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
-        toolRegistry: ToolRegistry = .init(),
+        tooling: AgentRuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        approvalHandler: (any ToolApprovalHandler)? = nil,
+        recording: AgentRuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
     ) async throws -> AgentRunResult {
         try saveMetadata(
@@ -172,9 +174,9 @@ public struct AgentSessionRuntime: Sendable {
         let runner = try makeRunner(
             model: model,
             configuration: configuration,
-            toolRegistry: toolRegistry,
+            tooling: tooling,
             extensions: extensions,
-            approvalHandler: approvalHandler,
+            recording: recording,
             enableHistoryPersistence: enableHistoryPersistence
         )
 
@@ -197,9 +199,9 @@ public struct AgentSessionRuntime: Sendable {
         userInput: String,
         model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
-        toolRegistry: ToolRegistry = .init(),
+        tooling: AgentRuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        approvalHandler: (any ToolApprovalHandler)? = nil,
+        recording: AgentRuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true,
         metadata: [String: String] = [:]
     ) async throws -> AgentRunResult {
@@ -209,9 +211,9 @@ public struct AgentSessionRuntime: Sendable {
             ),
             model: model,
             configuration: configuration,
-            toolRegistry: toolRegistry,
+            tooling: tooling,
             extensions: extensions,
-            approvalHandler: approvalHandler,
+            recording: recording,
             enableHistoryPersistence: enableHistoryPersistence,
             metadata: metadata
         )
@@ -221,9 +223,9 @@ public struct AgentSessionRuntime: Sendable {
         answer: UserInputAnswer,
         model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
-        toolRegistry: ToolRegistry = .init(),
+        tooling: AgentRuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        approvalHandler: (any ToolApprovalHandler)? = nil,
+        recording: AgentRuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true,
         metadata: [String: String] = [:]
     ) async throws -> AgentRunResult {
@@ -236,9 +238,9 @@ public struct AgentSessionRuntime: Sendable {
         let runner = try makeRunner(
             model: model,
             configuration: configuration,
-            toolRegistry: toolRegistry,
+            tooling: tooling,
             extensions: extensions,
-            approvalHandler: approvalHandler,
+            recording: recording,
             enableHistoryPersistence: enableHistoryPersistence
         )
 

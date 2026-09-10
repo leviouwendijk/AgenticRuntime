@@ -56,7 +56,7 @@ extension ToolLoopExecutor {
             do {
                 _ = try await toolExposure.parseModelCall(
                     toolCall,
-                    registry: toolRegistry
+                    registry: tooling.registry
                 )
             } catch {
                 let result = makeToolErrorResult(
@@ -85,9 +85,9 @@ extension ToolLoopExecutor {
             let preflight: ToolPreflight
 
             do {
-                preflight = try await toolRegistry.preflight(
+                preflight = try await tooling.registry.preflight(
                     toolCall,
-                    workspace: workspace
+                    workspace: tooling.workspace
                 )
             } catch {
                 let result = makeToolErrorResult(
