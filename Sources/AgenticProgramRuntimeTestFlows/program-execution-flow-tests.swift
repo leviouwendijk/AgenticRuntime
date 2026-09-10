@@ -5,13 +5,81 @@ import Primitives
 import TestFlows
 
 extension AgenticProgramRuntimeFlowTesting {
+    static func runRuntimeServicesComposition()
+        async throws
+        -> [TestFlowDiagnostic]
+    {
+        let services = AgentRuntimeServices(
+            model: .init(
+                invoker: FixtureRuntimeServicesModelInvoker(),
+                selection: .reviewer
+            ),
+            program: .init(
+                tools: FixtureProgramToolExecutor()
+            ),
+            metadata: [
+                "fixture_services": "shared",
+            ]
+        )
+        let runner = AgentProgramRunner(
+            services: services
+        )
+        let execution = try await runner.execute(
+            FixtureProgram(),
+            input: .init(
+                value: "services",
+                shouldFail: false
+            )
+        )
+
+        try Expect.equal(
+            execution.output,
+            FixtureOutput(
+                value: "tool:services"
+            ),
+            "Program execution consumes its capability projection from AgentRuntimeServices"
+        )
+        try Expect.equal(
+            services.model?.selection,
+            AgentModelSelection.reviewer,
+            "the same Runtime services value retains a strong model invocation projection"
+        )
+        try Expect.equal(
+            services.program.tools != nil,
+            true,
+            "the common Runtime services value carries Program tool execution capability"
+        )
+        try Expect.equal(
+            services.metadata["fixture_services"],
+            "shared",
+            "common Runtime service metadata survives Program execution composition"
+        )
+
+        return [
+            .field(
+                "model_purpose",
+                services.model?.selection.purpose.rawValue ?? "<none>"
+            ),
+            .field(
+                "program_tools",
+                String(services.program.tools != nil)
+            ),
+            .field(
+                "output",
+                execution.output?.value ?? "<none>"
+            ),
+        ]
+    }
+
     static func runProgramExecutionRecord()
         async throws
         -> [TestFlowDiagnostic]
     {
         let runner = AgentProgramRunner(
             services: .init(
-                tools: FixtureProgramToolExecutor()
+                program: .init(
+                    tools: FixtureProgramToolExecutor()
+                )
             )
         )
         let execution = try await runner.execute(
@@ -112,7 +180,9 @@ extension AgenticProgramRuntimeFlowTesting {
     {
         let runner = AgentProgramRunner(
             services: .init(
-                tools: FixtureProgramToolExecutor()
+                program: .init(
+                    tools: FixtureProgramToolExecutor()
+                )
             )
         )
         let execution = try await runner.execute(
@@ -192,7 +262,9 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let runner = AgentProgramRunner(
             services: .init(
-                inference: FixtureProgramInferenceExecutor()
+                program: .init(
+                    inference: FixtureProgramInferenceExecutor()
+                )
             )
         )
         let execution = try await runner.execute(
@@ -300,6 +372,33 @@ extension AgenticProgramRuntimeFlowTesting {
                 String(step.usage?.totalTokens ?? 0)
             ),
         ]
+    }
+}
+
+private enum FixtureRuntimeServicesModelError:
+    Error,
+    Sendable
+{
+    case unexpectedInvocation
+}
+
+private struct FixtureRuntimeServicesModelInvoker:
+    AgentModelInvoking
+{
+    func buffered(
+        _ invocation: AgentModelInvocation
+    ) async throws -> AgentModelInvocationResult {
+        throw FixtureRuntimeServicesModelError.unexpectedInvocation
+    }
+
+    func stream(
+        _ invocation: AgentModelInvocation
+    ) -> AsyncThrowingStream<AgentModelInvocationEvent, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.finish(
+                throwing: FixtureRuntimeServicesModelError.unexpectedInvocation
+            )
+        }
     }
 }
 

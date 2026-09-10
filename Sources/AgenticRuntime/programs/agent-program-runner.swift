@@ -3,10 +3,10 @@ import AgenticPrograms
 import Foundation
 
 public struct AgentProgramRunner: Sendable {
-    public var services: AgentProgramRuntimeServices
+    public var services: AgentRuntimeServices
 
     public init(
-        services: AgentProgramRuntimeServices = .init()
+        services: AgentRuntimeServices = .init()
     ) {
         self.services = services
     }
@@ -29,7 +29,7 @@ public struct AgentProgramRunner: Sendable {
         }
 
         let inferenceInvoker: (any AgentInferenceInvoking)?
-        if let inferenceExecutor = services.inference {
+        if let inferenceExecutor = services.program.inference {
             inferenceInvoker = AgentProgramRecordingInferenceInvoker<Program>(
                 executor: inferenceExecutor,
                 realization: realization,
@@ -40,7 +40,7 @@ public struct AgentProgramRunner: Sendable {
         }
 
         let toolInvoker: (any AgentProgramToolInvoking)?
-        if let toolExecutor = services.tools {
+        if let toolExecutor = services.program.tools {
             toolInvoker = AgentProgramRecordingToolInvoker(
                 executor: toolExecutor,
                 trace: trace
@@ -50,7 +50,7 @@ public struct AgentProgramRunner: Sendable {
         }
 
         let programInvoker: (any AgentProgramInvoking)?
-        if let nestedProgramInvoker = services.programs {
+        if let nestedProgramInvoker = services.program.invoker {
             programInvoker = AgentProgramRecordingProgramInvoker(
                 invoker: nestedProgramInvoker,
                 trace: trace

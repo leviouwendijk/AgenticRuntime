@@ -54,28 +54,6 @@ public protocol AgentProgramToolExecuting: Sendable {
     ) async throws -> JSONValue
 }
 
-public struct AgentProgramRuntimeServices: Sendable {
-    public var inference: (any AgentProgramInferenceExecuting)?
-    public var tools: (any AgentProgramToolExecuting)?
-    public var programs: (any AgentProgramInvoking)?
-    public var artifacts: (any AgentArtifactStore)?
-    public var metadata: [String: String]
-
-    public init(
-        inference: (any AgentProgramInferenceExecuting)? = nil,
-        tools: (any AgentProgramToolExecuting)? = nil,
-        programs: (any AgentProgramInvoking)? = nil,
-        artifacts: (any AgentArtifactStore)? = nil,
-        metadata: [String: String] = [:]
-    ) {
-        self.inference = inference
-        self.tools = tools
-        self.programs = programs
-        self.artifacts = artifacts
-        self.metadata = metadata
-    }
-}
-
 public enum AgentProgramRuntimeError:
     Error,
     Sendable,

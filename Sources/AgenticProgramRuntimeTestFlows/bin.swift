@@ -77,6 +77,18 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runModelInvocationStreamingCompletion()
         },
         TestFlow(
+            "runtime-services-composition",
+            tags: [
+                "agentic-runtime",
+                "services",
+                "model",
+                "program",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runRuntimeServicesComposition()
+        },
+        TestFlow(
             "mode-model-selection-propagation",
             tags: [
                 "agentic-runtime",
