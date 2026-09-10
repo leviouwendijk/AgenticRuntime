@@ -4,7 +4,8 @@ import Foundation
 
 public extension ToolLoopExecutor {
     init(
-        adapter: any AgentModelAdapter,
+        modelInvoker: any AgentModelInvoking,
+        modelSelection: AgentModelSelection = .executor,
         environment: AgentRuntimeEnvironment,
         sessionID: String,
         configuration: AgentRunnerConfiguration = .default,
@@ -28,7 +29,8 @@ public extension ToolLoopExecutor {
         }
 
         self.init(
-            adapter: adapter,
+            modelInvoker: modelInvoker,
+            modelSelection: modelSelection,
             configuration: resolvedConfiguration,
             toolRegistry: toolRegistry,
             extensions: extensions,

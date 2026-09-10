@@ -229,7 +229,7 @@ public extension ModeRuntimeApplication {
 
         values["mode_id"] = modeID.rawValue
         values["mode_title"] = selection.mode.title
-        values["mode_route_purpose"] = routePolicy.purpose.rawValue
+        values["mode_route_purpose"] = modelSelection.purpose.rawValue
         values["mode_budget_posture"] = selection.budgetPosture.rawValue
         values["mode_approval_strictness"] = selection.approvalStrictness.rawValue
         values["mode_autonomy"] = configuration.autonomyMode.rawValue

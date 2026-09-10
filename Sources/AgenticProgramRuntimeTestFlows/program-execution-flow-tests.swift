@@ -176,7 +176,7 @@ extension AgenticProgramRuntimeFlowTesting {
     {
         let inferenceRealization = AgentInferenceRealization(
             strategy: "fixture.direct",
-            modelPolicy: .executor,
+            modelSelection: .executor,
             instructions: "Produce the fixture inference output.",
             budget: .singleAttempt
         )

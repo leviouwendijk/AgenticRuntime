@@ -13,10 +13,10 @@ extension ToolLoopExecutor {
         )
 
         return AgentRequest(
-            model: request.model,
             messages: messages,
             tools: definitions,
             generationConfiguration: request.generationConfiguration,
+            responseFormat: request.responseFormat,
             invocationoptions: request.invocationoptions,
             metadata: request.metadata
         )

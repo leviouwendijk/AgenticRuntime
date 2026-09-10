@@ -5,7 +5,8 @@ import Foundation
 
 public extension AgentRunner {
     init(
-        adapter: any AgentModelAdapter,
+        modelInvoker: any AgentModelInvoking,
+        modelSelection: AgentModelSelection = .executor,
         environment: AgentRuntimeEnvironment,
         sessionID: String,
         configuration: AgentRunnerConfiguration = .default,
@@ -31,7 +32,8 @@ public extension AgentRunner {
         }
 
         self.init(
-            adapter: adapter,
+            modelInvoker: modelInvoker,
+            modelSelection: modelSelection,
             configuration: resolvedConfiguration,
             toolRegistry: toolRegistry,
             extensions: extensions,

@@ -56,15 +56,34 @@ extension ToolLoopExecutor {
         )
 
         do {
-            for try await event in adapter.respond(
+            let invocation = AgentModelInvocation(
                 request: preparedRequest,
-                delivery: .stream,
+                selection: modelSelection,
                 context: modelInvocationContext(
                     sessionID: checkpoint.id,
                     journal: journal
                 )
+            )
+
+            for try await invocationEvent in modelInvoker.stream(
+                invocation
             ) {
                 try Task.checkCancellation()
+
+                let event: AgentStreamEvent
+
+                switch invocationEvent {
+                case .routed:
+                    continue
+
+                case .model(let modelEvent):
+                    event = modelEvent
+
+                case .completed(let result):
+                    event = .completed(
+                        result.response
+                    )
+                }
 
                 try accumulator.consume(
                     event

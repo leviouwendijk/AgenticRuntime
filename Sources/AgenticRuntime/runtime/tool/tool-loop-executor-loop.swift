@@ -177,13 +177,17 @@ extension ToolLoopExecutor {
         let journal = AgentModelToolInvocationJournal()
 
         do {
-            response = try await adapter.respond(
-                request: preparedRequest,
-                context: modelInvocationContext(
-                    sessionID: checkpoint.id,
-                    journal: journal
+            let result = try await modelInvoker.buffered(
+                AgentModelInvocation(
+                    request: preparedRequest,
+                    selection: modelSelection,
+                    context: modelInvocationContext(
+                        sessionID: checkpoint.id,
+                        journal: journal
+                    )
                 )
             )
+            response = result.response
         } catch RuntimeAgentToolCallBoundary.exposure_changed {
             try await finishNativeExposureBoundary(
                 invocations: await journal.snapshot(),

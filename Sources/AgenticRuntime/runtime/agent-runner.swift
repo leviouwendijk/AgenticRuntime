@@ -1,13 +1,13 @@
 import Agentic
 import AgenticExecution
-import AgenticModels
 import AgenticTools
 import AgenticUsage
 import AgenticWorkspace
 import Foundation
 
 public actor AgentRunner {
-    public let adapter: any AgentModelAdapter
+    public let modelInvoker: any AgentModelInvoking
+    public let modelSelection: AgentModelSelection
     public let configuration: AgentRunnerConfiguration
     public let toolRegistry: ToolRegistry
     public let extensions: [any AgentHarnessExtension]
@@ -19,7 +19,8 @@ public actor AgentRunner {
     public let costTracker: AgentCostTracker?
 
     public init(
-        adapter: any AgentModelAdapter,
+        modelInvoker: any AgentModelInvoking,
+        modelSelection: AgentModelSelection = .executor,
         configuration: AgentRunnerConfiguration = .default,
         toolRegistry: ToolRegistry = .init(),
         extensions: [any AgentHarnessExtension] = [],
@@ -30,7 +31,8 @@ public actor AgentRunner {
         stateSinks: [any AgentRunStateSink] = [],
         costTracker: AgentCostTracker? = nil
     ) {
-        self.adapter = adapter
+        self.modelInvoker = modelInvoker
+        self.modelSelection = modelSelection
         self.configuration = configuration
         self.toolRegistry = toolRegistry
         self.extensions = extensions
@@ -232,7 +234,8 @@ extension AgentRunner {
         }
 
         return ToolLoopExecutor(
-            adapter: adapter,
+            modelInvoker: modelInvoker,
+            modelSelection: modelSelection,
             configuration: configuration,
             toolRegistry: registry,
             toolExposure: exposure,
@@ -275,7 +278,7 @@ extension AgentRunner {
 
 public extension AgentRunner {
     init(
-        modelBroker: AgentModelBroker,
+        modelInvoker: any AgentModelInvoking,
         modeApplication: ModeRuntimeApplication,
         extensions: [any AgentHarnessExtension] = [],
         workspace: AgentWorkspace? = nil,
@@ -286,8 +289,8 @@ public extension AgentRunner {
         costTracker: AgentCostTracker? = nil
     ) {
         self.init(
-            modelBroker: modelBroker,
-            routePolicy: modeApplication.routePolicy,
+            modelInvoker: modelInvoker,
+            modelSelection: modeApplication.modelSelection,
             configuration: modeApplication.configuration,
             toolRegistry: modeApplication.toolRegistry,
             extensions: extensions,
@@ -301,7 +304,7 @@ public extension AgentRunner {
     }
 
     init(
-        modelBroker: AgentModelBroker,
+        modelInvoker: any AgentModelInvoking,
         environment: AgentRuntimeEnvironment,
         sessionID: String,
         modeApplication: ModeRuntimeApplication,
@@ -312,10 +315,10 @@ public extension AgentRunner {
         enableHistoryPersistence: Bool = true
     ) throws {
         try self.init(
-            modelBroker: modelBroker,
+            modelInvoker: modelInvoker,
+            modelSelection: modeApplication.modelSelection,
             environment: environment,
             sessionID: sessionID,
-            routePolicy: modeApplication.routePolicy,
             configuration: modeApplication.configuration,
             toolRegistry: modeApplication.toolRegistry,
             extensions: extensions,

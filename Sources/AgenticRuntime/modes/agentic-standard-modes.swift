@@ -7,7 +7,7 @@ public extension AgenticMode {
         title: "Planning",
         routeDefaults: .init(
             primaryPurpose: .planner,
-            policies: [
+            selections: [
                 .planner: .planner
             ]
         ),
@@ -30,7 +30,7 @@ public extension AgenticMode {
         title: "Research",
         routeDefaults: .init(
             primaryPurpose: .researcher,
-            policies: [
+            selections: [
                 .researcher: .researcher,
                 .summarizer: .summarizer
             ]
@@ -57,7 +57,7 @@ public extension AgenticMode {
         title: "Coder",
         routeDefaults: .init(
             primaryPurpose: .coder,
-            policies: [
+            selections: [
                 .coder: .coder,
                 .reviewer: .reviewer,
                 .summarizer: .summarizer
@@ -87,7 +87,7 @@ public extension AgenticMode {
         title: "Review",
         routeDefaults: .init(
             primaryPurpose: .reviewer,
-            policies: [
+            selections: [
                 .reviewer: .reviewer,
                 .summarizer: .summarizer
             ]
@@ -114,7 +114,7 @@ public extension AgenticMode {
         title: "Debugging",
         routeDefaults: .init(
             primaryPurpose: .coder,
-            policies: [
+            selections: [
                 .coder: .coder,
                 .reviewer: .reviewer,
                 .planner: .planner
@@ -144,7 +144,7 @@ public extension AgenticMode {
         title: "Cheap utility",
         routeDefaults: .init(
             primaryPurpose: .classifier,
-            policies: [
+            selections: [
                 .classifier: .classifier,
                 .summarizer: .summarizer,
                 .extractor: .extractor
@@ -168,7 +168,7 @@ public extension AgenticMode {
         title: "Private",
         routeDefaults: .init(
             primaryPurpose: .local_private,
-            policies: [
+            selections: [
                 .local_private: .local_private
             ]
         ),

@@ -88,7 +88,8 @@ public struct AgentSessionRuntime: Sendable {
     }
 
     public func makeRunner(
-        adapter: any AgentModelAdapter,
+        modelInvoker: any AgentModelInvoking,
+        modelSelection: AgentModelSelection = .executor,
         configuration: AgentRunnerConfiguration = .default,
         toolRegistry: ToolRegistry = .init(),
         extensions: [any AgentHarnessExtension] = [],
@@ -104,7 +105,8 @@ public struct AgentSessionRuntime: Sendable {
         }
 
         return AgentRunner(
-            adapter: adapter,
+            modelInvoker: modelInvoker,
+            modelSelection: modelSelection,
             configuration: resolvedConfiguration,
             toolRegistry: toolRegistry,
             extensions: extensions,
@@ -117,7 +119,8 @@ public struct AgentSessionRuntime: Sendable {
 
     public func run(
         _ request: AgentRequest,
-        adapter: any AgentModelAdapter,
+        modelInvoker: any AgentModelInvoking,
+        modelSelection: AgentModelSelection = .executor,
         configuration: AgentRunnerConfiguration = .default,
         toolRegistry: ToolRegistry = .init(),
         extensions: [any AgentHarnessExtension] = [],
@@ -131,7 +134,8 @@ public struct AgentSessionRuntime: Sendable {
         )
 
         let runner = try makeRunner(
-            adapter: adapter,
+            modelInvoker: modelInvoker,
+            modelSelection: modelSelection,
             configuration: configuration,
             toolRegistry: toolRegistry,
             extensions: extensions,
@@ -156,7 +160,8 @@ public struct AgentSessionRuntime: Sendable {
     }
 
     public func resume(
-        adapter: any AgentModelAdapter,
+        modelInvoker: any AgentModelInvoking,
+        modelSelection: AgentModelSelection = .executor,
         configuration: AgentRunnerConfiguration = .default,
         toolRegistry: ToolRegistry = .init(),
         extensions: [any AgentHarnessExtension] = [],
@@ -170,7 +175,8 @@ public struct AgentSessionRuntime: Sendable {
         )
 
         let runner = try makeRunner(
-            adapter: adapter,
+            modelInvoker: modelInvoker,
+            modelSelection: modelSelection,
             configuration: configuration,
             toolRegistry: toolRegistry,
             extensions: extensions,
@@ -195,7 +201,8 @@ public struct AgentSessionRuntime: Sendable {
 
     public func resume(
         userInput: String,
-        adapter: any AgentModelAdapter,
+        modelInvoker: any AgentModelInvoking,
+        modelSelection: AgentModelSelection = .executor,
         configuration: AgentRunnerConfiguration = .default,
         toolRegistry: ToolRegistry = .init(),
         extensions: [any AgentHarnessExtension] = [],
@@ -207,7 +214,8 @@ public struct AgentSessionRuntime: Sendable {
             answer: .text(
                 userInput
             ),
-            adapter: adapter,
+            modelInvoker: modelInvoker,
+            modelSelection: modelSelection,
             configuration: configuration,
             toolRegistry: toolRegistry,
             extensions: extensions,
@@ -219,7 +227,8 @@ public struct AgentSessionRuntime: Sendable {
 
     public func resume(
         answer: UserInputAnswer,
-        adapter: any AgentModelAdapter,
+        modelInvoker: any AgentModelInvoking,
+        modelSelection: AgentModelSelection = .executor,
         configuration: AgentRunnerConfiguration = .default,
         toolRegistry: ToolRegistry = .init(),
         extensions: [any AgentHarnessExtension] = [],
@@ -234,7 +243,8 @@ public struct AgentSessionRuntime: Sendable {
         )
 
         let runner = try makeRunner(
-            adapter: adapter,
+            modelInvoker: modelInvoker,
+            modelSelection: modelSelection,
             configuration: configuration,
             toolRegistry: toolRegistry,
             extensions: extensions,

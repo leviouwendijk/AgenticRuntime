@@ -4,7 +4,7 @@ import AgenticExecution
 public struct ModeRuntimeApplication: Sendable {
     public var selection: ModeSelection
     public var configuration: AgentRunnerConfiguration
-    public var routePolicy: AgentModelUsePolicy
+    public var modelSelection: AgentModelSelection
     public var toolRegistry: ToolRegistry
     public var skillRegistry: SkillRegistry
     public var loadedSkills: [AgentSkill]
@@ -14,7 +14,7 @@ public struct ModeRuntimeApplication: Sendable {
     public init(
         selection: ModeSelection,
         configuration: AgentRunnerConfiguration,
-        routePolicy: AgentModelUsePolicy,
+        modelSelection: AgentModelSelection,
         toolRegistry: ToolRegistry,
         skillRegistry: SkillRegistry,
         loadedSkills: [AgentSkill],
@@ -23,7 +23,7 @@ public struct ModeRuntimeApplication: Sendable {
     ) {
         self.selection = selection
         self.configuration = configuration
-        self.routePolicy = routePolicy
+        self.modelSelection = modelSelection
         self.toolRegistry = toolRegistry
         self.skillRegistry = skillRegistry
         self.loadedSkills = loadedSkills
@@ -58,7 +58,7 @@ public struct ModeRuntimeApplication: Sendable {
         self.init(
             selection: selection,
             configuration: effectiveConfiguration,
-            routePolicy: selection.routePolicy,
+            modelSelection: selection.modelSelection,
             toolRegistry: tools,
             skillRegistry: selectedSkills.registry,
             loadedSkills: selectedSkills.loadedSkills,
