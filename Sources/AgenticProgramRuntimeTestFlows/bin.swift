@@ -50,6 +50,44 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting
                 .runProgramInferenceExecutionRecord()
         },
+        TestFlow(
+            "model-invocation-transport",
+            tags: [
+                "agentic-runtime",
+                "model",
+                "invocation",
+                "selection",
+                "context",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runModelInvocationTransport()
+        },
+        TestFlow(
+            "model-invocation-streaming-completion",
+            tags: [
+                "agentic-runtime",
+                "model",
+                "invocation",
+                "streaming",
+                "completion",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runModelInvocationStreamingCompletion()
+        },
+        TestFlow(
+            "mode-model-selection-propagation",
+            tags: [
+                "agentic-runtime",
+                "mode",
+                "model",
+                "selection",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runModeModelSelectionPropagation()
+        },
     ]
 }
 
