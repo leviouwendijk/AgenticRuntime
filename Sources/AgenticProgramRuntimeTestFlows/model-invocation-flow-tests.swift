@@ -412,7 +412,7 @@ private func fixtureRouteResult(
             purpose: selection.purpose,
             profile: AgentModelProfile(
                 identifier: "fixture.model-profile",
-                adapterIdentifier: "fixture.model-adapter",
+                gatewayIdentifier: "fixture.model-gateway",
                 model: "fixture-model",
                 purposes: [
                     selection.purpose,

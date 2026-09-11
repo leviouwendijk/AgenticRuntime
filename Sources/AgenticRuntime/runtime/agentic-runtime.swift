@@ -9,7 +9,7 @@ public struct AgenticRuntime:
     public let tools: ToolRegistry
     public let toolCatalog: AgentToolCatalog
     public let skills: SkillRegistry
-    public let adapters: AgentModelAdapterCatalog
+    public let gateways: AgentModelGatewayCatalog
     public let profiles: AgentModelProfileCatalog
 
     public init(
@@ -27,36 +27,28 @@ public struct AgenticRuntime:
             application.skillRegistrations
         }
 
-        var adapterOverrides: [
-            (
-                AgentModelAdapterIdentifier,
-                any AgentModelAdapter
-            )
-        ] = []
+        var gatewayOverrides: [any AgentModelGateway] = []
 
-        adapterOverrides.reserveCapacity(
-            application.adapterRegistrations.count
+        gatewayOverrides.reserveCapacity(
+            application.gatewayFactories.count
         )
 
-        for registration in application.adapterRegistrations {
-            adapterOverrides.append(
-                (
-                    registration.identifier,
-                    try await registration.make()
-                )
+        for factory in application.gatewayFactories {
+            gatewayOverrides.append(
+                try await factory.make()
             )
         }
 
         let modelCatalogs = try await AgentModelCatalogs(
             modelProviders: application.modelProviders,
-            adapterOverrides: adapterOverrides
+            gatewayOverrides: gatewayOverrides
         )
 
         self.application = application
         self.tools = tools
         self.toolCatalog = toolCatalog
         self.skills = skills
-        self.adapters = modelCatalogs.adapters
+        self.gateways = modelCatalogs.gateways
         self.profiles = modelCatalogs.profiles
     }
 }
