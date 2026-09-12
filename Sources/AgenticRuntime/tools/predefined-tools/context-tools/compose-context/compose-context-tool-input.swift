@@ -1,5 +1,5 @@
 import Schema
-import SchemaMacros
+import Macros
 
 @JSONSchema
 public struct ComposeContextToolInput: Sendable, Codable, Hashable {

@@ -1,5 +1,5 @@
 import Schema
-import SchemaMacros
+import Macros
 
 @JSONSchema
 public struct EstimateContextSizeToolInput: Sendable, Codable, Hashable {

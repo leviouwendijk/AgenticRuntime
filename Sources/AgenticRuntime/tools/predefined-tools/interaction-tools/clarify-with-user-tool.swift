@@ -3,7 +3,7 @@ import AgenticExecution
 import AgenticWorkspace
 import Primitives
 import Schema
-import SchemaMacros
+import Macros
 
 @JSONSchema
 public struct ClarifyWithUserToolInput: Sendable, Codable, Hashable {

@@ -5,7 +5,7 @@ import AgenticWorkspace
 import Foundation
 import Primitives
 import Schema
-import SchemaMacros
+import Macros
 
 public enum ExecutePreparedIntentToolError: Error, Sendable, LocalizedError {
     case missingExecutionToolName(PreparedIntentIdentifier)
