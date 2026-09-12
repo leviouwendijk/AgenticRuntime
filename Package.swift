@@ -194,8 +194,20 @@ let package = Package(
                     package: "AgenticInference"
                 ),
                 .product(
+                    name: "AgenticExecution",
+                    package: "AgenticExecution"
+                ),
+                .product(
                     name: "Primitives",
                     package: "Primitives"
+                ),
+                .product(
+                    name: "Schema",
+                    package: "Schema"
+                ),
+                .product(
+                    name: "SchemaMacros",
+                    package: "SchemaMacros"
                 ),
                 .product(
                     name: "TestFlows",

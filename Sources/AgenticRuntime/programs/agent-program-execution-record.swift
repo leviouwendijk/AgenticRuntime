@@ -49,9 +49,16 @@ public struct AgentProgramFailureRecord:
         self.type = String(
             reflecting: Swift.type(of: error)
         )
-        self.message = String(
-            describing: error
-        )
+
+        if let localized = error as? any LocalizedError,
+           let description = localized.errorDescription
+        {
+            self.message = description
+        } else {
+            self.message = String(
+                describing: error
+            )
+        }
     }
 }
 

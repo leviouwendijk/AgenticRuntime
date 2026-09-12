@@ -157,13 +157,14 @@ struct AgentProgramRecordingToolInvoker:
         var outputValue: JSONValue?
 
         do {
-            outputValue = try await executor.invoke(
+            let resolvedOutput = try await executor.invoke(
                 identifier,
                 input: inputValue
             )
+            outputValue = resolvedOutput
             let decoded = try JSONToolBridge.decode(
                 Output.self,
-                from: outputValue!
+                from: resolvedOutput
             )
             let completedAt = Date()
 

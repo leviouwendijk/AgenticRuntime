@@ -126,6 +126,21 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting
                 .runApplicationProgramInstallation()
         },
+        TestFlow(
+            "program-governed-tool-execution",
+            tags: [
+                "agentic-runtime",
+                "program",
+                "tool",
+                "governance",
+                "preflight",
+                "policy",
+                "approval",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runProgramGovernedToolExecution()
+        },
     ]
 }
 

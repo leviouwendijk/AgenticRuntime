@@ -141,7 +141,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let stepOutput = try JSONToolBridge.decode(
             FixtureOutput.self,
-            from: step.output!
+            from: step.output ?? .null
         )
 
         try Expect.equal(
