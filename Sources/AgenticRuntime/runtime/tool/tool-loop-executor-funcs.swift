@@ -101,14 +101,14 @@ extension ToolLoopExecutor {
 
     func executeApprovedToolCall(
         _ toolCall: AgentToolCall
-    ) async -> AgentToolResult {
+    ) async throws -> AgentToolResult {
         do {
             return try await tooling.registry.call(
                 toolCall,
                 workspace: tooling.workspace
             )
         } catch {
-            return makeToolErrorResult(
+            return try makeToolErrorResult(
                 for: toolCall,
                 error: error
             )
@@ -119,7 +119,7 @@ extension ToolLoopExecutor {
         for toolCall: AgentToolCall,
         preflight: ToolPreflight,
         requirement: ApprovalRequirement
-    ) -> AgentToolResult {
+    ) throws -> AgentToolResult {
         let payload = ToolDenialPayload(
             kind: "tool_denied",
             toolCallID: toolCall.id,
@@ -131,7 +131,7 @@ extension ToolLoopExecutor {
         return AgentToolResult(
             toolCallID: toolCall.id,
             name: toolCall.name,
-            output: try! JSONToolBridge.encode(payload),
+            output: try JSONToolBridge.encode(payload),
             isError: true
         )
     }
@@ -139,7 +139,7 @@ extension ToolLoopExecutor {
     func makeSkippedToolResult(
         for toolCall: AgentToolCall,
         summary: String = "Skipped explicitly by the operator."
-    ) -> AgentToolResult {
+    ) throws -> AgentToolResult {
         let payload = ToolSkipPayload(
             kind: "tool_skipped",
             toolCallID: toolCall.id,
@@ -150,7 +150,7 @@ extension ToolLoopExecutor {
         return AgentToolResult(
             toolCallID: toolCall.id,
             name: toolCall.name,
-            output: try! JSONToolBridge.encode(payload),
+            output: try JSONToolBridge.encode(payload),
             isError: false
         )
     }
@@ -158,7 +158,7 @@ extension ToolLoopExecutor {
     func makeToolErrorResult(
         for toolCall: AgentToolCall,
         error: Error
-    ) -> AgentToolResult {
+    ) throws -> AgentToolResult {
         let payload = ToolErrorPayload(
             kind: "tool_error",
             toolCallID: toolCall.id,
@@ -169,7 +169,7 @@ extension ToolLoopExecutor {
         return AgentToolResult(
             toolCallID: toolCall.id,
             name: toolCall.name,
-            output: try! JSONToolBridge.encode(payload),
+            output: try JSONToolBridge.encode(payload),
             isError: true
         )
     }

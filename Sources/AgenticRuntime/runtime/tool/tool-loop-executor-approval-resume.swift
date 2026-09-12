@@ -27,7 +27,7 @@ public extension ToolLoopExecutor {
                 to: &checkpoint
             )
 
-            let result = await executeApprovedToolCall(
+            let result = try await executeApprovedToolCall(
                 pendingApproval.toolCall
             )
 
@@ -67,7 +67,7 @@ public extension ToolLoopExecutor {
             )
 
         case .denied:
-            let result = makeDeniedToolResult(
+            let result = try makeDeniedToolResult(
                 for: pendingApproval.toolCall,
                 preflight: pendingApproval.preflight,
                 requirement: pendingApproval.requirement
@@ -112,7 +112,7 @@ public extension ToolLoopExecutor {
             )
 
         case .skipped:
-            let result = makeSkippedToolResult(
+            let result = try makeSkippedToolResult(
                 for: pendingApproval.toolCall,
                 summary: metadata["summary"] ?? "skipped after suspended review"
             )

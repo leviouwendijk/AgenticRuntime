@@ -59,7 +59,7 @@ extension ToolLoopExecutor {
                     registry: tooling.registry
                 )
             } catch {
-                let result = makeToolErrorResult(
+                let result = try makeToolErrorResult(
                     for: toolCall,
                     error: error
                 )
@@ -90,7 +90,7 @@ extension ToolLoopExecutor {
                     workspace: tooling.workspace
                 )
             } catch {
-                let result = makeToolErrorResult(
+                let result = try makeToolErrorResult(
                     for: toolCall,
                     error: error
                 )
@@ -150,7 +150,7 @@ extension ToolLoopExecutor {
                     to: &checkpoint
                 )
 
-                let result = await executeApprovedToolCall(
+                let result = try await executeApprovedToolCall(
                     toolCall
                 )
 
@@ -190,7 +190,7 @@ extension ToolLoopExecutor {
                 batch = checkpoint.toolBatch ?? batch
 
             case .denied_forbidden:
-                let result = makeDeniedToolResult(
+                let result = try makeDeniedToolResult(
                     for: toolCall,
                     preflight: preflight,
                     requirement: requirement
@@ -251,7 +251,7 @@ extension ToolLoopExecutor {
                         to: &checkpoint
                     )
 
-                    let result = await executeApprovedToolCall(
+                    let result = try await executeApprovedToolCall(
                         toolCall
                     )
 
@@ -291,7 +291,7 @@ extension ToolLoopExecutor {
                     batch = checkpoint.toolBatch ?? batch
 
                 case .denied:
-                    let result = makeDeniedToolResult(
+                    let result = try makeDeniedToolResult(
                         for: toolCall,
                         preflight: preflight,
                         requirement: requirement
@@ -334,7 +334,7 @@ extension ToolLoopExecutor {
                     return .continueLoop(checkpoint)
 
                 case .skipped:
-                    let result = makeSkippedToolResult(
+                    let result = try makeSkippedToolResult(
                         for: toolCall
                     )
 
