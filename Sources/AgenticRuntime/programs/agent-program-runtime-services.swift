@@ -1,4 +1,5 @@
 import Agentic
+import AgenticExecution
 import AgenticInference
 import AgenticPrograms
 import Foundation
@@ -53,6 +54,24 @@ public protocol AgentProgramToolExecuting: Sendable {
         _ identifier: AgentToolIdentifier,
         input: JSONValue
     ) async throws -> JSONValue
+
+    func resume(
+        pendingApproval: PendingApproval,
+        decision: ApprovalDecision
+    ) async throws -> JSONValue
+}
+
+public extension AgentProgramToolExecuting {
+    func resume(
+        pendingApproval: PendingApproval,
+        decision _: ApprovalDecision
+    ) async throws -> JSONValue {
+        throw AgentProgramReplayError.tool_resume_unsupported(
+            AgentToolIdentifier(
+                pendingApproval.toolCall.name
+            )
+        )
+    }
 }
 
 public enum AgentProgramRuntimeError:

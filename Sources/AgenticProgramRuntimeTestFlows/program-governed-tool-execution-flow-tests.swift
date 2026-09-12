@@ -409,6 +409,63 @@ extension AgenticProgramRuntimeFlowTesting {
             "skipped Program execution preserves governance reason"
         )
 
+        let resumedProbe = GovernedProgramToolProbe()
+        let resumedRegistry = try ToolRegistry {
+            GovernedProgramTool(
+                risk: .boundedmutate,
+                probe: resumedProbe
+            )
+        }
+        let resumedExecutor = GovernedAgentProgramToolExecutor(
+            registry: resumedRegistry,
+            policy: .init(
+                autonomyMode: .auto_observe
+            )
+        )
+        let resumedInput = try JSONToolBridge.encode(
+            GovernedProgramToolInput(
+                value: "resumed"
+            )
+        )
+        let resumedCall = AgentToolCall(
+            id: "fixture-governed-program-resume",
+            name: "fixture.governed_program_tool",
+            input: resumedInput
+        )
+        let resumedReview = try await resumedExecutor.invoker.review(
+            resumedCall
+        )
+        let pendingApproval = PendingApproval(
+            toolCall: resumedCall,
+            preflight: resumedReview.preflight,
+            requirement: resumedReview.requirement
+        )
+        let resumedOutputValue = try await resumedExecutor.resume(
+            pendingApproval: pendingApproval,
+            decision: .approved
+        )
+        let resumedOutput = try JSONToolBridge.decode(
+            GovernedProgramToolOutput.self,
+            from: resumedOutputValue
+        )
+        let resumedCount = await resumedProbe.count()
+
+        try Expect.equal(
+            resumedReview.requirement,
+            .needs_human_review,
+            "resume fixture begins from a real approval-gated preflight"
+        )
+        try Expect.equal(
+            resumedOutput.value,
+            "executed:resumed",
+            "approved Program resume executes the exact pending semantic tool call"
+        )
+        try Expect.equal(
+            resumedCount,
+            1,
+            "approved Program resume executes the pending tool exactly once"
+        )
+
         return [
             .field(
                 "observe_executions",
@@ -429,6 +486,10 @@ extension AgenticProgramRuntimeFlowTesting {
             .field(
                 "skipped_executions",
                 String(skippedCount)
+            ),
+            .field(
+                "resumed_executions",
+                String(resumedCount)
             ),
         ]
     }

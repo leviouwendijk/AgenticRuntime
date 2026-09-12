@@ -13,6 +13,7 @@ public enum AgentProgramToolGovernanceError:
     case skipped(AgentToolIdentifier)
     case missing_tool_result(AgentToolIdentifier)
     case tool_execution_failed(AgentToolIdentifier)
+    case stale_approval(AgentToolIdentifier)
 
     public var errorDescription: String? {
         switch self {
@@ -30,6 +31,9 @@ public enum AgentProgramToolGovernanceError:
 
         case .tool_execution_failed(let identifier):
             return "Program tool '\(identifier.rawValue)' returned a failed tool result."
+
+        case .stale_approval(let identifier):
+            return "Program tool '\(identifier.rawValue)' changed since approval was requested; the stale approval was not executed."
         }
     }
 }
@@ -124,6 +128,60 @@ public struct GovernedAgentProgramToolExecutor:
                 .skipped(
                     identifier
                 )
+        }
+    }
+
+    public func resume(
+        pendingApproval: PendingApproval,
+        decision: ApprovalDecision
+    ) async throws -> JSONValue {
+        let identifier = AgentToolIdentifier(
+            pendingApproval.toolCall.name
+        )
+
+        switch decision {
+        case .denied:
+            throw AgentProgramToolGovernanceError.denied(
+                identifier
+            )
+
+        case .skipped:
+            throw AgentProgramToolGovernanceError.skipped(
+                identifier
+            )
+
+        case .needshuman:
+            throw AgentProgramToolGovernanceError.needs_human_review(
+                identifier
+            )
+
+        case .approved:
+            let freshReview = try await invoker.review(
+                pendingApproval.toolCall,
+                context: context
+            )
+
+            guard freshReview.preflight == pendingApproval.preflight,
+                  freshReview.requirement == pendingApproval.requirement
+            else {
+                throw AgentProgramToolGovernanceError.stale_approval(
+                    identifier
+                )
+            }
+
+            let toolResult = try await invoker.registry.execute(
+                pendingApproval.toolCall,
+                context: context
+            )
+
+            guard !toolResult.isError else {
+                throw AgentProgramToolGovernanceError
+                    .tool_execution_failed(
+                        identifier
+                    )
+            }
+
+            return toolResult.output
         }
     }
 }
