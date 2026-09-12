@@ -1,4 +1,5 @@
 import Agentic
+import AgenticExecution
 import AgenticPrograms
 import Foundation
 import Primitives
@@ -14,6 +15,13 @@ public struct AgentRuntimeProgramRegistration:
             JSONValue?,
             AgentRuntimeServices,
             [String: String]
+        ) async throws -> AgentProgramExecutionRecord
+
+    private let resumeHandler:
+        @Sendable (
+            AgentProgramCheckpoint,
+            AgentInteraction.Response,
+            AgentRuntimeServices
         ) async throws -> AgentProgramExecutionRecord
 
     public init<Program: AgentProgram>(
@@ -57,6 +65,22 @@ public struct AgentRuntimeProgramRegistration:
 
             return execution.record
         }
+
+        self.resumeHandler = {
+            checkpoint,
+            response,
+            services
+            in
+            let execution = try await AgentProgramRunner(
+                services: services
+            ).resume(
+                program,
+                from: checkpoint,
+                interaction: response
+            )
+
+            return execution.record
+        }
     }
 
     public var identifier: AgentProgramIdentifier {
@@ -78,6 +102,18 @@ public struct AgentRuntimeProgramRegistration:
             realization,
             services,
             metadata
+        )
+    }
+
+    public func resume(
+        from checkpoint: AgentProgramCheckpoint,
+        interaction response: AgentInteraction.Response,
+        services: AgentRuntimeServices = .init()
+    ) async throws -> AgentProgramExecutionRecord {
+        try await resumeHandler(
+            checkpoint,
+            response,
+            services
         )
     }
 }

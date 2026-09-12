@@ -100,6 +100,29 @@ public struct AgenticRuntime:
             metadata: metadata
         )
     }
+
+    public func resumeProgram(
+        from checkpoint: AgentProgramCheckpoint,
+        interaction response: AgentInteraction.Response,
+        services: AgentRuntimeServices = .init()
+    ) async throws -> AgentProgramExecutionRecord {
+        let identifier = checkpoint.programIdentifier
+
+        guard let registration = programExecutions[
+            identifier
+        ] else {
+            throw AgentRuntimeProgramExecutionError
+                .registrationUnavailable(
+                    identifier
+                )
+        }
+
+        return try await registration.resume(
+            from: checkpoint,
+            interaction: response,
+            services: services
+        )
+    }
 }
 
 public extension AgenticRuntime {
