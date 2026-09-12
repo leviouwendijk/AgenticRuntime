@@ -1,6 +1,8 @@
 import Agentic
 import AgenticExecution
 import AgenticModels
+import AgenticPrograms
+import Primitives
 
 public struct AgenticRuntime:
     Sendable
@@ -9,8 +11,12 @@ public struct AgenticRuntime:
     public let tools: ToolRegistry
     public let toolCatalog: AgentToolCatalog
     public let skills: SkillRegistry
+    public let programs: ProgramRegistry
     public let gateways: AgentModelGatewayCatalog
     public let profiles: AgentModelProfileCatalog
+
+    private let programExecutions:
+        [AgentProgramIdentifier: AgentRuntimeProgramRegistration]
 
     public init(
         application: AgenticApplication
@@ -25,6 +31,23 @@ public struct AgenticRuntime:
 
         let skills = try Agentic.skill.registry {
             application.skillRegistrations
+        }
+
+        var programs = ProgramRegistry()
+        var programExecutions:
+            [AgentProgramIdentifier: AgentRuntimeProgramRegistration] = [:]
+
+        programExecutions.reserveCapacity(
+            application.programRegistrations.count
+        )
+
+        for registration in application.programRegistrations {
+            try programs.register(
+                registration.registeredProgram
+            )
+            programExecutions[
+                registration.identifier
+            ] = registration
         }
 
         var gatewayOverrides: [any AgentModelGateway] = []
@@ -48,8 +71,34 @@ public struct AgenticRuntime:
         self.tools = tools
         self.toolCatalog = toolCatalog
         self.skills = skills
+        self.programs = programs
         self.gateways = modelCatalogs.gateways
         self.profiles = modelCatalogs.profiles
+        self.programExecutions = programExecutions
+    }
+
+    public func executeProgram(
+        identifiedBy identifier: AgentProgramIdentifier,
+        input: JSONValue,
+        realization: JSONValue? = nil,
+        services: AgentRuntimeServices = .init(),
+        metadata: [String: String] = [:]
+    ) async throws -> AgentProgramExecutionRecord {
+        guard let registration = programExecutions[
+            identifier
+        ] else {
+            throw AgentRuntimeProgramExecutionError
+                .registrationUnavailable(
+                    identifier
+                )
+        }
+
+        return try await registration.execute(
+            input: input,
+            realization: realization,
+            services: services,
+            metadata: metadata
+        )
     }
 }
 

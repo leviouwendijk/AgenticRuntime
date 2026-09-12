@@ -112,6 +112,20 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting
                 .runRuntimeServicesRecordingPropagation()
         },
+        TestFlow(
+            "application-program-installation",
+            tags: [
+                "agentic-runtime",
+                "application",
+                "program",
+                "registry",
+                "execution",
+                "realization",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runApplicationProgramInstallation()
+        },
     ]
 }
 

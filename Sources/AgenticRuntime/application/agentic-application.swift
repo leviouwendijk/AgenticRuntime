@@ -24,6 +24,7 @@ public struct AgenticApplication:
 
     public let toolRegistrations: [AgentToolRegistration]
     public let skillRegistrations: [AgentSkillRegistration]
+    public let programRegistrations: [AgentRuntimeProgramRegistration]
     public let gatewayFactories: [AgentModelGatewayFactory]
     public let modelProviders: [any AgentModelProvider]
 
@@ -35,6 +36,7 @@ public struct AgenticApplication:
     ) {
         var toolRegistrations: [AgentToolRegistration] = []
         var skillRegistrations: [AgentSkillRegistration] = []
+        var programRegistrations: [AgentRuntimeProgramRegistration] = []
         var gatewayFactories: [AgentModelGatewayFactory] = []
         var modelProviders: [any AgentModelProvider] = []
 
@@ -47,6 +49,11 @@ public struct AgenticApplication:
 
             case .skills(let registrations):
                 skillRegistrations.append(
+                    contentsOf: registrations
+                )
+
+            case .programs(let registrations):
+                programRegistrations.append(
                     contentsOf: registrations
                 )
 
@@ -67,6 +74,7 @@ public struct AgenticApplication:
         self.metadata = metadata
         self.toolRegistrations = toolRegistrations
         self.skillRegistrations = skillRegistrations
+        self.programRegistrations = programRegistrations
         self.gatewayFactories = gatewayFactories
         self.modelProviders = modelProviders
     }
