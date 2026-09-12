@@ -11,6 +11,7 @@ public enum AgentProgramExecutionOutcome:
     Hashable
 {
     case succeeded
+    case suspended
     case failed
 }
 
@@ -74,6 +75,7 @@ public struct AgentProgramStepRecord:
     public var inferenceRealization: AgentInferenceRealization?
     public var usage: AgentUsage?
     public var route: AgentModelRouteRecord?
+    public var suspension: AgentSuspension?
     public var failure: AgentProgramFailureRecord?
     public var startedAt: Date
     public var completedAt: Date
@@ -88,6 +90,7 @@ public struct AgentProgramStepRecord:
         inferenceRealization: AgentInferenceRealization? = nil,
         usage: AgentUsage? = nil,
         route: AgentModelRouteRecord? = nil,
+        suspension: AgentSuspension? = nil,
         failure: AgentProgramFailureRecord? = nil,
         startedAt: Date,
         completedAt: Date,
@@ -101,6 +104,7 @@ public struct AgentProgramStepRecord:
         self.inferenceRealization = inferenceRealization
         self.usage = usage
         self.route = route
+        self.suspension = suspension
         self.failure = failure
         self.startedAt = startedAt
         self.completedAt = completedAt
@@ -114,6 +118,7 @@ public struct AgentProgramExecutionRecord:
     Codable,
     Hashable
 {
+    public var sessionID: String?
     public var programIdentifier: AgentProgramIdentifier
     public var programVersion: String?
     public var realizationIdentifier: AgentProgramRealizationIdentifier?
@@ -121,6 +126,8 @@ public struct AgentProgramExecutionRecord:
     public var output: JSONValue?
     public var steps: [AgentProgramStepRecord]
     public var outcome: AgentProgramExecutionOutcome
+    public var suspension: AgentSuspension?
+    public var checkpoint: AgentProgramCheckpoint?
     public var failure: AgentProgramFailureRecord?
     public var startedAt: Date
     public var completedAt: Date
@@ -128,6 +135,7 @@ public struct AgentProgramExecutionRecord:
     public var metadata: [String: String]
 
     public init(
+        sessionID: String? = nil,
         programIdentifier: AgentProgramIdentifier,
         programVersion: String? = nil,
         realizationIdentifier: AgentProgramRealizationIdentifier? = nil,
@@ -135,12 +143,15 @@ public struct AgentProgramExecutionRecord:
         output: JSONValue? = nil,
         steps: [AgentProgramStepRecord] = [],
         outcome: AgentProgramExecutionOutcome,
+        suspension: AgentSuspension? = nil,
+        checkpoint: AgentProgramCheckpoint? = nil,
         failure: AgentProgramFailureRecord? = nil,
         startedAt: Date,
         completedAt: Date,
         durationMilliseconds: Int,
         metadata: [String: String] = [:]
     ) {
+        self.sessionID = sessionID
         self.programIdentifier = programIdentifier
         self.programVersion = programVersion
         self.realizationIdentifier = realizationIdentifier
@@ -148,11 +159,21 @@ public struct AgentProgramExecutionRecord:
         self.output = output
         self.steps = steps
         self.outcome = outcome
+        self.suspension = suspension
+        self.checkpoint = checkpoint
         self.failure = failure
         self.startedAt = startedAt
         self.completedAt = completedAt
         self.durationMilliseconds = durationMilliseconds
         self.metadata = metadata
+    }
+
+    public var isSuspended: Bool {
+        outcome == .suspended
+    }
+
+    public var interactionRequest: AgentInteraction.Request? {
+        checkpoint?.interactionRequest
     }
 }
 
@@ -174,8 +195,16 @@ public struct AgentProgramExecution<Program: AgentProgram>:
         record.outcome == .succeeded
     }
 
+    public var isSuspended: Bool {
+        record.outcome == .suspended
+    }
+
     public var isFailed: Bool {
         record.outcome == .failed
+    }
+
+    public var interactionRequest: AgentInteraction.Request? {
+        record.interactionRequest
     }
 }
 

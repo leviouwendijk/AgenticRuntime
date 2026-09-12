@@ -112,10 +112,18 @@ public struct GovernedAgentProgramToolExecutor:
             return toolResult.output
 
         case .needshuman:
-            throw AgentProgramToolGovernanceError
-                .needs_human_review(
-                    identifier
+            throw AgentProgramSuspensionSignal(
+                suspension: .approval(
+                    PendingApproval(
+                        toolCall: call,
+                        preflight: result.review.preflight,
+                        requirement: result.review.requirement
+                    ),
+                    metadata: [
+                        "source": "agent_program",
+                    ]
                 )
+            )
 
         case .denied:
             throw AgentProgramToolGovernanceError
@@ -151,8 +159,13 @@ public struct GovernedAgentProgramToolExecutor:
             )
 
         case .needshuman:
-            throw AgentProgramToolGovernanceError.needs_human_review(
-                identifier
+            throw AgentProgramSuspensionSignal(
+                suspension: .approval(
+                    pendingApproval,
+                    metadata: [
+                        "source": "agent_program",
+                    ]
+                )
             )
 
         case .approved:

@@ -225,19 +225,20 @@ extension AgenticProgramRuntimeFlowTesting {
             GovernedProgram(),
             input: .init(
                 value: "review"
-            )
+            ),
+            sessionID: "fixture-governed-program-review"
         )
         let reviewCount = await reviewProbe.count()
 
         try Expect.equal(
             reviewExecution.record.outcome,
-            .failed,
-            "approval-gated Program tool fails closed when no approval handler is supplied"
+            .suspended,
+            "approval-gated Program tool suspends when no approval handler is supplied"
         )
         try Expect.equal(
             reviewExecution.output == nil,
             true,
-            "unapproved Program tool produces no semantic output"
+            "suspended Program tool produces no semantic output"
         )
         try Expect.equal(
             reviewCount,
@@ -247,19 +248,32 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             reviewExecution.record.steps.count,
             1,
-            "approval boundary remains visible as one failed Program tool step"
+            "approval boundary remains visible as one suspended Program tool step"
         )
         try Expect.equal(
-            reviewExecution.record.steps[0].failure != nil,
+            reviewExecution.record.steps[0].failure == nil,
             true,
-            "approval-required Program tool step preserves governance failure"
+            "approval suspension is not misclassified as a step failure"
         )
         try Expect.equal(
-            reviewExecution.record.failure?.message.contains(
-                "requires human review"
-            ) == true,
+            reviewExecution.record.steps[0].suspension != nil,
             true,
-            "root Program failure explains the unmet approval boundary"
+            "approval-required Program tool step preserves AgentSuspension"
+        )
+        try Expect.equal(
+            reviewExecution.record.failure == nil,
+            true,
+            "approval suspension is not misclassified as root Program failure"
+        )
+        try Expect.equal(
+            reviewExecution.record.checkpoint != nil,
+            true,
+            "approval suspension emits a durable Program checkpoint"
+        )
+        try Expect.equal(
+            reviewExecution.interactionRequest?.kind,
+            .approval,
+            "suspended Program exposes the shared approval interaction request"
         )
 
         let approvedProbe = GovernedProgramToolProbe()
