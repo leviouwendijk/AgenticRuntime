@@ -1,4 +1,5 @@
 import Agentic
+import AgenticInference
 import AgenticPrograms
 import Foundation
 import Primitives

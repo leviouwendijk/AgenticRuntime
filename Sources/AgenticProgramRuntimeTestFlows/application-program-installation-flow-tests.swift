@@ -12,7 +12,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let defaultRealization =
             AgentProgramRealization<ApplicationProgramFixture>(
                 id: "fixture.default_realization",
-                inferences: [],
+                inferences: .empty,
                 metadata: [
                     "source": "application",
                 ]
@@ -101,7 +101,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let explicitRealization =
             AgentProgramRealization<ApplicationProgramFixture>(
                 id: "fixture.explicit_realization",
-                inferences: [],
+                inferences: .empty,
                 metadata: [
                     "source": "invocation",
                 ]

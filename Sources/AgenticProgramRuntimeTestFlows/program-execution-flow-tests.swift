@@ -1,4 +1,5 @@
 import Agentic
+import AgenticInference
 import AgenticPrograms
 import AgenticRuntime
 import Primitives
@@ -252,13 +253,15 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let programRealization = AgentProgramRealization<FixtureInferenceProgram>(
             id: "fixture.inference-program-realization",
-            inferences: [
-                .init(
-                    site: "fixture.inference-site",
-                    inference: FixtureInference.definition.identifier,
-                    realization: inferenceRealization
-                ),
-            ]
+            inferences: try AgentProgramInferenceBindings(
+                [
+                    .init(
+                        site: "fixture.inference-site",
+                        inference: FixtureInference.definition.identifier,
+                        realization: inferenceRealization
+                    ),
+                ]
+            )
         )
         let runner = AgentProgramRunner(
             services: .init(

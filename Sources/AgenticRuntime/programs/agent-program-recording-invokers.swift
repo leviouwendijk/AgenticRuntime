@@ -1,4 +1,5 @@
 import Agentic
+import AgenticInference
 import AgenticPrograms
 import Foundation
 import Primitives
@@ -220,7 +221,8 @@ struct AgentProgramRecordingProgramInvoker:
 
     func invoke<Program: AgentProgram>(
         _ program: Program.Type,
-        input: Program.Input
+        input: Program.Input,
+        in context: AgentProgramContext
     ) async throws -> Program.Output {
         let inputValue = try JSONToolBridge.encode(
             input
@@ -231,7 +233,8 @@ struct AgentProgramRecordingProgramInvoker:
         do {
             let output = try await invoker.invoke(
                 program,
-                input: input
+                input: input,
+                in: context
             )
             let outputValue = try JSONToolBridge.encode(
                 output
