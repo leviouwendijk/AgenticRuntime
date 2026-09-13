@@ -9,43 +9,113 @@ struct AgentToolExecutionOutcome {
     let recovery: Recovery.Record?
 }
 
+private enum AgentToolRecoveryError:
+    Error,
+    LocalizedError
+{
+    case reconciliation_unsupported
+    case reconciliation_unresolved
+    case applied_without_output
+    case preflight_changed
+    case recovery_exhausted
+    case action_unsupported(Recovery.Action)
+
+    var errorDescription: String? {
+        switch self {
+        case .reconciliation_unsupported:
+            return "Tool does not support reconciliation for the classified failure."
+
+        case .reconciliation_unresolved:
+            return "Tool reconciliation could not determine whether the operation was applied."
+
+        case .applied_without_output:
+            return "Tool reconciliation confirmed the operation was applied but could not reconstruct the tool output."
+
+        case .preflight_changed:
+            return "Tool preflight changed after reconciliation; retry requires fresh approval."
+
+        case .recovery_exhausted:
+            return "Tool recovery exhausted its authored mechanical recovery plan."
+
+        case .action_unsupported(let action):
+            return "Runtime does not mechanically execute recovery action '\(action.rawValue)'."
+        }
+    }
+}
+
 private struct AgentToolActiveRecovery {
     let incident: Recovery.Incident
     let plan: Recovery.Plan
-    let decision: Recovery.Decision
+    var failure: AgentToolCallFailure
     var attempts: [Recovery.Attempt]
-    var lastMessage: String
+    var state: Recovery.State
+    var stepIndex: Int
+    var completedAttemptsInStep: UInt
 
     init?(
         error: any Error,
-        preflight: ToolPreflight,
         policy: Recovery.Policy?
     ) {
         guard
-            preflight.risk == .observe,
             let error = error as? AgentToolCallError,
             error.failure.phase == .call,
             let incident = error.failure.incident,
-            incident.retrySafety == .safe,
-            Self.allowsExactRetry(
-                effectState: incident.effectState
-            ),
             let plan = policy?.plan(
                 for: incident
             ),
-            let step = plan.steps.first,
-            step.action == .retry_same_operation
+            let first = plan.steps.first,
+            Self.allows(
+                first.action,
+                state: incident.state
+            )
         else {
             return nil
         }
 
         self.incident = incident
         self.plan = plan
-        self.decision = Recovery.Decision(
-            step: step
-        )
+        self.failure = error.failure
         self.attempts = []
-        self.lastMessage = error.failure.message
+        self.state = incident.state
+        self.stepIndex = 0
+        self.completedAttemptsInStep = 0
+    }
+
+    var decision: Recovery.Decision? {
+        guard plan.steps.indices.contains(stepIndex) else {
+            return nil
+        }
+
+        return Recovery.Decision(
+            step: plan.steps[stepIndex]
+        )
+    }
+
+    mutating func advance(
+        to state: Recovery.State
+    ) {
+        self.state = state
+        stepIndex += 1
+        completedAttemptsInStep = 0
+    }
+
+    mutating func absorb(
+        _ error: any Error
+    ) -> Bool {
+        guard
+            let error = error as? AgentToolCallError,
+            error.failure.phase == .call,
+            let incident = error.failure.incident,
+            incident.kind == self.incident.kind,
+            incident.stage == self.incident.stage,
+            incident.scope == self.incident.scope
+        else {
+            return false
+        }
+
+        failure = error.failure
+        state = incident.state
+        return true
     }
 
     func record(
@@ -55,43 +125,44 @@ private struct AgentToolActiveRecovery {
             incident: incident,
             plan: plan,
             attempts: attempts,
+            state: state,
             outcome: outcome
         )
     }
 
-    func accepts(
-        _ error: any Error
+    static func allows(
+        _ action: Recovery.Action,
+        state: Recovery.State
     ) -> Bool {
-        guard
-            let error = error as? AgentToolCallError,
-            error.failure.phase == .call,
-            let incident = error.failure.incident,
-            incident.kind == self.incident.kind,
-            incident.stage == self.incident.stage,
-            incident.scope == self.incident.scope,
-            incident.retrySafety == .safe,
-            Self.allowsExactRetry(
-                effectState: incident.effectState
-            )
-        else {
+        switch action {
+        case .reconcile:
+            return state.effect == .unknown
+                && state.retry == .requires_reconciliation
+
+        case .retry_same_operation:
+            return state.retry == .safe
+                && (
+                    state.effect == .none
+                    || state.effect == .not_applied
+                )
+
+        default:
             return false
         }
-
-        return true
     }
+}
 
-    private static func allowsExactRetry(
-        effectState: Recovery.EffectState
-    ) -> Bool {
-        switch effectState {
-        case .none,
-             .not_applied:
-            return true
+private func isMutationRisk(
+    _ risk: ActionRisk
+) -> Bool {
+    switch risk {
+    case .boundedmutate,
+         .privileged:
+        return true
 
-        case .applied,
-             .unknown:
-            return false
-        }
+    case .observe,
+         .forbidden:
+        return false
     }
 }
 
@@ -206,7 +277,6 @@ extension ToolLoopExecutor {
         } catch {
             guard var recovery = AgentToolActiveRecovery(
                 error: error,
-                preflight: preflight,
                 policy: configuration.recovery
             ) else {
                 return AgentToolExecutionOutcome(
@@ -218,68 +288,339 @@ extension ToolLoopExecutor {
                 )
             }
 
-            var lastError: any Error = error
-
-            while let permit = recovery.decision.limit.nextAttempt(
-                after: UInt(
-                    recovery.attempts.count
-                )
-            ) {
-                do {
-                    let result = try await tooling.registry.call(
-                        toolCall,
-                        workspace: tooling.workspace
-                    )
-
-                    recovery.attempts.append(
-                        Recovery.Attempt(
-                            number: permit.number,
-                            action: recovery.decision.action,
-                            outcome: .recovered
+            while let decision = recovery.decision {
+                guard AgentToolActiveRecovery.allows(
+                    decision.action,
+                    state: recovery.state
+                ) else {
+                    let recoveryError =
+                        AgentToolRecoveryError.action_unsupported(
+                            decision.action
                         )
-                    )
 
                     return AgentToolExecutionOutcome(
-                        result: result,
+                        result: try makeToolErrorResult(
+                            for: toolCall,
+                            error: recoveryError
+                        ),
                         recovery: recovery.record(
-                            outcome: .recovered
+                            outcome: .failed
                         )
                     )
-                } catch {
-                    lastError = error
-                    let message = localizedDescription(
-                        for: error
-                    )
+                }
 
-                    recovery.attempts.append(
-                        Recovery.Attempt(
-                            capturing: error,
-                            number: permit.number,
-                            action: recovery.decision.action,
-                            outcome: .failed,
-                            message: message
+                guard let permit = decision.limit.nextAttempt(
+                    after: recovery.completedAttemptsInStep
+                ) else {
+                    let recoveryError =
+                        AgentToolRecoveryError.recovery_exhausted
+
+                    return AgentToolExecutionOutcome(
+                        result: try makeToolErrorResult(
+                            for: toolCall,
+                            error: recoveryError
+                        ),
+                        recovery: recovery.record(
+                            outcome: .exhausted
                         )
                     )
-                    recovery.lastMessage = message
+                }
 
-                    guard recovery.accepts(error) else {
+                recovery.completedAttemptsInStep += 1
+
+                switch decision.action {
+                case .reconcile:
+                    do {
+                        guard let reconciliation = try await tooling.registry.reconcile(
+                            toolCall,
+                            failure: recovery.failure,
+                            context: AgentToolExecutionContext(
+                                workspace: tooling.workspace
+                            )
+                        ) else {
+                            let recoveryError =
+                                AgentToolRecoveryError.reconciliation_unsupported
+
+                            recovery.attempts.append(
+                                Recovery.Attempt(
+                                    capturing: recoveryError,
+                                    number: permit.number,
+                                    action: decision.action,
+                                    state: recovery.state
+                                )
+                            )
+
+                            return AgentToolExecutionOutcome(
+                                result: try makeToolErrorResult(
+                                    for: toolCall,
+                                    error: recoveryError
+                                ),
+                                recovery: recovery.record(
+                                    outcome: .failed
+                                )
+                            )
+                        }
+
+                        let state = reconciliation.state
+
+                        recovery.attempts.append(
+                            Recovery.Attempt(
+                                number: permit.number,
+                                action: decision.action,
+                                status: .succeeded,
+                                state: state
+                            )
+                        )
+                        recovery.state = state
+
+                        switch reconciliation {
+                        case .applied(let result):
+                            return AgentToolExecutionOutcome(
+                                result: result,
+                                recovery: recovery.record(
+                                    outcome: .recovered
+                                )
+                            )
+
+                        case .applied_without_output:
+                            let recoveryError =
+                                AgentToolRecoveryError.applied_without_output
+
+                            return AgentToolExecutionOutcome(
+                                result: try makeToolErrorResult(
+                                    for: toolCall,
+                                    error: recoveryError
+                                ),
+                                recovery: recovery.record(
+                                    outcome: .failed
+                                )
+                            )
+
+                        case .not_applied:
+                            recovery.advance(
+                                to: state
+                            )
+                            continue
+
+                        case .unknown:
+                            guard decision.limit.nextAttempt(
+                                after: recovery.completedAttemptsInStep
+                            ) == nil else {
+                                continue
+                            }
+
+                            let recoveryError =
+                                AgentToolRecoveryError.reconciliation_unresolved
+
+                            return AgentToolExecutionOutcome(
+                                result: try makeToolErrorResult(
+                                    for: toolCall,
+                                    error: recoveryError
+                                ),
+                                recovery: recovery.record(
+                                    outcome: .exhausted
+                                )
+                            )
+                        }
+                    } catch {
+                        recovery.attempts.append(
+                            Recovery.Attempt(
+                                capturing: error,
+                                number: permit.number,
+                                action: decision.action,
+                                state: recovery.state
+                            )
+                        )
+
+                        guard decision.limit.nextAttempt(
+                            after: recovery.completedAttemptsInStep
+                        ) == nil else {
+                            continue
+                        }
+
                         return AgentToolExecutionOutcome(
                             result: try makeToolErrorResult(
                                 for: toolCall,
                                 error: error
                             ),
                             recovery: recovery.record(
-                                outcome: .failed
+                                outcome: .exhausted
                             )
                         )
                     }
+
+                case .retry_same_operation:
+                    if isMutationRisk(preflight.risk) {
+                        do {
+                            let refreshed = try await tooling.registry.preflight(
+                                toolCall,
+                                workspace: tooling.workspace
+                            )
+
+                            guard refreshed == preflight else {
+                                let recoveryError =
+                                    AgentToolRecoveryError.preflight_changed
+
+                                recovery.attempts.append(
+                                    Recovery.Attempt(
+                                        capturing: recoveryError,
+                                        number: permit.number,
+                                        action: decision.action,
+                                        state: recovery.state
+                                    )
+                                )
+
+                                return AgentToolExecutionOutcome(
+                                    result: try makeToolErrorResult(
+                                        for: toolCall,
+                                        error: recoveryError
+                                    ),
+                                    recovery: recovery.record(
+                                        outcome: .failed
+                                    )
+                                )
+                            }
+                        } catch {
+                            recovery.attempts.append(
+                                Recovery.Attempt(
+                                    capturing: error,
+                                    number: permit.number,
+                                    action: decision.action,
+                                    state: recovery.state
+                                )
+                            )
+
+                            return AgentToolExecutionOutcome(
+                                result: try makeToolErrorResult(
+                                    for: toolCall,
+                                    error: error
+                                ),
+                                recovery: recovery.record(
+                                    outcome: .failed
+                                )
+                            )
+                        }
+                    }
+
+                    do {
+                        let result = try await tooling.registry.call(
+                            toolCall,
+                            workspace: tooling.workspace
+                        )
+                        let state = Recovery.State(
+                            reconciled: isMutationRisk(preflight.risk)
+                                ? .applied
+                                : .none
+                        )
+
+                        recovery.state = state
+                        recovery.attempts.append(
+                            Recovery.Attempt(
+                                number: permit.number,
+                                action: decision.action,
+                                status: .succeeded,
+                                state: state
+                            )
+                        )
+
+                        return AgentToolExecutionOutcome(
+                            result: result,
+                            recovery: recovery.record(
+                                outcome: .recovered
+                            )
+                        )
+                    } catch {
+                        let accepted = recovery.absorb(
+                            error
+                        )
+
+                        recovery.attempts.append(
+                            Recovery.Attempt(
+                                capturing: error,
+                                number: permit.number,
+                                action: decision.action,
+                                state: recovery.state
+                            )
+                        )
+
+                        guard accepted else {
+                            return AgentToolExecutionOutcome(
+                                result: try makeToolErrorResult(
+                                    for: toolCall,
+                                    error: error
+                                ),
+                                recovery: recovery.record(
+                                    outcome: .failed
+                                )
+                            )
+                        }
+
+                        guard AgentToolActiveRecovery.allows(
+                            decision.action,
+                            state: recovery.state
+                        ) else {
+                            return AgentToolExecutionOutcome(
+                                result: try makeToolErrorResult(
+                                    for: toolCall,
+                                    error: error
+                                ),
+                                recovery: recovery.record(
+                                    outcome: .failed
+                                )
+                            )
+                        }
+
+                        guard decision.limit.nextAttempt(
+                            after: recovery.completedAttemptsInStep
+                        ) == nil else {
+                            continue
+                        }
+
+                        return AgentToolExecutionOutcome(
+                            result: try makeToolErrorResult(
+                                for: toolCall,
+                                error: error
+                            ),
+                            recovery: recovery.record(
+                                outcome: .exhausted
+                            )
+                        )
+                    }
+
+                default:
+                    let recoveryError =
+                        AgentToolRecoveryError.action_unsupported(
+                            decision.action
+                        )
+
+                    recovery.attempts.append(
+                        Recovery.Attempt(
+                            capturing: recoveryError,
+                            number: permit.number,
+                            action: decision.action,
+                            state: recovery.state
+                        )
+                    )
+
+                    return AgentToolExecutionOutcome(
+                        result: try makeToolErrorResult(
+                            for: toolCall,
+                            error: recoveryError
+                        ),
+                        recovery: recovery.record(
+                            outcome: .failed
+                        )
+                    )
                 }
             }
+
+            let recoveryError =
+                AgentToolRecoveryError.recovery_exhausted
 
             return AgentToolExecutionOutcome(
                 result: try makeToolErrorResult(
                     for: toolCall,
-                    error: lastError
+                    error: recoveryError
                 ),
                 recovery: recovery.record(
                     outcome: .exhausted

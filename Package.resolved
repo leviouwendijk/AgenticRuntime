@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticExecution.git",
       "state" : {
         "branch" : "master",
-        "revision" : "cd57c9db8f41b38fa8b956745515d5572cb0cbcd"
+        "revision" : "980712c761bcf83afa4c39342be165e439f545ba"
       }
     },
     {
@@ -25,7 +25,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInference.git",
       "state" : {
         "branch" : "master",
-        "revision" : "bdbbc2e60912a92083fe6b577ed7130131994aee"
+        "revision" : "f9766179827cdd0fcc43f8ee2ff0ff4f785e3460"
       }
     },
     {
@@ -61,7 +61,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticRecovery.git",
       "state" : {
         "branch" : "master",
-        "revision" : "c6b6d820cdbbdd868d12965665b28ed159f5e7e3"
+        "revision" : "c4893afa6feffba5a8607b23f266fc022df7a2a4"
       }
     },
     {

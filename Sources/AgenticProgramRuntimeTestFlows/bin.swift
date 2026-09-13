@@ -169,6 +169,19 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting
                 .runObserveToolRecovery()
         },
+        TestFlow(
+            "tool-mutation-recovery",
+            tags: [
+                "agentic-runtime",
+                "tool",
+                "recovery",
+                "mutation",
+                "reconciliation",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runMutationToolRecovery()
+        },
     ]
 }
 

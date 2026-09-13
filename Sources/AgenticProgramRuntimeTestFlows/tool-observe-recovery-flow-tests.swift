@@ -33,10 +33,7 @@ private struct ObserveRecoveryFixtureInput:
     }
 }
 
-private struct ObserveRecoveryFixtureTool:
-    AgentTool,
-    AgentToolRecoveryClassifying
-{
+private struct ObserveRecoveryFixtureTool: AgentTool {
     typealias Input = ObserveRecoveryFixtureInput
     typealias Output = JSONValue
 
@@ -64,10 +61,11 @@ private struct ObserveRecoveryFixtureTool:
         ])
     }
 
-    func incident(
-        for error: any Error,
+    func classify(
+        _ error: any Error,
         phase: AgentToolCallPhase,
-        call: AgentToolCall
+        input _: Input?,
+        context: AgentToolExecutionContext
     ) -> Recovery.Incident? {
         guard
             phase == .call,
@@ -83,7 +81,9 @@ private struct ObserveRecoveryFixtureTool:
             retrySafety: .safe,
             scope: .init(
                 kind: .tool,
-                identifier: call.id
+                identifier:
+                    context.toolCallID
+                    ?? identifier.rawValue
             ),
             message: "fixture observe operation failed before applying effects"
         )
@@ -291,6 +291,32 @@ extension AgenticProgramRuntimeFlowTesting {
             recovery.attempts.count,
             1,
             "one bounded retry is recorded as one recovery attempt"
+        )
+        let recoveryAttempt = try Expect.notNil(
+            recovery.attempts.first,
+            "observe recovery records its retry attempt"
+        )
+        let recoveryState = try Expect.notNil(
+            recoveryAttempt.state,
+            "successful observe retry records its established state"
+        )
+
+        try Expect.equal(
+            recoveryAttempt.status,
+            .succeeded,
+            "successful exact retry is a succeeded recovery action"
+        )
+        try Expect.equal(
+            recoveryState,
+            Recovery.State(
+                reconciled: .none
+            ),
+            "successful observe retry leaves no external mutation effect"
+        )
+        try Expect.equal(
+            recovery.state,
+            recoveryState,
+            "recovery record exposes the authoritative successful observe state"
         )
         try Expect.equal(
             recovery.incident.kind,
