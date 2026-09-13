@@ -150,14 +150,17 @@ extension ToolLoopExecutor {
                     to: &checkpoint
                 )
 
-                let result = try await executeApprovedToolCall(
-                    toolCall
+                let execution = try await executeApprovedToolCall(
+                    toolCall,
+                    preflight: preflight
                 )
+                let result = execution.result
 
                 try await appendToolResult(
                     result,
                     for: toolCall,
                     disposition: result.isError ? .failed_execution : .executed,
+                    recovery: execution.recovery,
                     to: &checkpoint,
                     summary: result.isError
                         ? "tool execution failed"
@@ -251,14 +254,17 @@ extension ToolLoopExecutor {
                         to: &checkpoint
                     )
 
-                    let result = try await executeApprovedToolCall(
-                        toolCall
+                    let execution = try await executeApprovedToolCall(
+                        toolCall,
+                        preflight: preflight
                     )
+                    let result = execution.result
 
                     try await appendToolResult(
                         result,
                         for: toolCall,
                         disposition: result.isError ? .failed_execution : .executed,
+                        recovery: execution.recovery,
                         to: &checkpoint,
                         summary: result.isError
                             ? "tool execution failed"

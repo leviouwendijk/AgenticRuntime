@@ -1,7 +1,99 @@
 import Agentic
 import AgenticExecution
+import AgenticRecovery
 import Foundation
 import Primitives
+
+struct AgentToolExecutionOutcome {
+    let result: AgentToolResult
+    let recovery: Recovery.Record?
+}
+
+private struct AgentToolActiveRecovery {
+    let incident: Recovery.Incident
+    let plan: Recovery.Plan
+    let decision: Recovery.Decision
+    var attempts: [Recovery.Attempt]
+    var lastMessage: String
+
+    init?(
+        error: any Error,
+        preflight: ToolPreflight,
+        policy: Recovery.Policy?
+    ) {
+        guard
+            preflight.risk == .observe,
+            let error = error as? AgentToolCallError,
+            error.failure.phase == .call,
+            let incident = error.failure.incident,
+            incident.retrySafety == .safe,
+            Self.allowsExactRetry(
+                effectState: incident.effectState
+            ),
+            let plan = policy?.plan(
+                for: incident
+            ),
+            let step = plan.steps.first,
+            step.action == .retry_same_operation
+        else {
+            return nil
+        }
+
+        self.incident = incident
+        self.plan = plan
+        self.decision = Recovery.Decision(
+            step: step
+        )
+        self.attempts = []
+        self.lastMessage = error.failure.message
+    }
+
+    func record(
+        outcome: Recovery.Outcome
+    ) -> Recovery.Record {
+        Recovery.Record(
+            incident: incident,
+            plan: plan,
+            attempts: attempts,
+            outcome: outcome
+        )
+    }
+
+    func accepts(
+        _ error: any Error
+    ) -> Bool {
+        guard
+            let error = error as? AgentToolCallError,
+            error.failure.phase == .call,
+            let incident = error.failure.incident,
+            incident.kind == self.incident.kind,
+            incident.stage == self.incident.stage,
+            incident.scope == self.incident.scope,
+            incident.retrySafety == .safe,
+            Self.allowsExactRetry(
+                effectState: incident.effectState
+            )
+        else {
+            return false
+        }
+
+        return true
+    }
+
+    private static func allowsExactRetry(
+        effectState: Recovery.EffectState
+    ) -> Bool {
+        switch effectState {
+        case .none,
+             .not_applied:
+            return true
+
+        case .applied,
+             .unknown:
+            return false
+        }
+    }
+}
 
 extension ToolLoopExecutor {
     func requestWithCurrentState(
@@ -100,17 +192,98 @@ extension ToolLoopExecutor {
     }
 
     func executeApprovedToolCall(
-        _ toolCall: AgentToolCall
-    ) async throws -> AgentToolResult {
+        _ toolCall: AgentToolCall,
+        preflight: ToolPreflight
+    ) async throws -> AgentToolExecutionOutcome {
         do {
-            return try await tooling.registry.call(
-                toolCall,
-                workspace: tooling.workspace
+            return AgentToolExecutionOutcome(
+                result: try await tooling.registry.call(
+                    toolCall,
+                    workspace: tooling.workspace
+                ),
+                recovery: nil
             )
         } catch {
-            return try makeToolErrorResult(
-                for: toolCall,
-                error: error
+            guard var recovery = AgentToolActiveRecovery(
+                error: error,
+                preflight: preflight,
+                policy: configuration.recovery
+            ) else {
+                return AgentToolExecutionOutcome(
+                    result: try makeToolErrorResult(
+                        for: toolCall,
+                        error: error
+                    ),
+                    recovery: nil
+                )
+            }
+
+            var lastError: any Error = error
+
+            while let permit = recovery.decision.limit.nextAttempt(
+                after: UInt(
+                    recovery.attempts.count
+                )
+            ) {
+                do {
+                    let result = try await tooling.registry.call(
+                        toolCall,
+                        workspace: tooling.workspace
+                    )
+
+                    recovery.attempts.append(
+                        Recovery.Attempt(
+                            number: permit.number,
+                            action: recovery.decision.action,
+                            outcome: .recovered
+                        )
+                    )
+
+                    return AgentToolExecutionOutcome(
+                        result: result,
+                        recovery: recovery.record(
+                            outcome: .recovered
+                        )
+                    )
+                } catch {
+                    lastError = error
+                    let message = localizedDescription(
+                        for: error
+                    )
+
+                    recovery.attempts.append(
+                        Recovery.Attempt(
+                            capturing: error,
+                            number: permit.number,
+                            action: recovery.decision.action,
+                            outcome: .failed,
+                            message: message
+                        )
+                    )
+                    recovery.lastMessage = message
+
+                    guard recovery.accepts(error) else {
+                        return AgentToolExecutionOutcome(
+                            result: try makeToolErrorResult(
+                                for: toolCall,
+                                error: error
+                            ),
+                            recovery: recovery.record(
+                                outcome: .failed
+                            )
+                        )
+                    }
+                }
+            }
+
+            return AgentToolExecutionOutcome(
+                result: try makeToolErrorResult(
+                    for: toolCall,
+                    error: lastError
+                ),
+                recovery: recovery.record(
+                    outcome: .exhausted
+                )
             )
         }
     }

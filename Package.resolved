@@ -1,5 +1,5 @@
 {
-  "originHash" : "9dd450acb04c2358825652730e794879298f30100356d546140fc98a17e509a4",
+  "originHash" : "8863e82d9cfd9cb60490cea6d877582d8bcc730118cd01968d8b07a2961ec549",
   "pins" : [
     {
       "identity" : "agentic",
@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticExecution.git",
       "state" : {
         "branch" : "master",
-        "revision" : "e7093ca165f45c38a8b28c8bee9e4a67557ef3f4"
+        "revision" : "cd57c9db8f41b38fa8b956745515d5572cb0cbcd"
       }
     },
     {
@@ -25,7 +25,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticInference.git",
       "state" : {
         "branch" : "master",
-        "revision" : "c8acd0b2815c26924d2ae23aa1d0b58ab8e9cc74"
+        "revision" : "bdbbc2e60912a92083fe6b577ed7130131994aee"
       }
     },
     {
@@ -53,6 +53,15 @@
       "state" : {
         "branch" : "master",
         "revision" : "433936c6d7e3c3e6352761a64bea4fe16ff3fd6f"
+      }
+    },
+    {
+      "identity" : "agenticrecovery",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/AgenticRecovery.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "c6b6d820cdbbdd868d12965665b28ed159f5e7e3"
       }
     },
     {
@@ -142,7 +151,7 @@
       "location" : "https://github.com/leviouwendijk/Errors.git",
       "state" : {
         "branch" : "master",
-        "revision" : "8b5f809214ca8ea3401378f1dc673ca60ceaf902"
+        "revision" : "72d3aaf1203e3443df34ac4bef61683d5285eb25"
       }
     },
     {

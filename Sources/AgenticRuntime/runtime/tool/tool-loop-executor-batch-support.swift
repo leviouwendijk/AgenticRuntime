@@ -1,5 +1,6 @@
 import Agentic
 import AgenticExecution
+import AgenticRecovery
 import Primitives
 
 extension ToolLoopExecutor {
@@ -41,6 +42,7 @@ extension ToolLoopExecutor {
         _ result: AgentToolResult,
         for toolCall: AgentToolCall,
         disposition: AgentToolUseDisposition,
+        recovery: Recovery.Record? = nil,
         to checkpoint: inout AgentHistoryCheckpoint,
         summary: String
     ) async throws {
@@ -48,7 +50,8 @@ extension ToolLoopExecutor {
             batch.mark(
                 toolCallID: toolCall.id,
                 disposition: disposition,
-                result: result
+                result: result,
+                recovery: recovery
             )
             batch.completeIfTerminal()
             checkpoint.toolBatch = batch

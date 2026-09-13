@@ -156,6 +156,19 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting
                 .runProgramApprovalResumeReplay()
         },
+        TestFlow(
+            "tool-observe-recovery",
+            tags: [
+                "agentic-runtime",
+                "tool",
+                "recovery",
+                "observe",
+                "retry",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runObserveToolRecovery()
+        },
     ]
 }
 

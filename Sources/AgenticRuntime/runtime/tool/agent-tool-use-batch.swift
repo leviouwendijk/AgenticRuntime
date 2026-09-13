@@ -1,5 +1,6 @@
 import Agentic
 import AgenticExecution
+import AgenticRecovery
 import Foundation
 
 public enum AgentToolUseStatus: String, Sendable, Codable, Hashable, CaseIterable {
@@ -28,6 +29,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
     public var disposition: AgentToolUseDisposition
     public var preflight: ToolPreflight?
     public var result: AgentToolResult?
+    public var recovery: Recovery.Record?
     public var updatedAt: Date
 
     public init(
@@ -35,12 +37,14 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
         disposition: AgentToolUseDisposition = .pending,
         preflight: ToolPreflight? = nil,
         result: AgentToolResult? = nil,
+        recovery: Recovery.Record? = nil,
         updatedAt: Date = Date()
     ) {
         self.toolCall = toolCall
         self.disposition = disposition
         self.preflight = preflight
         self.result = result
+        self.recovery = recovery
         self.updatedAt = updatedAt
     }
 
@@ -176,6 +180,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
         disposition: AgentToolUseDisposition,
         preflight: ToolPreflight? = nil,
         result: AgentToolResult? = nil,
+        recovery: Recovery.Record? = nil,
         now: Date = Date()
     ) {
         guard let index = records.firstIndex(where: { record in
@@ -192,6 +197,10 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
 
         if let result {
             records[index].result = result
+        }
+
+        if let recovery {
+            records[index].recovery = recovery
         }
 
         records[index].updatedAt = now
