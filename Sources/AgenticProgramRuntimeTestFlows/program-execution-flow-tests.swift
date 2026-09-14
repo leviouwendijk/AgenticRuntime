@@ -470,7 +470,7 @@ private struct FixtureProgramToolExecutor:
     func invoke(
         _ identifier: AgentToolIdentifier,
         input: JSONValue
-    ) async throws -> JSONValue {
+    ) async throws -> AgentProgramToolExecution {
         if identifier.rawValue == "fixture.fail" {
             throw FixtureProgramToolError.requestedFailure
         }
@@ -480,9 +480,11 @@ private struct FixtureProgramToolExecutor:
             from: input
         )
 
-        return try JSONToolBridge.encode(
-            FixtureOutput(
-                value: "tool:\(decoded.value)"
+        return AgentProgramToolExecution(
+            output: try JSONToolBridge.encode(
+                FixtureOutput(
+                    value: "tool:\(decoded.value)"
+                )
             )
         )
     }

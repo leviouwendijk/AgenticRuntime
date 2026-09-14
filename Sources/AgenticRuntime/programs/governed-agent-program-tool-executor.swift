@@ -12,8 +12,6 @@ public enum AgentProgramToolGovernanceError:
     case needs_human_review(AgentToolIdentifier)
     case denied(AgentToolIdentifier)
     case skipped(AgentToolIdentifier)
-    case missing_tool_result(AgentToolIdentifier)
-    case tool_execution_failed(AgentToolIdentifier)
     case stale_approval(AgentToolIdentifier)
 
     public var errorDescription: String? {
@@ -26,12 +24,6 @@ public enum AgentProgramToolGovernanceError:
 
         case .skipped(let identifier):
             return "Program tool '\(identifier.rawValue)' was skipped by approval handling."
-
-        case .missing_tool_result(let identifier):
-            return "Approved Program tool '\(identifier.rawValue)' completed without a tool result."
-
-        case .tool_execution_failed(let identifier):
-            return "Program tool '\(identifier.rawValue)' returned a failed tool result."
 
         case .stale_approval(let identifier):
             return "Program tool '\(identifier.rawValue)' changed since approval was requested; the stale approval was not executed."
@@ -87,7 +79,7 @@ public struct GovernedAgentProgramToolExecutor:
     public func invoke(
         _ identifier: AgentToolIdentifier,
         input: JSONValue
-    ) async throws -> JSONValue {
+    ) async throws -> AgentProgramToolExecution {
         let call = AgentToolCall(
             id: "program-\(UUID().uuidString)",
             name: identifier.rawValue,
@@ -126,16 +118,17 @@ public struct GovernedAgentProgramToolExecutor:
                 call,
                 preflight: review.preflight
             )
-            let toolResult = execution.result
-
-            guard !toolResult.isError else {
-                throw AgentProgramToolGovernanceError
-                    .tool_execution_failed(
-                        identifier
-                    )
+            guard !execution.result.isError else {
+                throw AgentProgramToolExecution.Failure(
+                    tool: identifier,
+                    recovery: execution.recovery
+                )
             }
 
-            return toolResult.output
+            return AgentProgramToolExecution(
+                output: execution.result.output,
+                recovery: execution.recovery
+            )
 
         case .needshuman:
             throw AgentProgramSuspensionSignal(
@@ -168,7 +161,7 @@ public struct GovernedAgentProgramToolExecutor:
     public func resume(
         pendingApproval: PendingApproval,
         decision: ApprovalDecision
-    ) async throws -> JSONValue {
+    ) async throws -> AgentProgramToolExecution {
         let identifier = AgentToolIdentifier(
             pendingApproval.toolCall.name
         )
@@ -216,16 +209,17 @@ public struct GovernedAgentProgramToolExecutor:
                 pendingApproval.toolCall,
                 preflight: freshReview.preflight
             )
-            let toolResult = execution.result
-
-            guard !toolResult.isError else {
-                throw AgentProgramToolGovernanceError
-                    .tool_execution_failed(
-                        identifier
-                    )
+            guard !execution.result.isError else {
+                throw AgentProgramToolExecution.Failure(
+                    tool: identifier,
+                    recovery: execution.recovery
+                )
             }
 
-            return toolResult.output
+            return AgentProgramToolExecution(
+                output: execution.result.output,
+                recovery: execution.recovery
+            )
         }
     }
 }

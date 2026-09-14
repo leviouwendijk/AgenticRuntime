@@ -454,13 +454,13 @@ extension AgenticProgramRuntimeFlowTesting {
             preflight: resumedReview.preflight,
             requirement: resumedReview.requirement
         )
-        let resumedOutputValue = try await resumedExecutor.resume(
+        let resumedExecution = try await resumedExecutor.resume(
             pendingApproval: pendingApproval,
             decision: .approved
         )
         let resumedOutput = try JSONToolBridge.decode(
             GovernedProgramToolOutput.self,
-            from: resumedOutputValue
+            from: resumedExecution.output
         )
         let resumedCount = await resumedProbe.count()
 

@@ -1,6 +1,7 @@
 import Agentic
 import AgenticInference
 import AgenticPrograms
+import AgenticRecovery
 import Foundation
 import Primitives
 
@@ -220,6 +221,7 @@ struct AgentProgramRecordingToolInvoker:
         let index = await trace.reserveIndex()
         let startedAt = Date()
         var outputValue: JSONValue?
+        var recovery: Recovery.Record?
 
         do {
             if let replayed = try await trace.replay(
@@ -242,7 +244,7 @@ struct AgentProgramRecordingToolInvoker:
                 return decoded
             }
 
-            let resolvedOutput: JSONValue
+            let execution: AgentProgramToolExecution
 
             if let resumeControl,
                let resolution = try await resumeControl.resolution(
@@ -251,22 +253,23 @@ struct AgentProgramRecordingToolInvoker:
                    input: inputValue
                )
             {
-                resolvedOutput = try await executor.resume(
+                execution = try await executor.resume(
                     pendingApproval: resolution.pendingApproval,
                     decision: resolution.decision
                 )
             } else {
-                resolvedOutput = try await executor.invoke(
+                execution = try await executor.invoke(
                     identifier,
                     input: inputValue
                 )
             }
 
-            outputValue = resolvedOutput
+            outputValue = execution.output
+            recovery = execution.recovery
 
             let decoded = try JSONToolBridge.decode(
                 Output.self,
-                from: resolvedOutput
+                from: execution.output
             )
             let completedAt = Date()
 
@@ -275,7 +278,8 @@ struct AgentProgramRecordingToolInvoker:
                     index: index,
                     kind: .tool(identifier),
                     input: inputValue,
-                    output: resolvedOutput,
+                    output: execution.output,
+                    recovery: execution.recovery,
                     startedAt: startedAt,
                     completedAt: completedAt,
                     durationMilliseconds: agentProgramElapsedMilliseconds(
@@ -306,6 +310,27 @@ struct AgentProgramRecordingToolInvoker:
             )
 
             throw signal
+        } catch let error as AgentProgramToolExecution.Failure {
+            let completedAt = Date()
+
+            await trace.append(
+                .init(
+                    index: index,
+                    kind: .tool(identifier),
+                    input: inputValue,
+                    output: outputValue,
+                    recovery: error.recovery,
+                    failure: .init(error: error),
+                    startedAt: startedAt,
+                    completedAt: completedAt,
+                    durationMilliseconds: agentProgramElapsedMilliseconds(
+                        from: startedAt,
+                        to: completedAt
+                    )
+                )
+            )
+
+            throw error
         } catch {
             let completedAt = Date()
 
@@ -315,6 +340,7 @@ struct AgentProgramRecordingToolInvoker:
                     kind: .tool(identifier),
                     input: inputValue,
                     output: outputValue,
+                    recovery: recovery,
                     failure: .init(error: error),
                     startedAt: startedAt,
                     completedAt: completedAt,

@@ -1,6 +1,7 @@
 import Agentic
 import AgenticInference
 import AgenticPrograms
+import AgenticRecovery
 import Foundation
 import Primitives
 
@@ -75,6 +76,7 @@ public struct AgentProgramStepRecord:
     public var inferenceRealization: AgentInferenceRealization?
     public var usage: AgentUsage?
     public var route: AgentModelRouteRecord?
+    public var recovery: Recovery.Record?
     public var suspension: AgentSuspension?
     public var failure: AgentProgramFailureRecord?
     public var startedAt: Date
@@ -90,6 +92,7 @@ public struct AgentProgramStepRecord:
         inferenceRealization: AgentInferenceRealization? = nil,
         usage: AgentUsage? = nil,
         route: AgentModelRouteRecord? = nil,
+        recovery: Recovery.Record? = nil,
         suspension: AgentSuspension? = nil,
         failure: AgentProgramFailureRecord? = nil,
         startedAt: Date,
@@ -104,6 +107,7 @@ public struct AgentProgramStepRecord:
         self.inferenceRealization = inferenceRealization
         self.usage = usage
         self.route = route
+        self.recovery = recovery
         self.suspension = suspension
         self.failure = failure
         self.startedAt = startedAt
