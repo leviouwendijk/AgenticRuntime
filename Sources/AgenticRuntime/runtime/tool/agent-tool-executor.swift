@@ -14,17 +14,13 @@ struct AgentToolExecutor {
     let recovery: Recovery.Policy?
     let context: AgentToolExecutionContext
 
-    private var registry: ToolRegistry {
-        invoker.registry
-    }
-
     func execute(
         _ call: AgentToolCall,
         preflight: ToolPreflight
     ) async throws -> Result {
         do {
             return Result(
-                result: try await registry.execute(
+                result: try await invoker.registry.execute(
                     call,
                     context: context
                 ),
@@ -87,7 +83,7 @@ struct AgentToolExecutor {
                 switch decision.action {
                 case .reconcile:
                     do {
-                        guard let reconciliation = try await registry.reconcile(
+                        guard let reconciliation = try await invoker.registry.reconcile(
                             call,
                             failure: recovery.failure,
                             context: context
@@ -207,9 +203,7 @@ struct AgentToolExecutor {
                     }
 
                 case .retry_same_operation:
-                    if agentToolExecutorIsMutationRisk(
-                        preflight.risk
-                    ) {
+                    if preflight.risk.isMutating {
                         do {
                             let refreshed = try await invoker.review(
                                 call,
@@ -263,15 +257,13 @@ struct AgentToolExecutor {
                     }
 
                     do {
-                        let result = try await registry.execute(
+                        let result = try await invoker.registry.execute(
                             call,
                             context: context
                         )
                         let state = Recovery.State(
                             reconciled:
-                                agentToolExecutorIsMutationRisk(
-                                    preflight.risk
-                                )
+                                preflight.risk.isMutating
                                 ? .applied
                                 : .none
                         )
@@ -582,18 +574,4 @@ private struct AgentToolExecutorErrorPayload:
     let toolCallID: String
     let toolName: String
     let message: String
-}
-
-private func agentToolExecutorIsMutationRisk(
-    _ risk: ActionRisk
-) -> Bool {
-    switch risk {
-    case .boundedmutate,
-         .privileged:
-        return true
-
-    case .observe,
-         .forbidden:
-        return false
-    }
 }
