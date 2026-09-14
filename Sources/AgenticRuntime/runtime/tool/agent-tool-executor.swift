@@ -27,6 +27,21 @@ struct AgentToolExecutor {
                 recovery: nil
             )
         } catch {
+            let propagatedRecovery: Recovery.Record?
+
+            if let toolError = error as? AgentToolCallError,
+               let incident = toolError.failure.incident
+            {
+                propagatedRecovery = Recovery.Record(
+                    incident: incident,
+                    plan: nil,
+                    attempts: [],
+                    outcome: .propagated
+                )
+            } else {
+                propagatedRecovery = nil
+            }
+
             guard var recovery = AgentToolExecutorActiveRecovery(
                 error: error,
                 policy: recovery
@@ -36,7 +51,7 @@ struct AgentToolExecutor {
                         for: call,
                         error: error
                     ),
-                    recovery: nil
+                    recovery: propagatedRecovery
                 )
             }
 

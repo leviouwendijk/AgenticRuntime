@@ -183,6 +183,20 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runMutationToolRecovery()
         },
         TestFlow(
+            "tool-classification-propagation",
+            tags: [
+                "agentic-runtime",
+                "tool",
+                "recovery",
+                "classification",
+                "propagation",
+                "program",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runToolClassificationPropagation()
+        },
+        TestFlow(
             "program-governed-tool-recovery",
             tags: [
                 "agentic-runtime",
