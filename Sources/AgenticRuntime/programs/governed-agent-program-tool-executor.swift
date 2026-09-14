@@ -1,5 +1,6 @@
 import Agentic
 import AgenticExecution
+import AgenticRecovery
 import Foundation
 import Primitives
 
@@ -49,12 +50,14 @@ public struct GovernedAgentProgramToolExecutor:
     Sendable
 {
     public let invoker: ToolInvoker
+    public let recovery: Recovery.Policy?
     public let context: AgentToolExecutionContext
     public let approvalHandler: (any ToolApprovalHandler)?
 
     public init(
         registry: ToolRegistry,
         policy: ToolExecutionPolicy,
+        recovery: Recovery.Policy? = nil,
         context: AgentToolExecutionContext = .init(),
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
@@ -63,6 +66,7 @@ public struct GovernedAgentProgramToolExecutor:
                 registry: registry,
                 policy: policy
             ),
+            recovery: recovery,
             context: context,
             approvalHandler: approvalHandler
         )
@@ -70,10 +74,12 @@ public struct GovernedAgentProgramToolExecutor:
 
     public init(
         invoker: ToolInvoker,
+        recovery: Recovery.Policy? = nil,
         context: AgentToolExecutionContext = .init(),
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
         self.invoker = invoker
+        self.recovery = recovery
         self.context = context
         self.approvalHandler = approvalHandler
     }
@@ -87,20 +93,40 @@ public struct GovernedAgentProgramToolExecutor:
             name: identifier.rawValue,
             input: input
         )
-        let result = try await invoker.invoke(
+        let review = try await invoker.review(
             call,
-            context: context,
-            approvalHandler: approvalHandler
+            context: context
         )
+        let decision: ApprovalDecision
 
-        switch result.decision {
-        case .approved:
-            guard let toolResult = result.toolResult else {
-                throw AgentProgramToolGovernanceError
-                    .missing_tool_result(
-                        identifier
-                    )
+        switch review.requirement {
+        case .no_approval_needed:
+            decision = .approved
+
+        case .needs_human_review:
+            if let approvalHandler {
+                decision = try await approvalHandler.decide(
+                    on: review
+                )
+            } else {
+                decision = .needshuman
             }
+
+        case .denied_forbidden:
+            decision = .denied
+        }
+
+        switch decision {
+        case .approved:
+            let execution = try await AgentToolExecutor(
+                invoker: invoker,
+                recovery: recovery,
+                context: context
+            ).execute(
+                call,
+                preflight: review.preflight
+            )
+            let toolResult = execution.result
 
             guard !toolResult.isError else {
                 throw AgentProgramToolGovernanceError
@@ -116,8 +142,8 @@ public struct GovernedAgentProgramToolExecutor:
                 suspension: .approval(
                     PendingApproval(
                         toolCall: call,
-                        preflight: result.review.preflight,
-                        requirement: result.review.requirement
+                        preflight: review.preflight,
+                        requirement: review.requirement
                     ),
                     metadata: [
                         "source": "agent_program",
@@ -182,10 +208,15 @@ public struct GovernedAgentProgramToolExecutor:
                 )
             }
 
-            let toolResult = try await invoker.registry.execute(
-                pendingApproval.toolCall,
+            let execution = try await AgentToolExecutor(
+                invoker: invoker,
+                recovery: recovery,
                 context: context
+            ).execute(
+                pendingApproval.toolCall,
+                preflight: freshReview.preflight
             )
+            let toolResult = execution.result
 
             guard !toolResult.isError else {
                 throw AgentProgramToolGovernanceError
