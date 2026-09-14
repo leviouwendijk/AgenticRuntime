@@ -391,8 +391,22 @@ private func runProgramToolResumeRecovery()
 }
 
 private struct ProgramToolRecoveryProgram: AgentProgram {
+    enum Handling: Sendable {
+        case none
+        case recover_applied
+        case propagate_unknown
+    }
+
     typealias Input = ProgramToolRecoveryInput
     typealias Output = ProgramToolRecoveryOutput
+
+    let handling: Handling
+
+    init(
+        handling: Handling = .none
+    ) {
+        self.handling = handling
+    }
 
     static let descriptor = AgentProgramDescriptor(
         identifier: "fixture.program_tool_recovery_program",
@@ -404,16 +418,52 @@ private struct ProgramToolRecoveryProgram: AgentProgram {
         _ input: Input,
         in context: AgentProgramContext
     ) async throws -> Output {
-        try await context.invoke(
-            "fixture.program_tool_recovery",
-            input: input,
-            as: Output.self
-        )
+        switch handling {
+        case .none:
+            return try await context.invoke(
+                "fixture.program_tool_recovery",
+                input: input,
+                as: Output.self
+            )
+
+        case .recover_applied:
+            return try await context.invoke(
+                "fixture.program_tool_recovery",
+                input: input,
+                as: Output.self
+            ) { failure -> Output in
+                guard failure.effect == .applied else {
+                    throw failure
+                }
+
+                return Output(
+                    status: "authored_recovery"
+                )
+            }
+
+        case .propagate_unknown:
+            return try await context.invoke(
+                "fixture.program_tool_recovery",
+                input: input,
+                as: Output.self
+            ) { failure -> AgentProgramToolFailure.Handling<Output> in
+                guard failure.effect == .unknown else {
+                    return .recover(
+                        Output(
+                            status: "unexpected_recovery"
+                        )
+                    )
+                }
+
+                return .propagate
+            }
+        }
     }
 }
 
 private func runRecordedProgramToolRecovery(
-    _ mode: ProgramToolRecoveryMode
+    _ mode: ProgramToolRecoveryMode,
+    handling: ProgramToolRecoveryProgram.Handling = .none
 ) async throws -> (
     execution: AgentProgramExecution<ProgramToolRecoveryProgram>,
     snapshot: ProgramToolRecoveryProbeSnapshot
@@ -441,7 +491,9 @@ private func runRecordedProgramToolRecovery(
         )
     )
     let execution = try await runner.execute(
-        ProgramToolRecoveryProgram(),
+        ProgramToolRecoveryProgram(
+            handling: handling
+        ),
         input: ProgramToolRecoveryInput()
     )
 
@@ -474,6 +526,14 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let recordedUnknown = try await runRecordedProgramToolRecovery(
             .mutation_unknown
+        )
+        let authoredAppliedWithoutOutput = try await runRecordedProgramToolRecovery(
+            .mutation_applied_without_output,
+            handling: .recover_applied
+        )
+        let authoredUnknown = try await runRecordedProgramToolRecovery(
+            .mutation_unknown,
+            handling: .propagate_unknown
         )
 
         try Expect.equal(
@@ -675,6 +735,90 @@ extension AgenticProgramRuntimeFlowTesting {
             "unresolved Program mutation is never blindly retried"
         )
 
+        let authoredAppliedOutput = try Expect.notNil(
+            authoredAppliedWithoutOutput.execution.output,
+            "authored Program recovery supplies explicit semantic output"
+        )
+        let authoredAppliedStep = try Expect.notNil(
+            authoredAppliedWithoutOutput.execution.record.steps.first,
+            "authored recovery retains the failed mechanical tool step"
+        )
+        let authoredAppliedRecovery = try Expect.notNil(
+            authoredAppliedStep.recovery,
+            "authored recovery retains Runtime recovery evidence"
+        )
+
+        try Expect.equal(
+            authoredAppliedWithoutOutput.execution.record.outcome,
+            .succeeded,
+            "authored Program handling may restore semantic success after mechanical recovery stops"
+        )
+        try Expect.equal(
+            authoredAppliedOutput.status,
+            "authored_recovery",
+            "authored Program handling supplies the semantic result"
+        )
+        try Expect.equal(
+            authoredAppliedStep.failure?.type,
+            String(reflecting: AgentProgramToolFailure.self),
+            "mechanical failure crosses Runtime through the public Program failure type"
+        )
+        try Expect.equal(
+            authoredAppliedRecovery.state,
+            Recovery.State(reconciled: .applied),
+            "authored Program receives applied-effect recovery state"
+        )
+        try Expect.equal(
+            authoredAppliedRecovery.outcome,
+            .failed,
+            "authored semantic recovery does not rewrite the mechanical recovery outcome"
+        )
+        try Expect.equal(
+            authoredAppliedWithoutOutput.snapshot.calls,
+            1,
+            "authored recovery never repeats an already-applied mutation"
+        )
+
+        let authoredUnknownStep = try Expect.notNil(
+            authoredUnknown.execution.record.steps.first,
+            "propagated unknown mutation retains its tool step"
+        )
+        let authoredUnknownRecovery = try Expect.notNil(
+            authoredUnknownStep.recovery,
+            "propagated unknown mutation retains its Recovery.Record"
+        )
+
+        try Expect.equal(
+            authoredUnknown.execution.record.outcome,
+            .failed,
+            ".propagate leaves unresolved mutation semantics failed"
+        )
+        try Expect.equal(
+            authoredUnknownStep.failure?.type,
+            String(reflecting: AgentProgramToolFailure.self),
+            ".propagate preserves the public Program tool failure at the failed step"
+        )
+        try Expect.equal(
+            authoredUnknown.execution.record.failure?.type,
+            String(reflecting: AgentProgramToolFailure.self),
+            ".propagate rethrows the same public Program tool failure"
+        )
+        try Expect.equal(
+            authoredUnknownRecovery.state,
+            Recovery.State(reconciled: .unknown),
+            "propagated failure retains unresolved effect state"
+        )
+        try Expect.equal(
+            authoredUnknownRecovery.outcome,
+            .exhausted,
+            "propagated failure retains exhausted mechanical recovery outcome"
+        )
+        try Expect.equal(
+            authoredUnknown.snapshot.calls,
+            1,
+            "propagated unknown mutation is never blindly retried"
+        )
+
         return [
             .field(
                 "observe_calls",
@@ -711,6 +855,14 @@ extension AgenticProgramRuntimeFlowTesting {
             .field(
                 "unknown_recovery",
                 unknownRecovery.outcome.rawValue
+            ),
+            .field(
+                "authored_applied_status",
+                authoredAppliedOutput.status
+            ),
+            .field(
+                "authored_unknown_effect",
+                authoredUnknownRecovery.state.effect.rawValue
             ),
         ]
     }

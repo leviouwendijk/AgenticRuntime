@@ -1,5 +1,6 @@
 import Agentic
 import AgenticExecution
+import AgenticPrograms
 import AgenticRecovery
 import Foundation
 import Primitives
@@ -119,7 +120,7 @@ public struct GovernedAgentProgramToolExecutor:
                 preflight: review.preflight
             )
             guard !execution.result.isError else {
-                throw AgentProgramToolExecution.Failure(
+                throw AgentProgramToolFailure(
                     tool: identifier,
                     recovery: execution.recovery
                 )
@@ -210,7 +211,7 @@ public struct GovernedAgentProgramToolExecutor:
                 preflight: freshReview.preflight
             )
             guard !execution.result.isError else {
-                throw AgentProgramToolExecution.Failure(
+                throw AgentProgramToolFailure(
                     tool: identifier,
                     recovery: execution.recovery
                 )

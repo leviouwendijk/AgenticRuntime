@@ -51,19 +51,6 @@ public protocol AgentProgramInferenceExecuting: Sendable {
 /// The semantic JSON output continues toward the authored typed Program API.
 /// Recovery evidence remains beside it for Runtime recording and replay.
 public struct AgentProgramToolExecution: Sendable {
-    struct Failure:
-        Error,
-        Sendable,
-        LocalizedError
-    {
-        let tool: AgentToolIdentifier
-        let recovery: Recovery.Record?
-
-        var errorDescription: String? {
-            "Program tool '\(tool.rawValue)' returned a failed tool result."
-        }
-    }
-
     public var output: JSONValue
     public var recovery: Recovery.Record?
 

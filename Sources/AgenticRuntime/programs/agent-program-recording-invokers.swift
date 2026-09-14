@@ -310,7 +310,7 @@ struct AgentProgramRecordingToolInvoker:
             )
 
             throw signal
-        } catch let error as AgentProgramToolExecution.Failure {
+        } catch let error as AgentProgramToolFailure {
             let completedAt = Date()
 
             await trace.append(
