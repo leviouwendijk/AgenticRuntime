@@ -6,45 +6,6 @@ import AgenticRecovery
 import Foundation
 import Primitives
 
-/// Runtime observations produced while realizing one semantic inference.
-///
-/// The typed output continues through the program. Provider usage, routing,
-/// and other execution facts remain on the execution record instead of being
-/// mixed into the semantic value.
-public struct AgentProgramInferenceExecution<Output: Sendable>:
-    Sendable
-{
-    public var output: Output
-    public var usage: AgentUsage?
-    public var route: AgentModelRouteRecord?
-    public var metadata: [String: String]
-
-    public init(
-        output: Output,
-        usage: AgentUsage? = nil,
-        route: AgentModelRouteRecord? = nil,
-        metadata: [String: String] = [:]
-    ) {
-        self.output = output
-        self.usage = usage
-        self.route = route
-        self.metadata = metadata
-    }
-}
-
-/// Runtime-side execution seam for a realized semantic inference.
-///
-/// AgenticPrograms owns the semantic inference and realization values. Runtime
-/// implementations decide how that realization reaches a model broker or other
-/// inference backend and return both the typed semantic output and observable
-/// execution facts.
-public protocol AgentProgramInferenceExecuting: Sendable {
-    func infer<Inference: AgentInference>(
-        _ inference: Inference.Type,
-        input: Inference.Input,
-        realization: AgentInferenceRealization
-    ) async throws -> AgentProgramInferenceExecution<Inference.Output>
-}
 
 /// Runtime observations produced while executing one Program tool operation.
 ///

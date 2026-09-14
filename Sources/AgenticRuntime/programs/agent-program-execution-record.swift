@@ -74,8 +74,7 @@ public struct AgentProgramStepRecord:
     public var input: JSONValue
     public var output: JSONValue?
     public var inferenceRealization: AgentInferenceRealization?
-    public var usage: AgentUsage?
-    public var route: AgentModelRouteRecord?
+    public var inferenceExecution: AgentInferenceExecutionRecord?
     public var recovery: Recovery.Record?
     public var suspension: AgentSuspension?
     public var failure: AgentProgramFailureRecord?
@@ -90,8 +89,7 @@ public struct AgentProgramStepRecord:
         input: JSONValue,
         output: JSONValue? = nil,
         inferenceRealization: AgentInferenceRealization? = nil,
-        usage: AgentUsage? = nil,
-        route: AgentModelRouteRecord? = nil,
+        inferenceExecution: AgentInferenceExecutionRecord? = nil,
         recovery: Recovery.Record? = nil,
         suspension: AgentSuspension? = nil,
         failure: AgentProgramFailureRecord? = nil,
@@ -105,8 +103,7 @@ public struct AgentProgramStepRecord:
         self.input = input
         self.output = output
         self.inferenceRealization = inferenceRealization
-        self.usage = usage
-        self.route = route
+        self.inferenceExecution = inferenceExecution
         self.recovery = recovery
         self.suspension = suspension
         self.failure = failure

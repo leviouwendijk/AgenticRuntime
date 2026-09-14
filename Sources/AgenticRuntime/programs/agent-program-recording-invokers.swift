@@ -79,7 +79,7 @@ actor AgentProgramExecutionTrace {
 struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
     AgentInferenceInvoking
 {
-    let executor: any AgentProgramInferenceExecuting
+    let executor: any AgentInferenceExecuting
     let realization: AgentProgramRealization<Program>?
     let trace: AgentProgramExecutionTrace
 
@@ -141,10 +141,10 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                 return output
             }
 
-            let execution: AgentProgramInferenceExecution<Inference.Output>
+            let execution: AgentInferenceExecutionResult<Inference.Output>
 
             do {
-                execution = try await executor.infer(
+                execution = try await executor.execute(
                     inference,
                     input: input,
                     realization: binding.realization
@@ -180,15 +180,13 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                     input: inputValue,
                     output: outputValue,
                     inferenceRealization: binding.realization,
-                    usage: execution.usage,
-                    route: execution.route,
+                    inferenceExecution: execution.record,
                     startedAt: startedAt,
                     completedAt: completedAt,
                     durationMilliseconds: agentProgramElapsedMilliseconds(
                         from: startedAt,
                         to: completedAt
-                    ),
-                    metadata: execution.metadata
+                    )
                 )
             )
 

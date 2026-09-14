@@ -1,5 +1,6 @@
 import Agentic
 import AgenticExecution
+import AgenticInference
 import AgenticPrograms
 import AgenticUsage
 import AgenticWorkspace
@@ -113,15 +114,15 @@ public struct AgentRuntimeServices: Sendable {
 
     /// Program execution capabilities currently consumed by AgentProgramRunner.
     ///
-    /// These remain explicitly grouped while their implementations are rebased
-    /// onto the common model and governed execution substrate in later passes.
+    /// Inference consumes AgenticInference's canonical executor directly; tools
+    /// retain their governed Runtime boundary for approval and resume semantics.
     public struct Program: Sendable {
-        public var inference: (any AgentProgramInferenceExecuting)?
+        public var inference: (any AgentInferenceExecuting)?
         public var tools: (any AgentProgramToolExecuting)?
         public var invoker: (any AgentProgramInvoking)?
 
         public init(
-            inference: (any AgentProgramInferenceExecuting)? = nil,
+            inference: (any AgentInferenceExecuting)? = nil,
             tools: (any AgentProgramToolExecuting)? = nil,
             invoker: (any AgentProgramInvoking)? = nil
         ) {

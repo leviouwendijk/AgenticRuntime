@@ -62,16 +62,16 @@ private actor RuntimeInferenceFailureProbe {
 }
 
 private struct RuntimeInferenceFailureExecutor:
-    AgentProgramInferenceExecuting
+    AgentInferenceExecuting
 {
     let probe: RuntimeInferenceFailureProbe
 
-    func infer<Inference: AgentInference>(
+    func execute<Inference: AgentInference>(
         _ inference: Inference.Type,
         input: Inference.Input,
         realization: AgentInferenceRealization
     ) async throws
-        -> AgentProgramInferenceExecution<Inference.Output>
+        -> AgentInferenceExecutionResult<Inference.Output>
     {
         _ = inference
         _ = realization

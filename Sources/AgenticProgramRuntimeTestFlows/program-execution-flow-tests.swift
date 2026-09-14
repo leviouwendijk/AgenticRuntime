@@ -331,30 +331,49 @@ extension AgenticProgramRuntimeFlowTesting {
             inferenceRealization,
             "inference step preserves the exact applied realization"
         )
+        let inferenceExecution = try Expect.notNil(
+            step.inferenceExecution,
+            "inference step preserves canonical inference execution evidence"
+        )
+        let attempt = try Expect.notNil(
+            inferenceExecution.attempts.first,
+            "canonical inference execution preserves its attempt"
+        )
+
         try Expect.equal(
-            step.usage?.inputTokens,
+            inferenceExecution.inference,
+            FixtureInference.definition.identifier,
+            "canonical execution record preserves semantic inference identity"
+        )
+        try Expect.equal(
+            inferenceExecution.strategy,
+            inferenceRealization.strategy,
+            "canonical execution record preserves strategy identity"
+        )
+        try Expect.equal(
+            inferenceExecution.attempts.count,
+            1,
+            "canonical execution record preserves attempt count"
+        )
+        try Expect.equal(
+            attempt.usage?.inputTokens,
             3,
-            "inference step preserves provider input usage"
+            "canonical attempt preserves provider input usage"
         )
         try Expect.equal(
-            step.usage?.outputTokens,
+            attempt.usage?.outputTokens,
             2,
-            "inference step preserves provider output usage"
+            "canonical attempt preserves provider output usage"
         )
         try Expect.equal(
-            step.usage?.totalTokens,
+            attempt.usage?.totalTokens,
             5,
-            "inference step preserves total provider usage"
+            "canonical attempt preserves total provider usage"
         )
         try Expect.equal(
-            step.metadata["fixture_executor"],
+            inferenceExecution.metadata["fixture_executor"],
             "recorded",
-            "inference executor metadata survives on the step"
-        )
-        try Expect.equal(
-            step.route == nil,
-            true,
-            "non-broker fixture may omit a model route"
+            "inference executor metadata remains on canonical inference evidence"
         )
 
         return [
@@ -372,7 +391,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ),
             .field(
                 "usage",
-                String(step.usage?.totalTokens ?? 0)
+                String(attempt.usage?.totalTokens ?? 0)
             ),
         ]
     }
@@ -532,13 +551,13 @@ private struct FixtureInferenceProgram: AgentProgram {
 }
 
 private struct FixtureProgramInferenceExecutor:
-    AgentProgramInferenceExecuting
+    AgentInferenceExecuting
 {
-    func infer<Inference: AgentInference>(
+    func execute<Inference: AgentInference>(
         _ inference: Inference.Type,
         input: Inference.Input,
         realization: AgentInferenceRealization
-    ) async throws -> AgentProgramInferenceExecution<Inference.Output> {
+    ) async throws -> AgentInferenceExecutionResult<Inference.Output> {
         let encodedInput = try JSONToolBridge.encode(
             input
         )
@@ -554,17 +573,60 @@ private struct FixtureProgramInferenceExecutor:
             from: encodedOutput
         )
 
-        return .init(
-            output: output,
-            usage: .init(
-                inputTokens: 3,
-                outputTokens: 2,
-                totalTokens: 5
+        let usage = AgentUsage(
+            inputTokens: 3,
+            outputTokens: 2,
+            totalTokens: 5
+        )
+        let selection = realization.modelSelection
+        let profile = AgentModelProfile(
+            identifier: "fixture.inference.profile",
+            gatewayIdentifier: "fixture.inference.gateway",
+            model: "fixture",
+            purposes: [
+                selection.purpose,
+            ],
+            capabilities: [
+                .text,
+                .structured_output,
+            ]
+        )
+        let route = AgentModelRouteRecord(
+            route: AgentModelRoute(
+                purpose: selection.purpose,
+                profile: profile
             ),
+            requestMetadata: [:],
+            responseMetadata: [:],
+            usage: usage
+        )
+        let attempt = AgentInferenceAttemptRecord(
+            index: 0,
+            adapter: AgentInferenceAdapterIdentifier(
+                rawValue: "fixture.inference.adapter"
+            ),
+            selection: selection,
+            route: route,
+            usage: usage,
             metadata: [
                 "fixture_executor": "recorded",
-                "strategy": realization.strategy.rawValue,
             ]
+        )
+
+        return .init(
+            output: output,
+            record: AgentInferenceExecutionRecord(
+                inference: Inference.definition.identifier,
+                strategy: realization.strategy,
+                attempts: [
+                    attempt,
+                ],
+                budget: realization.budget,
+                metadata: [
+                    "fixture_executor": "recorded",
+                    "strategy": realization.strategy.rawValue,
+                ]
+            )
         )
     }
 }

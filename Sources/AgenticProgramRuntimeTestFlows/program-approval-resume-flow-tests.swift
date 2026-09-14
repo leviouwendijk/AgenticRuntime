@@ -154,15 +154,15 @@ private struct ProgramReplayProgram:
 }
 
 private struct ProgramReplayInferenceExecutor:
-    AgentProgramInferenceExecuting
+    AgentInferenceExecuting
 {
     let probe: ProgramReplayProbe
 
-    func infer<Inference: AgentInference>(
+    func execute<Inference: AgentInference>(
         _ inference: Inference.Type,
         input: Inference.Input,
         realization: AgentInferenceRealization
-    ) async throws -> AgentProgramInferenceExecution<Inference.Output> {
+    ) async throws -> AgentInferenceExecutionResult<Inference.Output> {
         _ = inference
         _ = realization
 
@@ -186,9 +186,14 @@ private struct ProgramReplayInferenceExecutor:
 
         return .init(
             output: output,
-            metadata: [
-                "fixture": "program_replay",
-            ]
+            record: AgentInferenceExecutionRecord(
+                inference: Inference.definition.identifier,
+                strategy: realization.strategy,
+                budget: realization.budget,
+                metadata: [
+                    "fixture": "program_replay",
+                ]
+            )
         )
     }
 }
