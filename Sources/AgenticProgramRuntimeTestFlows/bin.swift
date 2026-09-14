@@ -51,6 +51,21 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runProgramInferenceExecutionRecord()
         },
         TestFlow(
+            "program-inference-failure-recovery-evidence",
+            tags: [
+                "agentic-runtime",
+                "program",
+                "inference",
+                "failure",
+                "recovery",
+                "handling",
+                "trace",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runProgramInferenceFailureRecoveryEvidence()
+        },
+        TestFlow(
             "model-invocation-transport",
             tags: [
                 "agentic-runtime",

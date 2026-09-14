@@ -141,11 +141,30 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                 return output
             }
 
-            let execution = try await executor.infer(
-                inference,
-                input: input,
-                realization: binding.realization
-            )
+            let execution: AgentProgramInferenceExecution<Inference.Output>
+
+            do {
+                execution = try await executor.infer(
+                    inference,
+                    input: input,
+                    realization: binding.realization
+                )
+            } catch let failure as AgentProgramInferenceFailure {
+                throw failure
+            } catch let error as AgentInferenceRecoveryError {
+                throw AgentProgramInferenceFailure(
+                    site: site,
+                    inference: inferenceIdentifier,
+                    recovery: error.record,
+                    message: error.message
+                )
+            } catch {
+                throw AgentProgramInferenceFailure(
+                    site: site,
+                    inference: inferenceIdentifier,
+                    message: error.localizedDescription
+                )
+            }
             let outputValue = try JSONToolBridge.encode(
                 execution.output
             )
@@ -174,6 +193,30 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
             )
 
             return execution.output
+        } catch let error as AgentProgramInferenceFailure {
+            let completedAt = Date()
+
+            await trace.append(
+                .init(
+                    index: index,
+                    kind: .inference(
+                        site: site,
+                        inference: Inference.definition.identifier
+                    ),
+                    input: inputValue,
+                    inferenceRealization: appliedRealization,
+                    recovery: error.recovery,
+                    failure: .init(error: error),
+                    startedAt: startedAt,
+                    completedAt: completedAt,
+                    durationMilliseconds: agentProgramElapsedMilliseconds(
+                        from: startedAt,
+                        to: completedAt
+                    )
+                )
+            )
+
+            throw error
         } catch {
             let completedAt = Date()
 
