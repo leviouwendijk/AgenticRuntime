@@ -102,7 +102,7 @@ extension ToolLoopExecutor {
     func executeApprovedToolCall(
         _ toolCall: AgentToolCall,
         preflight: ToolPreflight
-    ) async throws -> AgentToolExecutor.Result {
+    ) async throws -> AgentToolExecutionResult {
         try await AgentToolExecutor(
             invoker: ToolInvoker(
                 registry: tooling.registry,

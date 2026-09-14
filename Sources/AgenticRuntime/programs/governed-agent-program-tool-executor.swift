@@ -80,7 +80,7 @@ public struct GovernedAgentProgramToolExecutor:
     public func invoke(
         _ identifier: AgentToolIdentifier,
         input: JSONValue
-    ) async throws -> AgentProgramToolExecution {
+    ) async throws -> AgentToolExecutionResult {
         let call = AgentToolCall(
             id: "program-\(UUID().uuidString)",
             name: identifier.rawValue,
@@ -127,10 +127,7 @@ public struct GovernedAgentProgramToolExecutor:
                 )
             }
 
-            return AgentProgramToolExecution(
-                output: execution.result.output,
-                recovery: execution.recovery
-            )
+            return execution
 
         case .needshuman:
             throw AgentProgramSuspensionSignal(
@@ -163,7 +160,7 @@ public struct GovernedAgentProgramToolExecutor:
     public func resume(
         pendingApproval: PendingApproval,
         decision: ApprovalDecision
-    ) async throws -> AgentProgramToolExecution {
+    ) async throws -> AgentToolExecutionResult {
         let identifier = AgentToolIdentifier(
             pendingApproval.toolCall.name
         )
@@ -219,10 +216,7 @@ public struct GovernedAgentProgramToolExecutor:
                 )
             }
 
-            return AgentProgramToolExecution(
-                output: execution.result.output,
-                recovery: execution.recovery
-            )
+            return execution
         }
     }
 }

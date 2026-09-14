@@ -5,11 +5,6 @@ import Foundation
 import Primitives
 
 struct AgentToolExecutor {
-    struct Result {
-        let result: AgentToolResult
-        let recovery: Recovery.Record?
-    }
-
     let invoker: ToolInvoker
     let recovery: Recovery.Policy?
     let context: AgentToolExecutionContext
@@ -17,9 +12,9 @@ struct AgentToolExecutor {
     func execute(
         _ call: AgentToolCall,
         preflight: ToolPreflight
-    ) async throws -> Result {
+    ) async throws -> AgentToolExecutionResult {
         do {
-            return Result(
+            return AgentToolExecutionResult(
                 result: try await invoker.registry.execute(
                     call,
                     context: context
@@ -46,7 +41,7 @@ struct AgentToolExecutor {
                 error: error,
                 policy: recovery
             ) else {
-                return Result(
+                return AgentToolExecutionResult(
                     result: try makeErrorResult(
                         for: call,
                         error: error
@@ -65,7 +60,7 @@ struct AgentToolExecutor {
                             decision.action
                         )
 
-                    return Result(
+                    return AgentToolExecutionResult(
                         result: try makeErrorResult(
                             for: call,
                             error: recoveryError
@@ -82,7 +77,7 @@ struct AgentToolExecutor {
                     let recoveryError =
                         AgentToolExecutorError.recovery_exhausted
 
-                    return Result(
+                    return AgentToolExecutionResult(
                         result: try makeErrorResult(
                             for: call,
                             error: recoveryError
@@ -116,7 +111,7 @@ struct AgentToolExecutor {
                                 )
                             )
 
-                            return Result(
+                            return AgentToolExecutionResult(
                                 result: try makeErrorResult(
                                     for: call,
                                     error: recoveryError
@@ -141,7 +136,7 @@ struct AgentToolExecutor {
 
                         switch reconciliation {
                         case .applied(let result):
-                            return Result(
+                            return AgentToolExecutionResult(
                                 result: result,
                                 recovery: recovery.record(
                                     outcome: .recovered
@@ -153,7 +148,7 @@ struct AgentToolExecutor {
                                 AgentToolExecutorError
                                     .applied_without_output
 
-                            return Result(
+                            return AgentToolExecutionResult(
                                 result: try makeErrorResult(
                                     for: call,
                                     error: recoveryError
@@ -180,7 +175,7 @@ struct AgentToolExecutor {
                                 AgentToolExecutorError
                                     .reconciliation_unresolved
 
-                            return Result(
+                            return AgentToolExecutionResult(
                                 result: try makeErrorResult(
                                     for: call,
                                     error: recoveryError
@@ -206,7 +201,7 @@ struct AgentToolExecutor {
                             continue
                         }
 
-                        return Result(
+                        return AgentToolExecutionResult(
                             result: try makeErrorResult(
                                 for: call,
                                 error: error
@@ -239,7 +234,7 @@ struct AgentToolExecutor {
                                     )
                                 )
 
-                                return Result(
+                                return AgentToolExecutionResult(
                                     result: try makeErrorResult(
                                         for: call,
                                         error: recoveryError
@@ -259,7 +254,7 @@ struct AgentToolExecutor {
                                 )
                             )
 
-                            return Result(
+                            return AgentToolExecutionResult(
                                 result: try makeErrorResult(
                                     for: call,
                                     error: error
@@ -293,7 +288,7 @@ struct AgentToolExecutor {
                             )
                         )
 
-                        return Result(
+                        return AgentToolExecutionResult(
                             result: result,
                             recovery: recovery.record(
                                 outcome: .recovered
@@ -314,7 +309,7 @@ struct AgentToolExecutor {
                         )
 
                         guard accepted else {
-                            return Result(
+                            return AgentToolExecutionResult(
                                 result: try makeErrorResult(
                                     for: call,
                                     error: error
@@ -329,7 +324,7 @@ struct AgentToolExecutor {
                             decision.action,
                             state: recovery.state
                         ) else {
-                            return Result(
+                            return AgentToolExecutionResult(
                                 result: try makeErrorResult(
                                     for: call,
                                     error: error
@@ -346,7 +341,7 @@ struct AgentToolExecutor {
                             continue
                         }
 
-                        return Result(
+                        return AgentToolExecutionResult(
                             result: try makeErrorResult(
                                 for: call,
                                 error: error
@@ -372,7 +367,7 @@ struct AgentToolExecutor {
                         )
                     )
 
-                    return Result(
+                    return AgentToolExecutionResult(
                         result: try makeErrorResult(
                             for: call,
                             error: recoveryError
@@ -387,7 +382,7 @@ struct AgentToolExecutor {
             let recoveryError =
                 AgentToolExecutorError.recovery_exhausted
 
-            return Result(
+            return AgentToolExecutionResult(
                 result: try makeErrorResult(
                     for: call,
                     error: recoveryError

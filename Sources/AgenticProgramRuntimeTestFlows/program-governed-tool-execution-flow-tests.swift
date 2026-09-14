@@ -460,7 +460,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let resumedOutput = try JSONToolBridge.decode(
             GovernedProgramToolOutput.self,
-            from: resumedExecution.output
+            from: resumedExecution.result.output
         )
         let resumedCount = await resumedProbe.count()
 

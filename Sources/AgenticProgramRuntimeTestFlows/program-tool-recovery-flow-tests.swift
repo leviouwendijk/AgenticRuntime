@@ -323,7 +323,7 @@ private func runProgramToolRecovery(
     return (
         output: try JSONToolBridge.decode(
             ProgramToolRecoveryOutput.self,
-            from: execution.output
+            from: execution.result.output
         ),
         recovery: execution.recovery,
         snapshot: await probe.snapshot()
@@ -383,7 +383,7 @@ private func runProgramToolResumeRecovery()
     return (
         output: try JSONToolBridge.decode(
             ProgramToolRecoveryOutput.self,
-            from: execution.output
+            from: execution.result.output
         ),
         recovery: execution.recovery,
         snapshot: await probe.snapshot()

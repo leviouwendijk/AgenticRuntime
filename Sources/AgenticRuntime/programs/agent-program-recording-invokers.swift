@@ -259,7 +259,7 @@ struct AgentProgramRecordingToolInvoker:
                 return decoded
             }
 
-            let execution: AgentProgramToolExecution
+            let execution: AgentToolExecutionResult
 
             if let resumeControl,
                let resolution = try await resumeControl.resolution(
@@ -279,12 +279,12 @@ struct AgentProgramRecordingToolInvoker:
                 )
             }
 
-            outputValue = execution.output
+            outputValue = execution.result.output
             recovery = execution.recovery
 
             let decoded = try JSONToolBridge.decode(
                 Output.self,
-                from: execution.output
+                from: execution.result.output
             )
             let completedAt = Date()
 
@@ -293,7 +293,7 @@ struct AgentProgramRecordingToolInvoker:
                     index: index,
                     kind: .tool(identifier),
                     input: inputValue,
-                    output: execution.output,
+                    output: execution.result.output,
                     recovery: execution.recovery,
                     startedAt: startedAt,
                     completedAt: completedAt,
