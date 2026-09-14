@@ -122,6 +122,7 @@ public struct GovernedAgentProgramToolExecutor:
             guard !execution.result.isError else {
                 throw AgentProgramToolFailure(
                     tool: identifier,
+                    result: execution.result,
                     recovery: execution.recovery
                 )
             }
@@ -213,6 +214,7 @@ public struct GovernedAgentProgramToolExecutor:
             guard !execution.result.isError else {
                 throw AgentProgramToolFailure(
                     tool: identifier,
+                    result: execution.result,
                     recovery: execution.recovery
                 )
             }

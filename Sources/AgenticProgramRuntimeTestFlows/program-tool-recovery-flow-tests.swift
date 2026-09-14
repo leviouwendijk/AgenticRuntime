@@ -432,7 +432,12 @@ private struct ProgramToolRecoveryProgram: AgentProgram {
                 input: input,
                 as: Output.self
             ) { failure -> Output in
-                guard failure.effect == .applied else {
+                guard
+                    failure.effect == .applied,
+                    failure.result.isError,
+                    failure.result.name == "fixture.program_tool_recovery",
+                    failure.result.output != .null
+                else {
                     throw failure
                 }
 
@@ -447,7 +452,12 @@ private struct ProgramToolRecoveryProgram: AgentProgram {
                 input: input,
                 as: Output.self
             ) { failure -> AgentProgramToolFailure.Handling<Output> in
-                guard failure.effect == .unknown else {
+                guard
+                    failure.effect == .unknown,
+                    failure.result.isError,
+                    failure.result.name == "fixture.program_tool_recovery",
+                    failure.result.output != .null
+                else {
                     return .recover(
                         Output(
                             status: "unexpected_recovery"
