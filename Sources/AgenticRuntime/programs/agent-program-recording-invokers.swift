@@ -172,7 +172,8 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                     ),
                     input: inputValue,
                     inference: .init(
-                        realization: appliedRealization
+                        realization: appliedRealization,
+                        execution: error.execution?.record
                     ),
                     recovery: error.recovery,
                     failure: .init(error: error),

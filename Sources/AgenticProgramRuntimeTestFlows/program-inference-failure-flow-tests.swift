@@ -90,29 +90,56 @@ private struct RuntimeInferenceFailureExecutor:
         case .classified:
             let message =
                 "fixture classified inference failure"
-
-            throw AgentInferenceRecoveryError(
-                record: Recovery.Record(
-                    incident: Recovery.Incident(
-                        kind: .transport_transient,
-                        stage: .execution,
-                        effectState: Recovery.EffectState.none,
-                        retrySafety: .safe,
-                        scope: .init(
-                            kind: .inference,
-                            identifier:
-                                RuntimeInferenceFailureFixtureInference
-                                    .definition
-                                    .identifier
-                                    .rawValue
-                        ),
-                        message: message
+            let recovery = Recovery.Record(
+                incident: Recovery.Incident(
+                    kind: .transport_transient,
+                    stage: .execution,
+                    effectState: Recovery.EffectState.none,
+                    retrySafety: .safe,
+                    scope: .init(
+                        kind: .inference,
+                        identifier:
+                            RuntimeInferenceFailureFixtureInference
+                                .definition
+                                .identifier
+                                .rawValue
                     ),
-                    plan: nil,
-                    attempts: [],
-                    outcome: .propagated
+                    message: message
                 ),
+                plan: nil,
+                attempts: [],
+                outcome: .propagated
+            )
+            let recoveryError = AgentInferenceRecoveryError(
+                record: recovery,
                 message: message
+            )
+            let attempt = AgentInferenceAttemptFailure(
+                index: 0,
+                adapter: AgentInferenceAdapterIdentifier(
+                    rawValue: "fixture.runtime_inference_failure.adapter"
+                ),
+                selection: realization.modelSelection,
+                failure: AgentInferenceFailureRecord(
+                    capturing: recoveryError,
+                    recovery: recovery
+                ),
+                recoveries: [
+                    recovery,
+                ],
+                metadata: [
+                    "fixture": "runtime_program_inference_failure",
+                ]
+            )
+
+            throw AgentInferenceExecutionFailure(
+                attempt: attempt,
+                inference: Inference.definition.identifier,
+                strategy: realization.strategy,
+                budget: realization.budget,
+                metadata: [
+                    "fixture": "runtime_program_inference_failure",
+                ]
             )
 
         case .unclassified:
@@ -277,6 +304,18 @@ extension AgenticProgramRuntimeFlowTesting {
             classifiedStep.recovery,
             "failed inference step preserves classified recovery evidence"
         )
+        let classifiedExecution = try Expect.notNil(
+            classifiedStep.inference.execution,
+            "failed inference step preserves canonical inference execution evidence"
+        )
+        let classifiedExecutionFailure = try Expect.notNil(
+            classifiedExecution.failure,
+            "failed inference execution preserves its durable failure evidence"
+        )
+        let classifiedExecutionRecovery = try Expect.notNil(
+            classifiedExecutionFailure.recovery,
+            "failed inference execution preserves its lower-level recovery evidence"
+        )
 
         try Expect.equal(
             classified.record.outcome,
@@ -319,6 +358,28 @@ extension AgenticProgramRuntimeFlowTesting {
             classifiedRecovery.outcome,
             .propagated,
             "Runtime trace preserves propagated mechanical recovery outcome"
+        )
+        try Expect.equal(
+            classifiedExecution.inference,
+            RuntimeInferenceFailureFixtureInference
+                .definition
+                .identifier,
+            "Runtime trace preserves the canonical failed inference identity"
+        )
+        try Expect.equal(
+            classifiedExecution.attempts.count,
+            1,
+            "Runtime trace preserves the canonical failed semantic attempt"
+        )
+        try Expect.equal(
+            classifiedExecution.metadata["fixture"],
+            "runtime_program_inference_failure",
+            "Runtime trace preserves lower-level failed execution metadata"
+        )
+        try Expect.equal(
+            classifiedExecutionRecovery,
+            classifiedRecovery,
+            "Program step execution and recovery projections preserve the same lower-level recovery record"
         )
 
         let unclassifiedProbe = RuntimeInferenceFailureProbe()
@@ -381,6 +442,11 @@ extension AgenticProgramRuntimeFlowTesting {
             true,
             "Runtime does not invent recovery evidence for unclassified inference failure"
         )
+        try Expect.equal(
+            unclassifiedStep.inference.execution == nil,
+            true,
+            "fallback Program inference failure does not invent canonical execution evidence"
+        )
 
         return [
             .field(
@@ -396,6 +462,14 @@ extension AgenticProgramRuntimeFlowTesting {
                 String(
                     await classifiedProbe.count()
                 )
+            ),
+            .field(
+                "classified_execution",
+                String(classifiedStep.inference.execution != nil)
+            ),
+            .field(
+                "classified_attempts",
+                String(classifiedExecution.attempts.count)
             ),
             .field(
                 "unclassified_outcome",
