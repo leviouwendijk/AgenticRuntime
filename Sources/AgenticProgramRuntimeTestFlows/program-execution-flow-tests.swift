@@ -327,12 +327,12 @@ extension AgenticProgramRuntimeFlowTesting {
             "inference step preserves semantic inference identity"
         )
         try Expect.equal(
-            step.inferenceRealization,
+            step.inference.realization,
             inferenceRealization,
             "inference step preserves the exact applied realization"
         )
         let inferenceExecution = try Expect.notNil(
-            step.inferenceExecution,
+            step.inference.execution,
             "inference step preserves canonical inference execution evidence"
         )
         let attempt = try Expect.notNil(
@@ -387,7 +387,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ),
             .field(
                 "strategy",
-                step.inferenceRealization?.strategy.rawValue ?? "<none>"
+                step.inference.realization?.strategy.rawValue ?? "<none>"
             ),
             .field(
                 "usage",

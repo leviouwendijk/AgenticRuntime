@@ -69,12 +69,28 @@ public struct AgentProgramStepRecord:
     Codable,
     Hashable
 {
+    public struct Inference:
+        Sendable,
+        Codable,
+        Hashable
+    {
+        public var realization: AgentInferenceRealization?
+        public var execution: AgentInferenceExecutionRecord?
+
+        public init(
+            realization: AgentInferenceRealization? = nil,
+            execution: AgentInferenceExecutionRecord? = nil
+        ) {
+            self.realization = realization
+            self.execution = execution
+        }
+    }
+
     public var index: Int
     public var kind: AgentProgramStepKind
     public var input: JSONValue
     public var output: JSONValue?
-    public var inferenceRealization: AgentInferenceRealization?
-    public var inferenceExecution: AgentInferenceExecutionRecord?
+    public var inference: Inference
     public var recovery: Recovery.Record?
     public var suspension: AgentSuspension?
     public var failure: AgentProgramFailureRecord?
@@ -88,8 +104,7 @@ public struct AgentProgramStepRecord:
         kind: AgentProgramStepKind,
         input: JSONValue,
         output: JSONValue? = nil,
-        inferenceRealization: AgentInferenceRealization? = nil,
-        inferenceExecution: AgentInferenceExecutionRecord? = nil,
+        inference: Inference = .init(),
         recovery: Recovery.Record? = nil,
         suspension: AgentSuspension? = nil,
         failure: AgentProgramFailureRecord? = nil,
@@ -102,8 +117,7 @@ public struct AgentProgramStepRecord:
         self.kind = kind
         self.input = input
         self.output = output
-        self.inferenceRealization = inferenceRealization
-        self.inferenceExecution = inferenceExecution
+        self.inference = inference
         self.recovery = recovery
         self.suspension = suspension
         self.failure = failure

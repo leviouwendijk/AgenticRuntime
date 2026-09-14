@@ -123,7 +123,7 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                 ),
                 input: inputValue
             ) {
-                guard replayed.inferenceRealization
+                guard replayed.inference.realization
                         == binding.realization,
                       let outputValue = replayed.output
                 else {
@@ -179,8 +179,10 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                     ),
                     input: inputValue,
                     output: outputValue,
-                    inferenceRealization: binding.realization,
-                    inferenceExecution: execution.record,
+                    inference: .init(
+                        realization: binding.realization,
+                        execution: execution.record
+                    ),
                     startedAt: startedAt,
                     completedAt: completedAt,
                     durationMilliseconds: agentProgramElapsedMilliseconds(
@@ -202,7 +204,9 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                         inference: Inference.definition.identifier
                     ),
                     input: inputValue,
-                    inferenceRealization: appliedRealization,
+                    inference: .init(
+                        realization: appliedRealization
+                    ),
                     recovery: error.recovery,
                     failure: .init(error: error),
                     startedAt: startedAt,
@@ -226,7 +230,9 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                         inference: Inference.definition.identifier
                     ),
                     input: inputValue,
-                    inferenceRealization: appliedRealization,
+                    inference: .init(
+                        realization: appliedRealization
+                    ),
                     failure: .init(error: error),
                     startedAt: startedAt,
                     completedAt: completedAt,
