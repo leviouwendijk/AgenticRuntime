@@ -1,9 +1,7 @@
 import Agentic
 import AgenticExecution
-import AgenticInference
 import AgenticPrograms
 import AgenticRecovery
-import Foundation
 import Primitives
 
 
@@ -53,35 +51,3 @@ public extension AgentProgramToolExecuting {
     }
 }
 
-public enum AgentProgramRuntimeError:
-    Error,
-    Sendable,
-    LocalizedError
-{
-    case missingInferenceRealization(
-        site: AgentInferenceSiteIdentifier,
-        inference: AgentInferenceIdentifier
-    )
-    case inferenceRealizationMismatch(
-        site: AgentInferenceSiteIdentifier,
-        expected: AgentInferenceIdentifier,
-        actual: AgentInferenceIdentifier
-    )
-
-    public var errorDescription: String? {
-        switch self {
-        case .missingInferenceRealization(
-            let site,
-            let inference
-        ):
-            return "No realization is bound to inference site '\(site.rawValue)' for inference '\(inference.rawValue)'."
-
-        case .inferenceRealizationMismatch(
-            let site,
-            let expected,
-            let actual
-        ):
-            return "Inference site '\(site.rawValue)' expects '\(expected.rawValue)' but its realization is bound to '\(actual.rawValue)'."
-        }
-    }
-}

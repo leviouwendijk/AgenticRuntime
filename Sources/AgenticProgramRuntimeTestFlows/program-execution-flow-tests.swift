@@ -376,6 +376,58 @@ extension AgenticProgramRuntimeFlowTesting {
             "inference executor metadata remains on canonical inference evidence"
         )
 
+        let missingBindingExecution = try await runner.execute(
+            FixtureInferenceProgram(),
+            input: .init(
+                value: "missing"
+            ),
+            realization: AgentProgramRealization<FixtureInferenceProgram>(
+                id: "fixture.inference-program-missing-binding"
+            )
+        )
+        let missingBindingFailure = try Expect.notNil(
+            missingBindingExecution.record.failure,
+            "missing inference binding fails the Program execution"
+        )
+        let missingBindingStep = try Expect.notNil(
+            missingBindingExecution.record.steps.first,
+            "missing inference binding remains visible as a failed semantic step"
+        )
+        let missingBindingStepFailure = try Expect.notNil(
+            missingBindingStep.failure,
+            "failed binding step records its canonical error"
+        )
+
+        try Expect.equal(
+            missingBindingExecution.record.outcome,
+            .failed,
+            "missing Program inference binding produces a failed execution"
+        )
+        try Expect.equal(
+            missingBindingFailure.type,
+            String(
+                reflecting: AgentProgramInferenceInvocationError.self
+            ),
+            "Runtime propagates the canonical AgenticPrograms binding error"
+        )
+        try Expect.equal(
+            missingBindingStepFailure.type,
+            String(
+                reflecting: AgentProgramInferenceInvocationError.self
+            ),
+            "Runtime step recording preserves the canonical AgenticPrograms binding error"
+        )
+        try Expect.equal(
+            missingBindingStep.inference.realization == nil,
+            true,
+            "an invalid binding is never recorded as an applied inference realization"
+        )
+        try Expect.equal(
+            missingBindingStep.inference.execution == nil,
+            true,
+            "binding failure produces no canonical inference execution evidence"
+        )
+
         return [
             .field(
                 "program",
@@ -392,6 +444,10 @@ extension AgenticProgramRuntimeFlowTesting {
             .field(
                 "usage",
                 String(attempt.usage?.totalTokens ?? 0)
+            ),
+            .field(
+                "missing_binding_failure",
+                missingBindingFailure.type
             ),
         ]
     }

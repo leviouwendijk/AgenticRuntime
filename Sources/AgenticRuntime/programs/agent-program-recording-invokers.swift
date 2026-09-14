@@ -94,26 +94,13 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
         var appliedRealization: AgentInferenceRealization?
 
         do {
-            let inferenceIdentifier = Inference.definition.identifier
-
-            guard let binding = realization?.inference(at: site) else {
-                throw AgentProgramRuntimeError
-                    .missingInferenceRealization(
-                        site: site,
-                        inference: inferenceIdentifier
-                    )
-            }
-
-            appliedRealization = binding.realization
-
-            guard binding.inference == inferenceIdentifier else {
-                throw AgentProgramRuntimeError
-                    .inferenceRealizationMismatch(
-                        site: site,
-                        expected: inferenceIdentifier,
-                        actual: binding.inference
-                    )
-            }
+            let invocation = try AgentProgramInferenceInvocation<Inference>(
+                inference,
+                at: site,
+                in: realization
+            )
+            let inferenceIdentifier = invocation.inference
+            appliedRealization = invocation.realization
 
             if let replayed = try await trace.replay(
                 index: index,
@@ -124,7 +111,7 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                 input: inputValue
             ) {
                 guard replayed.inference.realization
-                        == binding.realization,
+                        == invocation.realization,
                       let outputValue = replayed.output
                 else {
                     throw AgentProgramReplayError.step_mismatch(
@@ -141,30 +128,10 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                 return output
             }
 
-            let execution: AgentInferenceExecutionResult<Inference.Output>
-
-            do {
-                execution = try await executor.execute(
-                    inference,
-                    input: input,
-                    realization: binding.realization
-                )
-            } catch let failure as AgentProgramInferenceFailure {
-                throw failure
-            } catch let error as AgentInferenceRecoveryError {
-                throw AgentProgramInferenceFailure(
-                    site: site,
-                    inference: inferenceIdentifier,
-                    recovery: error.record,
-                    message: error.message
-                )
-            } catch {
-                throw AgentProgramInferenceFailure(
-                    site: site,
-                    inference: inferenceIdentifier,
-                    message: error.localizedDescription
-                )
-            }
+            let execution = try await invocation.execute(
+                input: input,
+                using: executor
+            )
             let outputValue = try JSONToolBridge.encode(
                 execution.output
             )
@@ -180,7 +147,7 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                     input: inputValue,
                     output: outputValue,
                     inference: .init(
-                        realization: binding.realization,
+                        realization: invocation.realization,
                         execution: execution.record
                     ),
                     startedAt: startedAt,
