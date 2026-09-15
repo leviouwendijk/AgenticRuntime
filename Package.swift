@@ -210,6 +210,18 @@ let package = Package(
                     package: "AgenticRecovery"
                 ),
                 .product(
+                    name: "AgenticIO",
+                    package: "AgenticIO"
+                ),
+                .product(
+                    name: "AgenticWorkspace",
+                    package: "AgenticWorkspace"
+                ),
+                .product(
+                    name: "Path",
+                    package: "Path"
+                ),
+                .product(
                     name: "Primitives",
                     package: "Primitives"
                 ),

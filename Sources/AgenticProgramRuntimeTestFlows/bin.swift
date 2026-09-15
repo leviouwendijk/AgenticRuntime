@@ -225,6 +225,21 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runPreparedIntentRuntimeExecution()
         },
         TestFlow(
+            "workspace-access-lease-activation",
+            tags: [
+                "agentic-runtime",
+                "workspace",
+                "path-grant",
+                "prepared-operation",
+                "lease",
+                "turn",
+                "session",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runWorkspaceAccessLeaseActivation()
+        },
+        TestFlow(
             "program-governed-tool-recovery",
             tags: [
                 "agentic-runtime",
