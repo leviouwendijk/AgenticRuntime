@@ -7,7 +7,7 @@ import Primitives
 /// Runtime-side governed tool boundary used by AgentProgramRunner.
 ///
 /// Implementations may own approval, suspension, and resume semantics, while
-/// successful tool execution returns Runtime's canonical mechanical result.
+/// successful tool execution returns AgenticExecution's canonical mechanical result.
 public protocol AgentProgramToolExecuting: Sendable {
     func invoke(
         _ identifier: AgentToolIdentifier,

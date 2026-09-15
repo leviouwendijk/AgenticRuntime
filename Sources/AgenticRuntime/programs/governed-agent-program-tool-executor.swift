@@ -36,14 +36,14 @@ public enum AgentProgramToolGovernanceError:
 /// canonical governed invocation path.
 ///
 /// The Program identifies the semantic operation it needs. It does not receive
-/// authority to execute that operation directly. ToolInvoker remains responsible
-/// for registry resolution, preflight, execution policy, approval, and execution.
+/// authority to execute that operation directly. Runtime owns Program approval,
+/// suspension, and resume semantics while ToolInvoker owns review and canonical
+/// mechanical execution.
 public struct GovernedAgentProgramToolExecutor:
     AgentProgramToolExecuting,
     Sendable
 {
     public let invoker: ToolInvoker
-    public let recovery: Recovery.Policy?
     public let context: AgentToolExecutionContext
     public let approvalHandler: (any ToolApprovalHandler)?
 
@@ -57,9 +57,9 @@ public struct GovernedAgentProgramToolExecutor:
         self.init(
             invoker: ToolInvoker(
                 registry: registry,
-                policy: policy
+                policy: policy,
+                recovery: recovery
             ),
-            recovery: recovery,
             context: context,
             approvalHandler: approvalHandler
         )
@@ -67,12 +67,10 @@ public struct GovernedAgentProgramToolExecutor:
 
     public init(
         invoker: ToolInvoker,
-        recovery: Recovery.Policy? = nil,
         context: AgentToolExecutionContext = .init(),
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
         self.invoker = invoker
-        self.recovery = recovery
         self.context = context
         self.approvalHandler = approvalHandler
     }
@@ -111,13 +109,10 @@ public struct GovernedAgentProgramToolExecutor:
 
         switch decision {
         case .approved:
-            let execution = try await AgentToolExecutor(
-                invoker: invoker,
-                recovery: recovery,
-                context: context
-            ).execute(
+            let execution = try await invoker.executeApproved(
                 call,
-                preflight: review.preflight
+                preflight: review.preflight,
+                context: context
             )
             guard !execution.result.isError else {
                 throw AgentProgramToolFailure(
@@ -200,13 +195,10 @@ public struct GovernedAgentProgramToolExecutor:
                 )
             }
 
-            let execution = try await AgentToolExecutor(
-                invoker: invoker,
-                recovery: recovery,
-                context: context
-            ).execute(
+            let execution = try await invoker.executeApproved(
                 pendingApproval.toolCall,
-                preflight: freshReview.preflight
+                preflight: freshReview.preflight,
+                context: context
             )
             guard !execution.result.isError else {
                 throw AgentProgramToolFailure(

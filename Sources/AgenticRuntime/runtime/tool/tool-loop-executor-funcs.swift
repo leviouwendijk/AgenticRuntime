@@ -103,18 +103,16 @@ extension ToolLoopExecutor {
         _ toolCall: AgentToolCall,
         preflight: ToolPreflight
     ) async throws -> AgentToolExecutionResult {
-        try await AgentToolExecutor(
-            invoker: ToolInvoker(
-                registry: tooling.registry,
-                policy: configuration.toolExecutionPolicy
-            ),
-            recovery: configuration.recovery,
+        try await ToolInvoker(
+            registry: tooling.registry,
+            policy: configuration.toolExecutionPolicy,
+            recovery: configuration.recovery
+        ).executeApproved(
+            toolCall,
+            preflight: preflight,
             context: AgentToolExecutionContext(
                 workspace: tooling.workspace
             )
-        ).execute(
-            toolCall,
-            preflight: preflight
         )
     }
     func makeDeniedToolResult(
