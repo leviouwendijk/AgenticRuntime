@@ -55,10 +55,10 @@ public extension AgentRunner {
                 metadata: response.metadata
             )
 
-        case .user_input(let answer):
+        case .user_input(let reply):
             return try await executor.resume(
                 checkpoint,
-                answer: answer,
+                reply: reply,
                 metadata: response.metadata
             )
         }

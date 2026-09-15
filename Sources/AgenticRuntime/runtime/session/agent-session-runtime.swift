@@ -229,6 +229,30 @@ public struct AgentSessionRuntime: Sendable {
         enableHistoryPersistence: Bool = true,
         metadata: [String: String] = [:]
     ) async throws -> AgentRunResult {
+        try await resume(
+            reply: .answer(
+                answer
+            ),
+            model: model,
+            configuration: configuration,
+            tooling: tooling,
+            extensions: extensions,
+            recording: recording,
+            enableHistoryPersistence: enableHistoryPersistence,
+            metadata: metadata
+        )
+    }
+
+    public func resume(
+        reply: UserInputReply,
+        model: AgentRuntimeServices.Model,
+        configuration: AgentRunnerConfiguration = .default,
+        tooling: AgentRuntimeServices.Tooling = .init(),
+        extensions: [any AgentHarnessExtension] = [],
+        recording: AgentRuntimeServices.Recording = .init(),
+        enableHistoryPersistence: Bool = true,
+        metadata: [String: String] = [:]
+    ) async throws -> AgentRunResult {
         try saveMetadata(
             self.metadata.withStatus(
                 .active
@@ -246,7 +270,7 @@ public struct AgentSessionRuntime: Sendable {
 
         let result = try await runner.resume(
             sessionID: sessionID,
-            answer: answer,
+            reply: reply,
             metadata: metadata
         )
 

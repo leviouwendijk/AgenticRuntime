@@ -134,6 +134,20 @@ public actor AgentRunner {
         answer: UserInputAnswer,
         metadata: [String: String] = [:]
     ) async throws -> AgentRunResult {
+        try await resume(
+            sessionID: sessionID,
+            reply: .answer(
+                answer
+            ),
+            metadata: metadata
+        )
+    }
+
+    public func resume(
+        sessionID: String,
+        reply: UserInputReply,
+        metadata: [String: String] = [:]
+    ) async throws -> AgentRunResult {
         guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }
@@ -152,7 +166,7 @@ public actor AgentRunner {
 
         return try await executor.resume(
             checkpoint,
-            answer: answer,
+            reply: reply,
             metadata: metadata
         )
     }

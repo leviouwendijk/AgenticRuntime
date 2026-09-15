@@ -9,7 +9,7 @@ extension ToolLoopExecutor {
     ) async throws -> AgentRunResult {
         try await resumeWithUserInput(
             checkpoint,
-            answer: .text(
+            reply: .text(
                 userInput
             ),
             metadata: metadata
@@ -18,7 +18,7 @@ extension ToolLoopExecutor {
 
     func resumeWithUserInput(
         _ checkpoint: AgentHistoryCheckpoint,
-        answer: UserInputAnswer,
+        reply: UserInputReply,
         metadata: [String: String]
     ) async throws -> AgentRunResult {
         var checkpoint = checkpoint
@@ -53,7 +53,7 @@ extension ToolLoopExecutor {
             ?? ClarifyWithUserTool.identifier.rawValue
 
         let response = try UserInputResponse(
-            answer: answer,
+            reply,
             for: request
         )
 
@@ -76,9 +76,11 @@ extension ToolLoopExecutor {
             name: toolName,
             output: try JSONToolBridge.encode(
                 UserInputResumePayload(
-                    kind: "user_input_received",
+                    kind: response.isSkipped
+                        ? "user_input_skipped"
+                        : "user_input_received",
                     prompt: request.prompt,
-                    answer: response.answer,
+                    reply: response.reply,
                     metadata: payloadMetadata
                 )
             ),
@@ -96,7 +98,9 @@ extension ToolLoopExecutor {
             for: toolCall,
             disposition: .executed,
             to: &checkpoint,
-            summary: "user input received"
+            summary: response.isSkipped
+                ? "user input skipped"
+                : "user input received"
         )
 
         try await appendSkippedSiblings(

@@ -60,7 +60,7 @@ public enum AgentInteraction {
         Hashable
     {
         case approval(ApprovalDecision)
-        case user_input(UserInputAnswer)
+        case user_input(UserInputReply)
 
         private enum CodingKeys:
             String,
@@ -123,12 +123,23 @@ public enum AgentInteraction {
                 )
 
             case .user_input:
-                self = .user_input(
-                    try container.decode(
-                        UserInputAnswer.self,
-                        forKey: .user_input
+                if let reply = try? container.decode(
+                    UserInputReply.self,
+                    forKey: .user_input
+                ) {
+                    self = .user_input(
+                        reply
                     )
-                )
+                } else {
+                    self = .user_input(
+                        .answer(
+                            try container.decode(
+                                UserInputAnswer.self,
+                                forKey: .user_input
+                            )
+                        )
+                    )
+                }
             }
         }
 
@@ -150,13 +161,13 @@ public enum AgentInteraction {
                     forKey: .approval
                 )
 
-            case .user_input(let answer):
+            case .user_input(let reply):
                 try container.encode(
                     CodingKind.user_input,
                     forKey: .kind
                 )
                 try container.encode(
-                    answer,
+                    reply,
                     forKey: .user_input
                 )
             }

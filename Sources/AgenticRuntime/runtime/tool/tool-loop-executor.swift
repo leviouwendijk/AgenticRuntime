@@ -79,9 +79,23 @@ public struct ToolLoopExecutor: Sendable {
         answer: UserInputAnswer,
         metadata: [String: String] = [:]
     ) async throws -> AgentRunResult {
+        try await resume(
+            checkpoint,
+            reply: .answer(
+                answer
+            ),
+            metadata: metadata
+        )
+    }
+
+    public func resume(
+        _ checkpoint: AgentHistoryCheckpoint,
+        reply: UserInputReply,
+        metadata: [String: String] = [:]
+    ) async throws -> AgentRunResult {
         try await resumeWithUserInput(
             checkpoint,
-            answer: answer,
+            reply: reply,
             metadata: metadata
         )
     }
@@ -113,7 +127,7 @@ extension ToolLoopExecutor {
     struct UserInputResumePayload: Encodable, Sendable {
         let kind: String
         let prompt: String
-        let answer: UserInputAnswer
+        let reply: UserInputReply
         let metadata: [String: String]
     }
 
