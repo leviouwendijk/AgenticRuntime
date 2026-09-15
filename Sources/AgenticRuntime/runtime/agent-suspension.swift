@@ -1,8 +1,9 @@
+import Agentic
 import Foundation
 
 public enum AgentSuspensionReason: Sendable, Codable, Hashable {
     case approval(PendingApproval)
-    case user_input(PendingUserInput)
+    case user_input(UserInputRequest)
 
     private enum CodingKeys: String, CodingKey {
         case kind
@@ -61,7 +62,7 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
         case .user_input:
             self = .user_input(
                 try container.decode(
-                    PendingUserInput.self,
+                    UserInputRequest.self,
                     forKey: .user_input
                 )
             )
@@ -106,7 +107,7 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
         return value
     }
 
-    public var pendingUserInput: PendingUserInput? {
+    public var pendingUserInput: UserInputRequest? {
         guard case .user_input(let value) = self else {
             return nil
         }
@@ -146,7 +147,7 @@ public struct AgentSuspension: Sendable, Codable, Hashable, Identifiable {
     }
 
     public static func user_input(
-        _ userInput: PendingUserInput,
+        _ userInput: UserInputRequest,
         metadata: [String: String] = [:]
     ) -> Self {
         .init(
@@ -161,7 +162,7 @@ public struct AgentSuspension: Sendable, Codable, Hashable, Identifiable {
         reason.pendingApproval
     }
 
-    public var pendingUserInput: PendingUserInput? {
+    public var pendingUserInput: UserInputRequest? {
         reason.pendingUserInput
     }
 }

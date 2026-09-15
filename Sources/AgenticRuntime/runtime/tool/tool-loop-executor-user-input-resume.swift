@@ -1,4 +1,5 @@
 import Agentic
+import AgenticTools
 
 extension ToolLoopExecutor {
     func resumeWithUserInput(
@@ -36,7 +37,7 @@ extension ToolLoopExecutor {
             )
         }
 
-        guard case .user_input(let pendingUserInput) = suspension.reason else {
+        guard case .user_input(let request) = suspension.reason else {
             throw AgentHistoryError.sessionNotAwaitingUserInput(
                 checkpoint.id
             )
@@ -51,12 +52,12 @@ extension ToolLoopExecutor {
         let toolName = suspension.metadata["toolName"]
             ?? ClarifyWithUserTool.identifier.rawValue
 
-        let normalizedAnswer = try normalizedUserInputAnswer(
-            answer,
-            for: pendingUserInput
+        let response = try UserInputResponse(
+            answer: answer,
+            for: request
         )
 
-        var payloadMetadata = pendingUserInput.metadata
+        var payloadMetadata = request.metadata
 
         payloadMetadata.merge(
             suspension.metadata
@@ -76,8 +77,8 @@ extension ToolLoopExecutor {
             output: try JSONToolBridge.encode(
                 UserInputResumePayload(
                     kind: "user_input_received",
-                    prompt: pendingUserInput.prompt,
-                    answer: normalizedAnswer,
+                    prompt: request.prompt,
+                    answer: response.answer,
                     metadata: payloadMetadata
                 )
             ),

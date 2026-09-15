@@ -99,7 +99,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
     public static func awaitingUserInput(
         sessionID: String,
         response: AgentResponse,
-        pendingUserInput: PendingUserInput,
+        pendingUserInput: UserInputRequest,
         state: AgentLoopState,
         events: [AgentRunEvent] = [],
         toolUses: [AgentToolUseRecord] = [],
@@ -140,7 +140,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         )
     }
 
-    public var pendingUserInput: PendingUserInput? {
+    public var pendingUserInput: UserInputRequest? {
         suspension?.pendingUserInput
     }
 

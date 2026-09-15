@@ -19,7 +19,7 @@ public struct AgentRunStateSnapshot:
     public let toolUses: [AgentToolUseRecord]
     public let suspension: AgentSuspension?
     public let pendingApproval: PendingApproval?
-    public let pendingUserInput: PendingUserInput?
+    public let pendingUserInput: UserInputRequest?
     public let failure: AgentRunFailure?
     public let costRecord: AgentCostRecord?
     public let exposedToolIdentifiers: [AgentToolIdentifier]

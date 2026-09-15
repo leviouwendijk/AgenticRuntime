@@ -1,17 +1,6 @@
 import AgenticExecution
 import AgenticIO
-
-public struct CoreInteractionToolSet: AgentToolSet {
-    public init() {}
-
-    public func register(
-        into registry: inout ToolRegistry
-    ) throws {
-        try registry.register {
-            ClarifyWithUserTool()
-        }
-    }
-}
+import AgenticTools
 
 public struct CoreToolSet: AgentToolSet {
     public let contextComposer: ContextComposer

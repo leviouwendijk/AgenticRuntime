@@ -1,4 +1,5 @@
 import AgenticExecution
+import AgenticTools
 
 extension ToolLoopExecutor {
     func processToolCalls(
@@ -36,19 +37,6 @@ extension ToolLoopExecutor {
         for record in batch.records where !record.isTerminal {
             let toolCall = record.toolCall
 
-            if toolCall.name == ClarifyWithUserTool.identifier.rawValue {
-                suspendToolBatch(
-                    for: toolCall,
-                    disposition: .suspended_for_user_input,
-                    on: &checkpoint
-                )
-
-                return try await suspendForUserInput(
-                    toolCall,
-                    checkpoint: &checkpoint
-                )
-            }
-
             try await recordToolCall(
                 toolCall
             )
@@ -80,6 +68,19 @@ extension ToolLoopExecutor {
 
                 batch = checkpoint.toolBatch ?? batch
                 continue
+            }
+
+            if toolCall.name == ClarifyWithUserTool.identifier.rawValue {
+                suspendToolBatch(
+                    for: toolCall,
+                    disposition: .suspended_for_user_input,
+                    on: &checkpoint
+                )
+
+                return try await suspendForUserInput(
+                    toolCall,
+                    checkpoint: &checkpoint
+                )
             }
 
             let preflight: ToolPreflight

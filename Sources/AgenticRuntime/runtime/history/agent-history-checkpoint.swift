@@ -183,7 +183,7 @@ public extension AgentHistoryCheckpoint {
         return nil
     }
 
-    var pendingUserInput: PendingUserInput? {
+    var pendingUserInput: UserInputRequest? {
         resolvedSuspension?.pendingUserInput
     }
 
