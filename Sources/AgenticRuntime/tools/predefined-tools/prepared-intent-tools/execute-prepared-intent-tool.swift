@@ -1,34 +1,9 @@
 import Agentic
 import AgenticExecution
-import AgenticIO
-import AgenticWorkspace
 import Foundation
 import Primitives
 import Schema
 import Macros
-
-public enum ExecutePreparedIntentToolError: Error, Sendable, LocalizedError {
-    case missingExecutionToolName(PreparedIntentIdentifier)
-    case missingExactInputs(PreparedIntentIdentifier)
-    case recursiveReplay(PreparedIntentIdentifier)
-    case workspaceRequiredForFileMutation(PreparedIntentIdentifier)
-
-    public var errorDescription: String? {
-        switch self {
-        case .missingExecutionToolName(let id):
-            return "Prepared intent '\(id.rawValue)' is missing an execution tool name."
-
-        case .missingExactInputs(let id):
-            return "Prepared intent '\(id.rawValue)' is missing exact replay inputs."
-
-        case .recursiveReplay(let id):
-            return "Prepared intent '\(id.rawValue)' cannot replay through execute_prepared_intent."
-
-        case .workspaceRequiredForFileMutation(let id):
-            return "Prepared file mutation intent '\(id.rawValue)' requires a workspace for approval-time drift checks."
-        }
-    }
-}
 
 @JSONSchema
 public struct ExecutePreparedIntentToolInput: Sendable, Codable, Hashable {
@@ -43,17 +18,14 @@ public struct ExecutePreparedIntentToolInput: Sendable, Codable, Hashable {
 
 public struct ExecutePreparedIntentToolOutput: Sendable, Codable, Hashable {
     public let intent: PreparedIntent
-    public let toolCall: AgentToolCall
-    public let toolResult: AgentToolResult
+    public let result: PreparedOperation.ResultEnvelope
 
     public init(
         intent: PreparedIntent,
-        toolCall: AgentToolCall,
-        toolResult: AgentToolResult
+        result: PreparedOperation.ResultEnvelope
     ) {
         self.intent = intent
-        self.toolCall = toolCall
-        self.toolResult = toolResult
+        self.result = result
     }
 }
 
@@ -62,56 +34,47 @@ public struct ExecutePreparedIntentTool: AgentTool {
     public typealias Output = ExecutePreparedIntentToolOutput
 
     public let identifier: AgentToolIdentifier = .execute_prepared_intent
-    public let description = "Execute an approved prepared intent by replaying its exact tool call."
+    public let description = "Execute an approved prepared intent through its stored versioned prepared operation."
     public let risk: ActionRisk = .boundedmutate
 
-    public let manager: PreparedIntentManager
-    public let registry: ToolRegistry
-    public let sessionID: String?
+    public let executor: PreparedIntentExecutor
 
     public init(
-        manager: PreparedIntentManager,
-        registry: ToolRegistry,
-        sessionID: String? = nil
+        executor: PreparedIntentExecutor
     ) {
-        self.manager = manager
-        self.registry = registry
-        self.sessionID = sessionID
+        self.executor = executor
     }
 
     public func preflight(
         _ input: Input,
         context: AgentToolExecutionContext
     ) async throws -> ToolPreflight {
-        let intent = try await manager.get(
-            input.id
-        )
-        let toolName = try executionToolName(
-            for: intent
+        let intent = try await executor.manager.executableIntent(
+            id: input.id
         )
 
-        _ = try registeredTool(
-            named: toolName
-        )
+        guard executor.contains(
+            intent.operation.schema
+        ) else {
+            throw PreparedOperationRegistryError.unregisteredSchema(
+                intent.operation.schema
+            )
+        }
 
         return .init(
             toolName: name,
-            risk: risk,
+            risk: intent.reviewPayload.risk,
             workspaceRoot: context.workspace?.rootURL.path,
             targetPaths: intent.reviewPayload.target.map { [$0] } ?? [],
             summary: """
-            Execute prepared intent \(intent.id.rawValue).
+            Execute approved prepared intent \(intent.id.rawValue).
 
             Status: \(intent.status.rawValue)
-            Action type: \(intent.actionType)
-            Execution tool: \(toolName)
+            Operation: \(intent.operation.schema.identifier.rawValue)
             Target: \(intent.reviewPayload.target ?? "none")
             """,
             estimatedRuntimeSeconds: 1,
-            sideEffects: intent.reviewPayload.expectedSideEffects,
-            capabilitiesRequired: [
-                .write
-            ]
+            sideEffects: intent.reviewPayload.expectedSideEffects
         )
     }
 
@@ -119,250 +82,20 @@ public struct ExecutePreparedIntentTool: AgentTool {
         _ input: Input,
         context: AgentToolExecutionContext
     ) async throws -> Output {
-        let startedAt = Date()
-        let executableIntent = try await manager.executableIntent(
-            id: input.id
+        let execution = try await executor.execute(
+            id: input.id,
+            context: .init(
+                workspace: context.workspace,
+                workspaceLocation: context.workspaceLocation,
+                sessionID: context.sessionID,
+                preparedIntentID: input.id,
+                metadata: context.metadata
+            )
         )
 
-        do {
-            let toolName = try executionToolName(
-                for: executableIntent
-            )
-            let exactInputs = try exactInputs(
-                for: executableIntent
-            )
-
-            try requirePreparedFileMutationApproval(
-                executableIntent,
-                toolName: toolName,
-                workspace: context.workspace
-            )
-
-            let metadata = executionMetadata(
-                for: executableIntent,
-                toolName: toolName
-            )
-            let toolCall = AgentToolCall(
-                id: "prepared-\(executableIntent.id.rawValue)",
-                name: toolName,
-                input: exactInputs
-            )
-            let toolResult = try await registry.execute(
-                toolCall,
-                context: .init(
-                    workspace: context.workspace,
-                    workspaceLocation: context.workspaceLocation,
-                    sessionID: executableIntent.sessionID ?? sessionID ?? context.sessionID,
-                    toolCallID: toolCall.id,
-                    preparedIntentID: executableIntent.id,
-                    executionMode: .prepared_intent_replay,
-                    guidelineRelations: context.guidelineRelations,
-                    metadata: context.metadata.merging(
-                        metadata
-                    ) { _, new in
-                        new
-                    },
-                    observationSink: context.observationSink
-                )
-            )
-            let executionStatus: PreparedIntentExecutionStatus =
-                toolResult.isError
-                    ? .failed
-                    : .succeeded
-            let executionSummary =
-                toolResult.isError
-                    ? "Prepared intent replay through \(toolName) returned a reported failure."
-                    : "Executed prepared intent by replaying \(toolName)."
-            let executed = try await manager.recordExecution(
-                id: executableIntent.id,
-                record: .init(
-                    intentID: executableIntent.id,
-                    executionToolName: toolName,
-                    status: executionStatus,
-                    summary: executionSummary,
-                    startedAt: startedAt,
-                    completedAt: Date(),
-                    result: toolResult.output,
-                    errorMessage:
-                        toolResult.isError
-                            ? "Replayed tool reported a failure result."
-                            : nil,
-                    metadata: metadata
-                )
-            )
-            let output = ExecutePreparedIntentToolOutput(
-                intent: executed,
-                toolCall: toolCall,
-                toolResult: toolResult
-            )
-
-            if toolResult.isError {
-                throw AgentToolReportedFailure(
-                    output: output
-                )
-            }
-
-            return output
-        } catch let failure as AgentToolReportedFailure<Output> {
-            throw failure
-        } catch {
-            let toolFailure =
-                (error as? AgentToolCallError)?
-                    .failure
-
-            _ = try? await manager.recordExecution(
-                id: executableIntent.id,
-                record: .init(
-                    intentID: executableIntent.id,
-                    executionToolName: executableIntent.executionToolName,
-                    status: .failed,
-                    summary: "Prepared intent tool-call replay failed.",
-                    startedAt: startedAt,
-                    completedAt: Date(),
-                    result: nil,
-                    toolFailure: toolFailure,
-                    errorMessage:
-                        toolFailure?.message
-                            ?? errorText(
-                                error
-                            ),
-                    metadata: [
-                        "execution_mode": AgentToolExecutionMode.prepared_intent_replay.rawValue,
-                        "prepared_intent_id": executableIntent.id.rawValue,
-                        "actionType": executableIntent.actionType
-                    ]
-                )
-            )
-
-            throw error
-        }
-    }
-}
-
-private extension ExecutePreparedIntentTool {
-    func requirePreparedFileMutationApproval(
-        _ intent: PreparedIntent,
-        toolName: String,
-        workspace: AgentWorkspace?
-    ) throws {
-        guard let action = FileMutationIntentAction(
-            actionType: intent.actionType
-        ) else {
-            return
-        }
-
-        guard action != .rollback else {
-            return
-        }
-
-        guard let workspace else {
-            throw ExecutePreparedIntentToolError.workspaceRequiredForFileMutation(
-                intent.id
-            )
-        }
-
-        let approval = try AgentFileMutationApproval.approval(
-            for: intent,
-            action: action
+        return .init(
+            intent: execution.intent,
+            result: execution.result
         )
-
-        try approval?.requireCurrentFile(
-            in: workspace,
-            toolName: toolName
-        )
-    }
-
-    func executionToolName(
-        for intent: PreparedIntent
-    ) throws -> String {
-        guard let value = normalized(
-            intent.executionToolName
-        ) else {
-            throw ExecutePreparedIntentToolError.missingExecutionToolName(
-                intent.id
-            )
-        }
-
-        guard value != AgentToolIdentifier.execute_prepared_intent.rawValue else {
-            throw ExecutePreparedIntentToolError.recursiveReplay(
-                intent.id
-            )
-        }
-
-        return value
-    }
-
-    func exactInputs(
-        for intent: PreparedIntent
-    ) throws -> JSONValue {
-        guard let exactInputs = intent.reviewPayload.exactInputs else {
-            throw ExecutePreparedIntentToolError.missingExactInputs(
-                intent.id
-            )
-        }
-
-        return exactInputs
-    }
-
-    func registeredTool(
-        named name: String
-    ) throws -> RegisteredAgentTool {
-        guard let tool = registry.registeredTool(
-            named: name
-        ) else {
-            throw ToolRegistryExecutionError.missingTool(
-                name
-            )
-        }
-
-        return tool
-    }
-
-    func executionMetadata(
-        for intent: PreparedIntent,
-        toolName: String
-    ) -> [String: String] {
-        var metadata = intent.metadata
-
-        metadata.merge(
-            intent.reviewPayload.metadata
-        ) { old, _ in
-            old
-        }
-
-        metadata["execution_mode"] = AgentToolExecutionMode.prepared_intent_replay.rawValue
-        metadata["prepared_intent_id"] = intent.id.rawValue
-        metadata["actionType"] = intent.actionType
-        metadata["toolName"] = toolName
-
-        return metadata
-    }
-
-    func errorText(
-        _ error: any Error
-    ) -> String {
-        if let localized = error as? any LocalizedError,
-           let description = localized.errorDescription
-        {
-            return description
-        }
-
-        return String(
-            describing: error
-        )
-    }
-
-    func normalized(
-        _ value: String?
-    ) -> String? {
-        guard let value else {
-            return nil
-        }
-
-        let trimmed = value.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-
-        return trimmed.isEmpty ? nil : trimmed
     }
 }

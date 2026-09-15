@@ -336,7 +336,7 @@ public struct AgentSessionCatalog: Sendable {
     public func listPreparedIntents(
         sessionID: String,
         statuses: [PreparedIntentStatus] = [],
-        actionType: String? = nil,
+        operationIdentifier: PreparedOperation.Identifier? = nil,
         includeExpired: Bool = false,
         limit: Int? = nil
     ) async throws -> [PreparedIntent] {
@@ -351,7 +351,7 @@ public struct AgentSessionCatalog: Sendable {
         let intents = try await manager.list(
             statuses: statuses,
             sessionID: sessionID,
-            actionType: actionType,
+            operationIdentifier: operationIdentifier,
             includeExpired: includeExpired
         )
 

@@ -9,20 +9,20 @@ import Macros
 public struct ListAgentPreparedIntentsToolInput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let statuses: [PreparedIntentStatus]
-    public let actionType: String?
+    public let operationIdentifier: String?
     public let includeExpired: Bool
     public let limit: Int?
 
     public init(
         sessionID: String,
         statuses: [PreparedIntentStatus] = [],
-        actionType: String? = nil,
+        operationIdentifier: String? = nil,
         includeExpired: Bool = false,
         limit: Int? = nil
     ) {
         self.sessionID = sessionID
         self.statuses = statuses
-        self.actionType = actionType
+        self.operationIdentifier = operationIdentifier
         self.includeExpired = includeExpired
         self.limit = limit
     }
@@ -107,7 +107,11 @@ public struct ListAgentPreparedIntentsTool: AgentTool {
         let intents = try await catalog.listPreparedIntents(
             sessionID: input.sessionID,
             statuses: input.statuses,
-            actionType: input.actionType,
+            operationIdentifier: input.operationIdentifier.map {
+                PreparedOperation.Identifier(
+                    rawValue: $0
+                )
+            },
             includeExpired: input.includeExpired,
             limit: nil
         )

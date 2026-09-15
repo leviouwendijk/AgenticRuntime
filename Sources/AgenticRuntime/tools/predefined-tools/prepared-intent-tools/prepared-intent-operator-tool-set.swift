@@ -2,17 +2,14 @@ import AgenticExecution
 
 public struct PreparedIntentOperatorToolSet: AgentToolSet {
     public let manager: PreparedIntentManager
-    public let executionRegistry: ToolRegistry?
-    public let sessionID: String?
+    public let executor: PreparedIntentExecutor?
 
     public init(
         manager: PreparedIntentManager,
-        executionRegistry: ToolRegistry? = nil,
-        sessionID: String? = nil
+        executor: PreparedIntentExecutor? = nil
     ) {
         self.manager = manager
-        self.executionRegistry = executionRegistry
-        self.sessionID = sessionID
+        self.executor = executor
     }
 
     public func register(
@@ -29,11 +26,9 @@ public struct PreparedIntentOperatorToolSet: AgentToolSet {
                 manager: manager
             )
 
-            if let executionRegistry {
+            if let executor {
                 ExecutePreparedIntentTool(
-                    manager: manager,
-                    registry: executionRegistry,
-                    sessionID: sessionID
+                    executor: executor
                 )
             }
         }

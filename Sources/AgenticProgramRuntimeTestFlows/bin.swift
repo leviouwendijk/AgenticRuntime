@@ -212,6 +212,19 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runToolClassificationPropagation()
         },
         TestFlow(
+            "prepared-intent-runtime-execution",
+            tags: [
+                "agentic-runtime",
+                "prepared-intent",
+                "prepared-operation",
+                "execution",
+                "registry",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runPreparedIntentRuntimeExecution()
+        },
+        TestFlow(
             "program-governed-tool-recovery",
             tags: [
                 "agentic-runtime",

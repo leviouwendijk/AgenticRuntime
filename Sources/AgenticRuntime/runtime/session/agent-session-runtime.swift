@@ -372,9 +372,36 @@ public extension AgentSessionRuntime {
         )
     }
 
+    func preparedOperationRegistry() throws -> PreparedOperationRegistry {
+        let recorder = try Agentic.runtime.fileMutationRecorder(
+            sessionID: sessionID,
+            environment: environment,
+            artifacts: stores.artifactStore
+        )
+
+        return try AgenticRuntimePreparedOperations.registry(
+            fileMutationRecorder: recorder
+        )
+    }
+
+    func preparedIntentExecutor() throws -> PreparedIntentExecutor {
+        try PreparedIntentExecutor(
+            manager: preparedIntentManager(),
+            registry: preparedOperationRegistry(),
+            sessionID: sessionID
+        )
+    }
+
     func preparedIntentOperatorToolSet() throws -> PreparedIntentOperatorToolSet {
-        try PreparedIntentOperatorToolSet(
-            manager: preparedIntentManager()
+        let manager = try preparedIntentManager()
+
+        return try PreparedIntentOperatorToolSet(
+            manager: manager,
+            executor: PreparedIntentExecutor(
+                manager: manager,
+                registry: preparedOperationRegistry(),
+                sessionID: sessionID
+            )
         )
     }
 }
