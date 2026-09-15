@@ -7,7 +7,7 @@ extension ToolLoopExecutor {
         to checkpoint: inout AgentHistoryCheckpoint
     ) async throws {
         for invocation in invocations {
-            guard let result = invocation.toolResult else {
+            guard let result = invocation.execution?.result else {
                 continue
             }
 

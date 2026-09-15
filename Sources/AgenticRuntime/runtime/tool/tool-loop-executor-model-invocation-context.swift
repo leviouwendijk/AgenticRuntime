@@ -10,6 +10,7 @@ extension ToolLoopExecutor {
             registry: tooling.registry,
             exposure: toolExposure,
             policy: configuration.toolExecutionPolicy,
+            recovery: configuration.recovery,
             context: AgentToolExecutionContext(
                 workspace: tooling.workspace,
                 sessionID: sessionID,
