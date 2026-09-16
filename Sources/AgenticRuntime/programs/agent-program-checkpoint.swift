@@ -64,10 +64,49 @@ public extension AgentProgramCheckpoint {
         public let realization: AgentProgramRealization<Program>?
         public let completedSteps: [AgentProgramStepRecord]
         public let suspendedStep: AgentProgramStepRecord
-        public let pendingApproval: PendingApproval
-        public let decision: ApprovalDecision
+        let interactionResolution: AgentProgramCheckpointResolution
         public let startedAt: Date
         public let metadata: [String: String]
+
+        public var pendingApproval: PendingApproval? {
+            guard case .approval(let pendingApproval, _) =
+                    interactionResolution
+            else {
+                return nil
+            }
+
+            return pendingApproval
+        }
+
+        public var decision: ApprovalDecision? {
+            guard case .approval(_, let decision) =
+                    interactionResolution
+            else {
+                return nil
+            }
+
+            return decision
+        }
+
+        public var userInputRequest: UserInputRequest? {
+            guard case .user_input(let request, _) =
+                    interactionResolution
+            else {
+                return nil
+            }
+
+            return request
+        }
+
+        public var userInputResponse: UserInputResponse? {
+            guard case .user_input(_, let response) =
+                    interactionResolution
+            else {
+                return nil
+            }
+
+            return response
+        }
 
         public init(
             checkpoint: AgentProgramCheckpoint,
@@ -119,21 +158,6 @@ public extension AgentProgramCheckpoint {
                 )
             }
 
-            guard case .tool(let toolIdentifier) =
-                    checkpoint.suspendedStep.kind,
-                  let pendingApproval =
-                    checkpoint.suspension.reason.pendingApproval,
-                  pendingApproval.requirement
-                    == .needs_human_review,
-                  pendingApproval.toolCall.name
-                    == toolIdentifier.rawValue,
-                  pendingApproval.toolCall.input
-                    == checkpoint.suspendedStep.input
-            else {
-                throw AgentProgramReplayError
-                    .invalid_suspension
-            }
-
             guard response.sessionID == checkpoint.sessionID else {
                 throw AgentInteractionError.sessionMismatch(
                     expected: checkpoint.sessionID,
@@ -150,13 +174,73 @@ public extension AgentProgramCheckpoint {
                 )
             }
 
-            guard case .approval(let decision) =
-                    response.resolution
-            else {
-                throw AgentInteractionError.resolutionMismatch(
-                    expected: .approval,
-                    received: response.kind
+            let interactionResolution: AgentProgramCheckpointResolution
+
+            switch (
+                checkpoint.suspendedStep.kind,
+                checkpoint.suspension.reason
+            ) {
+            case (
+                .tool(let toolIdentifier),
+                .approval(let pendingApproval)
+            ):
+                guard pendingApproval.requirement
+                        == .needs_human_review,
+                      pendingApproval.toolCall.name
+                        == toolIdentifier.rawValue,
+                      pendingApproval.toolCall.input
+                        == checkpoint.suspendedStep.input
+                else {
+                    throw AgentProgramReplayError
+                        .invalid_suspension
+                }
+
+                guard case .approval(let decision) =
+                        response.resolution
+                else {
+                    throw AgentInteractionError.resolutionMismatch(
+                        expected: .approval,
+                        received: response.kind
+                    )
+                }
+
+                interactionResolution = .approval(
+                    pendingApproval: pendingApproval,
+                    decision: decision
                 )
+
+            case (
+                .user_input,
+                .user_input(let request)
+            ):
+                guard try JSONToolBridge.encode(
+                    request
+                ) == checkpoint.suspendedStep.input
+                else {
+                    throw AgentProgramReplayError
+                        .invalid_suspension
+                }
+
+                guard case .user_input(let reply) =
+                        response.resolution
+                else {
+                    throw AgentInteractionError.resolutionMismatch(
+                        expected: .user_input,
+                        received: response.kind
+                    )
+                }
+
+                interactionResolution = .user_input(
+                    request: request,
+                    response: try UserInputResponse(
+                        reply,
+                        for: request
+                    )
+                )
+
+            default:
+                throw AgentProgramReplayError
+                    .invalid_suspension
             }
 
             let input = try JSONToolBridge.decode(
@@ -179,8 +263,7 @@ public extension AgentProgramCheckpoint {
             self.realization = realization
             self.completedSteps = checkpoint.completedSteps
             self.suspendedStep = checkpoint.suspendedStep
-            self.pendingApproval = pendingApproval
-            self.decision = decision
+            self.interactionResolution = interactionResolution
             self.startedAt = checkpoint.startedAt
             self.metadata = checkpoint.metadata.merging(
                 response.metadata
@@ -231,7 +314,7 @@ public enum AgentProgramReplayError:
             return "Program checkpoint contains a non-replayable completed step at index \(index)."
 
         case .invalid_suspension:
-            return "Program checkpoint does not contain a resumable approval suspension."
+            return "Program checkpoint does not contain a resumable interaction suspension."
 
         case .step_mismatch(let index):
             return "Program replay diverged from the recorded semantic step at index \(index)."
@@ -249,6 +332,19 @@ struct AgentProgramSuspensionSignal:
     let suspension: AgentSuspension
 }
 
+enum AgentProgramCheckpointResolution:
+    Sendable
+{
+    case approval(
+        pendingApproval: PendingApproval,
+        decision: ApprovalDecision
+    )
+    case user_input(
+        request: UserInputRequest,
+        response: UserInputResponse
+    )
+}
+
 struct AgentProgramResumeResolution:
     Sendable
 {
@@ -258,16 +354,14 @@ struct AgentProgramResumeResolution:
 
 actor AgentProgramResumeControl {
     private let expectedStep: AgentProgramStepRecord
-    private let pendingApproval: PendingApproval
-    private let decision: ApprovalDecision
+    private let interactionResolution: AgentProgramCheckpointResolution
     private var consumed = false
 
     init<Program: AgentProgram>(
         resume: AgentProgramCheckpoint.Resume<Program>
     ) {
         self.expectedStep = resume.suspendedStep
-        self.pendingApproval = resume.pendingApproval
-        self.decision = resume.decision
+        self.interactionResolution = resume.interactionResolution
     }
 
     func resolution(
@@ -292,6 +386,10 @@ actor AgentProgramResumeControl {
         guard !consumed,
               expectedStep.kind == .tool(identifier),
               expectedStep.input == input,
+              case .approval(
+                  let pendingApproval,
+                  let decision
+              ) = interactionResolution,
               pendingApproval.toolCall.name
                 == identifier.rawValue,
               pendingApproval.toolCall.input == input
@@ -307,6 +405,46 @@ actor AgentProgramResumeControl {
             pendingApproval: pendingApproval,
             decision: decision
         )
+    }
+
+    func userInputResponse(
+        at index: Int,
+        request: UserInputRequest
+    ) throws -> UserInputResponse? {
+        if index < expectedStep.index {
+            return nil
+        }
+
+        if index > expectedStep.index {
+            guard consumed else {
+                throw AgentProgramReplayError.step_mismatch(
+                    index: index
+                )
+            }
+
+            return nil
+        }
+
+        let input = try JSONToolBridge.encode(
+            request
+        )
+
+        guard !consumed,
+              expectedStep.kind == .user_input,
+              expectedStep.input == input,
+              case .user_input(
+                  let resumedRequest,
+                  let response
+              ) = interactionResolution,
+              resumedRequest == request
+        else {
+            throw AgentProgramReplayError.step_mismatch(
+                index: index
+            )
+        }
+
+        consumed = true
+        return response
     }
 
     func requireConsumed() throws {

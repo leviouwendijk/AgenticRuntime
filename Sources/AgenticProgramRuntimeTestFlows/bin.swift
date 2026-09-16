@@ -157,6 +157,21 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runProgramGovernedToolExecution()
         },
         TestFlow(
+            "program-user-input-resume",
+            tags: [
+                "agentic-runtime",
+                "program",
+                "user-input",
+                "suspension",
+                "resume",
+                "replay",
+                "checkpoint",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runProgramUserInputResume()
+        },
+        TestFlow(
             "program-approval-resume-replay",
             tags: [
                 "agentic-runtime",

@@ -81,6 +81,10 @@ public struct AgentProgramRunner: Sendable {
         let resumeControl = resume.map {
             AgentProgramResumeControl(resume: $0)
         }
+        let userInputInvoker = AgentProgramRecordingUserInputInvoker(
+            trace: trace,
+            resumeControl: resumeControl
+        )
 
         let inferenceInvoker: (any AgentInferenceInvoking)?
         if let inferenceExecutor = services.program.inference {
@@ -118,6 +122,7 @@ public struct AgentProgramRunner: Sendable {
             inference: inferenceInvoker,
             tools: toolInvoker,
             programs: programInvoker,
+            userInput: userInputInvoker,
             artifacts: services.artifacts,
             metadata: executionMetadata
         )

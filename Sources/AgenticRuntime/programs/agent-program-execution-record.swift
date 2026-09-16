@@ -26,6 +26,7 @@ public enum AgentProgramStepKind:
         inference: AgentInferenceIdentifier
     )
     case tool(AgentToolIdentifier)
+    case user_input
     case program(AgentProgramIdentifier)
 }
 
