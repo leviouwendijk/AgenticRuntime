@@ -91,6 +91,7 @@ public struct AgentProgramStepRecord:
     public var kind: AgentProgramStepKind
     public var input: JSONValue
     public var output: JSONValue?
+    public var toolResult: AgentToolResult?
     public var inference: Inference
     public var recovery: Recovery.Record?
     public var suspension: AgentSuspension?
@@ -105,6 +106,7 @@ public struct AgentProgramStepRecord:
         kind: AgentProgramStepKind,
         input: JSONValue,
         output: JSONValue? = nil,
+        toolResult: AgentToolResult? = nil,
         inference: Inference = .init(),
         recovery: Recovery.Record? = nil,
         suspension: AgentSuspension? = nil,
@@ -118,6 +120,7 @@ public struct AgentProgramStepRecord:
         self.kind = kind
         self.input = input
         self.output = output
+        self.toolResult = toolResult
         self.inference = inference
         self.recovery = recovery
         self.suspension = suspension
@@ -221,6 +224,40 @@ public struct AgentProgramExecution<Program: AgentProgram>:
 
     public var interactionRequest: AgentInteraction.Request? {
         record.interactionRequest
+    }
+}
+
+extension AgentProgramStepRecord {
+    var replayableToolFailure: AgentProgramToolFailure? {
+        guard case .tool(let identifier) = kind,
+              let toolResult,
+              toolResult.name == identifier.rawValue,
+              toolResult.isError,
+              failure?.type
+                == String(reflecting: AgentProgramToolFailure.self)
+        else {
+            return nil
+        }
+
+        return AgentProgramToolFailure(
+            tool: identifier,
+            result: toolResult,
+            recovery: recovery
+        )
+    }
+
+    var isReplayableCompletedStep: Bool {
+        guard suspension == nil else {
+            return false
+        }
+
+        if output != nil,
+           failure == nil
+        {
+            return true
+        }
+
+        return replayableToolFailure != nil
     }
 }
 

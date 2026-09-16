@@ -37,9 +37,7 @@ actor AgentProgramExecutionTrace {
             guard record.index == index,
                   record.kind == kind,
                   record.input == input,
-                  record.output != nil,
-                  record.suspension == nil,
-                  record.failure == nil
+                  record.isReplayableCompletedStep
             else {
                 throw AgentProgramReplayError.step_mismatch(
                     index: index
@@ -235,31 +233,39 @@ struct AgentProgramRecordingToolInvoker:
     {
         let inputValue = try JSONToolBridge.encode(input)
         let index = await trace.reserveIndex()
+
+        if let replayed = try await trace.replay(
+            index: index,
+            kind: .tool(identifier),
+            input: inputValue
+        ) {
+            if let failure = replayed.replayableToolFailure {
+                await trace.append(replayed)
+                throw failure
+            }
+
+            guard let replayedOutput = replayed.output,
+                  replayed.failure == nil
+            else {
+                throw AgentProgramReplayError.invalid_completed_step(
+                    index: index
+                )
+            }
+
+            let decoded = try JSONToolBridge.decode(
+                Output.self,
+                from: replayedOutput
+            )
+
+            await trace.append(replayed)
+            return decoded
+        }
+
         let startedAt = Date()
         var outputValue: JSONValue?
         var recovery: Recovery.Record?
 
         do {
-            if let replayed = try await trace.replay(
-                index: index,
-                kind: .tool(identifier),
-                input: inputValue
-            ) {
-                guard let replayedOutput = replayed.output else {
-                    throw AgentProgramReplayError.invalid_completed_step(
-                        index: index
-                    )
-                }
-
-                let decoded = try JSONToolBridge.decode(
-                    Output.self,
-                    from: replayedOutput
-                )
-
-                await trace.append(replayed)
-                return decoded
-            }
-
             let execution: AgentToolExecutionResult
 
             if let resumeControl,
@@ -295,6 +301,7 @@ struct AgentProgramRecordingToolInvoker:
                     kind: .tool(identifier),
                     input: inputValue,
                     output: execution.result.output,
+                    toolResult: execution.result,
                     recovery: execution.recovery,
                     startedAt: startedAt,
                     completedAt: completedAt,
@@ -335,6 +342,7 @@ struct AgentProgramRecordingToolInvoker:
                     kind: .tool(identifier),
                     input: inputValue,
                     output: outputValue,
+                    toolResult: error.result,
                     recovery: error.recovery,
                     failure: .init(error: error),
                     startedAt: startedAt,

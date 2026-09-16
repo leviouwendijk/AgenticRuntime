@@ -255,6 +255,21 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runWorkspaceAccessLeaseActivation()
         },
         TestFlow(
+            "program-caught-tool-failure-resume",
+            tags: [
+                "agentic-runtime",
+                "program",
+                "tool",
+                "replay",
+                "recovery",
+                "user-input",
+                "resume",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runProgramCaughtToolFailureResume()
+        },
+        TestFlow(
             "program-governed-tool-recovery",
             tags: [
                 "agentic-runtime",

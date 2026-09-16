@@ -135,9 +135,7 @@ public extension AgentProgramCheckpoint {
                 checkpoint.completedSteps.enumerated()
             {
                 guard step.index == expectedIndex,
-                      step.output != nil,
-                      step.suspension == nil,
-                      step.failure == nil
+                      step.isReplayableCompletedStep
                 else {
                     throw AgentProgramReplayError
                         .invalid_completed_step(
