@@ -34,7 +34,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticIO.git",
       "state" : {
         "branch" : "master",
-        "revision" : "74a380429003951c83d44b6155e073e540ca7b76"
+        "revision" : "688f63936aa8431a9ee196a15c66eef0caadb30e"
       }
     },
     {
@@ -88,7 +88,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticWorkspace.git",
       "state" : {
         "branch" : "master",
-        "revision" : "a939e65520ad5a91894fb7bad11b196e5c270780"
+        "revision" : "34add55626d2248ab49ccd6d794002903d819533"
       }
     },
     {

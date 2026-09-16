@@ -3,12 +3,12 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-09-08T23:03:21Z",
-  "passed" : 3,
+  "generated_at" : "2026-09-16T01:19:39Z",
+  "passed" : 19,
   "results" : [
     {
       "display_name" : "program-execution-record",
-      "duration_seconds" : 0.00297701358795166,
+      "duration_seconds" : 0.0036110877990722656,
       "name" : "program-execution-record",
       "status" : "passed",
       "tags" : [
@@ -20,7 +20,7 @@
     },
     {
       "display_name" : "program-execution-failure-record",
-      "duration_seconds" : 0.0010449886322021484,
+      "duration_seconds" : 0.001150965690612793,
       "name" : "program-execution-failure-record",
       "status" : "passed",
       "tags" : [
@@ -32,7 +32,7 @@
     },
     {
       "display_name" : "program-inference-execution-record",
-      "duration_seconds" : 0.000513911247253418,
+      "duration_seconds" : 0.0032660961151123047,
       "name" : "program-inference-execution-record",
       "status" : "passed",
       "tags" : [
@@ -42,9 +42,227 @@
         "realization",
         "usage"
       ]
+    },
+    {
+      "display_name" : "program-inference-failure-recovery-evidence",
+      "duration_seconds" : 0.001641988754272461,
+      "name" : "program-inference-failure-recovery-evidence",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "failure",
+        "handling",
+        "inference",
+        "program",
+        "recovery",
+        "trace"
+      ]
+    },
+    {
+      "display_name" : "model-invocation-transport",
+      "duration_seconds" : 0.0007619857788085938,
+      "name" : "model-invocation-transport",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "context",
+        "invocation",
+        "model",
+        "selection"
+      ]
+    },
+    {
+      "display_name" : "model-invocation-streaming-completion",
+      "duration_seconds" : 0.00023508071899414062,
+      "name" : "model-invocation-streaming-completion",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "completion",
+        "invocation",
+        "model",
+        "streaming"
+      ]
+    },
+    {
+      "display_name" : "runtime-services-composition",
+      "duration_seconds" : 0.00014698505401611328,
+      "name" : "runtime-services-composition",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "model",
+        "program",
+        "services"
+      ]
+    },
+    {
+      "display_name" : "mode-model-selection-propagation",
+      "duration_seconds" : 0.00020396709442138672,
+      "name" : "mode-model-selection-propagation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "mode",
+        "model",
+        "selection"
+      ]
+    },
+    {
+      "display_name" : "runtime-services-recording-propagation",
+      "duration_seconds" : 5.3048133850097656e-05,
+      "name" : "runtime-services-recording-propagation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "events",
+        "recording",
+        "services"
+      ]
+    },
+    {
+      "display_name" : "application-program-installation",
+      "duration_seconds" : 0.0014569759368896484,
+      "name" : "application-program-installation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "application",
+        "execution",
+        "program",
+        "realization",
+        "registry"
+      ]
+    },
+    {
+      "display_name" : "program-governed-tool-execution",
+      "duration_seconds" : 0.0019500255584716797,
+      "name" : "program-governed-tool-execution",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "approval",
+        "governance",
+        "policy",
+        "preflight",
+        "program",
+        "tool"
+      ]
+    },
+    {
+      "display_name" : "program-user-input-resume",
+      "duration_seconds" : 0.003141045570373535,
+      "name" : "program-user-input-resume",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "checkpoint",
+        "program",
+        "replay",
+        "resume",
+        "suspension",
+        "user-input"
+      ]
+    },
+    {
+      "display_name" : "program-approval-resume-replay",
+      "duration_seconds" : 0.003253936767578125,
+      "name" : "program-approval-resume-replay",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "approval",
+        "checkpoint",
+        "program",
+        "replay",
+        "resume",
+        "suspension"
+      ]
+    },
+    {
+      "display_name" : "tool-observe-recovery",
+      "duration_seconds" : 0.009490013122558594,
+      "name" : "tool-observe-recovery",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "observe",
+        "recovery",
+        "retry",
+        "tool"
+      ]
+    },
+    {
+      "display_name" : "tool-mutation-recovery",
+      "duration_seconds" : 0.0009549856185913086,
+      "name" : "tool-mutation-recovery",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "mutation",
+        "reconciliation",
+        "recovery",
+        "tool"
+      ]
+    },
+    {
+      "display_name" : "tool-classification-propagation",
+      "duration_seconds" : 0.0008400678634643555,
+      "name" : "tool-classification-propagation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "classification",
+        "program",
+        "propagation",
+        "recovery",
+        "tool"
+      ]
+    },
+    {
+      "display_name" : "prepared-intent-runtime-execution",
+      "duration_seconds" : 0.0024030208587646484,
+      "name" : "prepared-intent-runtime-execution",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "execution",
+        "interaction",
+        "prepared-operation",
+        "registry"
+      ]
+    },
+    {
+      "display_name" : "workspace-access-lease-activation",
+      "duration_seconds" : 0.005045056343078613,
+      "name" : "workspace-access-lease-activation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "lease",
+        "path-grant",
+        "prepared-operation",
+        "session",
+        "turn",
+        "workspace"
+      ]
+    },
+    {
+      "display_name" : "program-governed-tool-recovery",
+      "duration_seconds" : 0.0010869503021240234,
+      "name" : "program-governed-tool-recovery",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "governance",
+        "program",
+        "reconciliation",
+        "recovery",
+        "tool"
+      ]
     }
   ],
   "skipped" : 0,
   "title" : "Agentic program runtime flow tests",
-  "total" : 3
+  "total" : 19
 }
