@@ -10,26 +10,43 @@ private struct ProgramUserInputResumeFixture: AgentProgram {
     static let descriptor = AgentProgramDescriptor(
         identifier: "fixture.program_user_input_resume",
         title: "Program User Input Resume",
-        summary: "Proves native Program user input suspends and resumes through Runtime replay."
+        summary: "Proves Program-native required and optional user input across durable Runtime suspension and deterministic replay."
     )
 
     func run(
         _ input: String,
         in context: AgentProgramContext
     ) async throws -> String {
-        let response = try await context.ask(
+        let required = try await context.ask(
             UserInputRequest(
-                prompt: "Provide the continuation value."
+                prompt: "Provide the required continuation value."
             )
         )
 
-        guard let answer = response.answer,
-              case .text(let value) = answer
+        guard let requiredAnswer = required.answer,
+              case .text(let requiredValue) = requiredAnswer
         else {
-            return "\(input):skipped"
+            return "\(input):invalid_required"
         }
 
-        return "\(input):\(value)"
+        let optional = try await context.ask(
+            UserInputRequest(
+                prompt: "Provide the optional continuation value.",
+                requirement: .optional
+            )
+        )
+
+        if optional.isSkipped {
+            return "\(input):\(requiredValue):skipped"
+        }
+
+        guard let optionalAnswer = optional.answer,
+              case .text(let optionalValue) = optionalAnswer
+        else {
+            return "\(input):\(requiredValue):invalid_optional"
+        }
+
+        return "\(input):\(requiredValue):\(optionalValue)"
     }
 }
 
@@ -39,125 +56,354 @@ extension AgenticProgramRuntimeFlowTesting {
         -> [TestFlowDiagnostic]
     {
         let runner = AgentProgramRunner()
+
         let initial = try await runner.execute(
             ProgramUserInputResumeFixture(),
-            input: "before",
+            input: "seed",
             sessionID: "fixture-program-user-input-resume"
         )
 
         try Expect.equal(
             initial.record.outcome,
             .suspended,
-            "Program-native ask suspends execution"
+            "first required ask suspends Program execution"
         )
 
-        let checkpoint = try Expect.notNil(
+        let firstCheckpoint = try Expect.notNil(
             initial.record.checkpoint,
-            "Program-native ask produces a durable checkpoint"
+            "required ask produces a durable checkpoint"
         )
-        let request = try Expect.notNil(
+        let firstRequest = try Expect.notNil(
             initial.interactionRequest,
-            "Program-native ask exposes an interaction request"
+            "required ask exposes an interaction request"
         )
-        let pending = try Expect.notNil(
-            request.requirement.pendingUserInput,
-            "Program-native ask exposes the exact semantic user-input request"
-        )
-
-        try Expect.equal(
-            request.kind,
-            .user_input,
-            "Program-native ask is a user-input interaction rather than an approval"
-        )
-        try Expect.equal(
-            pending.prompt,
-            "Provide the continuation value.",
-            "Program-native ask preserves the authored prompt"
-        )
-        try Expect.equal(
-            checkpoint.suspendedStep.kind,
-            .user_input,
-            "Program checkpoint records user input as its own semantic step kind"
+        let requiredRequest = try Expect.notNil(
+            firstRequest.requirement.pendingUserInput,
+            "required interaction preserves its semantic user-input request"
         )
 
-        let roundTrippedCheckpoint = try JSONToolBridge.decode(
+        try Expect.equal(
+            firstRequest.kind,
+            .user_input,
+            "first Program suspension is user input rather than approval"
+        )
+        try Expect.equal(
+            requiredRequest.requirement,
+            .required,
+            "first Program ask defaults to required"
+        )
+        try Expect.equal(
+            firstCheckpoint.completedSteps.count,
+            0,
+            "no Program step precedes the first suspended ask"
+        )
+        try Expect.equal(
+            firstCheckpoint.suspendedStep.index,
+            0,
+            "first required ask occupies semantic step zero"
+        )
+        try Expect.equal(
+            firstCheckpoint.suspendedStep.kind,
+            .user_input,
+            "first suspended Program step is user input"
+        )
+
+        let durableFirstCheckpoint = try JSONToolBridge.decode(
             AgentProgramCheckpoint.self,
             from: try JSONToolBridge.encode(
-                checkpoint
+                firstCheckpoint
             )
         )
 
-        let resumed = try await runner.resume(
+        var requiredSkipRejected = false
+
+        do {
+            _ = try await runner.resume(
+                ProgramUserInputResumeFixture(),
+                from: durableFirstCheckpoint,
+                interaction: AgentInteraction.Response(
+                    request: firstRequest,
+                    resolution: .user_input(
+                        .skip
+                    )
+                )
+            )
+        } catch UserInputError.requiredInputCannotBeSkipped {
+            requiredSkipRejected = true
+        }
+
+        try Expect.equal(
+            requiredSkipRejected,
+            true,
+            "required Program input rejects explicit skip before replay resumes"
+        )
+
+        let afterRequiredAnswer = try await runner.resume(
             ProgramUserInputResumeFixture(),
-            from: roundTrippedCheckpoint,
+            from: durableFirstCheckpoint,
             interaction: AgentInteraction.Response(
-                request: request,
+                request: firstRequest,
                 resolution: .user_input(
                     .text(
-                        "continue"
+                        "required-answer"
                     )
                 )
             )
         )
 
         try Expect.equal(
-            resumed.record.outcome,
-            .succeeded,
-            "Program-native user input resumes the suspended Program"
+            afterRequiredAnswer.record.outcome,
+            .suspended,
+            "required answer continues until the later optional ask suspends"
         )
-        let resumedOutput = try Expect.notNil(
-            resumed.output,
-            "resumed Program returns typed output"
+
+        let secondCheckpoint = try Expect.notNil(
+            afterRequiredAnswer.record.checkpoint,
+            "second ask produces another durable checkpoint"
+        )
+        let secondRequest = try Expect.notNil(
+            afterRequiredAnswer.interactionRequest,
+            "second ask exposes its interaction request"
+        )
+        let optionalRequest = try Expect.notNil(
+            secondRequest.requirement.pendingUserInput,
+            "second interaction preserves its semantic user-input request"
         )
 
         try Expect.equal(
-            resumedOutput,
-            "before:continue",
-            "Program continues with the refined user-input response"
+            optionalRequest.requirement,
+            .optional,
+            "second Program ask is explicitly optional"
         )
         try Expect.equal(
-            resumed.record.steps.count,
+            secondCheckpoint.completedSteps.count,
             1,
-            "resumed Program replaces the suspended user-input step with one completed step"
+            "second checkpoint contains the completed first ask"
         )
         try Expect.equal(
-            resumed.record.steps[0].kind,
+            secondCheckpoint.completedSteps[0].index,
+            0,
+            "completed required ask retains semantic step zero"
+        )
+        try Expect.equal(
+            secondCheckpoint.completedSteps[0].kind,
             .user_input,
-            "completed Program trace preserves user-input step identity"
+            "completed required ask remains a user-input step"
+        )
+        try Expect.equal(
+            secondCheckpoint.suspendedStep.index,
+            1,
+            "later optional ask occupies semantic step one"
+        )
+        try Expect.equal(
+            secondCheckpoint.suspendedStep.kind,
+            .user_input,
+            "second suspended Program step is user input"
         )
 
-        let recordedReply = try JSONToolBridge.decode(
+        let firstRecordedReply = try JSONToolBridge.decode(
             UserInputReply.self,
             from: try Expect.notNil(
-                resumed.record.steps[0].output,
-                "completed user-input step stores its durable reply"
+                secondCheckpoint.completedSteps[0].output,
+                "completed required step stores its reply"
             )
         )
 
         try Expect.equal(
-            recordedReply,
+            firstRecordedReply,
             .text(
-                "continue"
+                "required-answer"
             ),
-            "completed user-input step stores the exact loose reply used for refinement"
+            "required answer is durably recorded before the second suspension"
+        )
+
+        let durableSecondCheckpoint = try JSONToolBridge.decode(
+            AgentProgramCheckpoint.self,
+            from: try JSONToolBridge.encode(
+                secondCheckpoint
+            )
+        )
+
+        let optionalAnswerResult = try await runner.resume(
+            ProgramUserInputResumeFixture(),
+            from: durableSecondCheckpoint,
+            interaction: AgentInteraction.Response(
+                request: secondRequest,
+                resolution: .user_input(
+                    .text(
+                        "optional-answer"
+                    )
+                )
+            )
+        )
+
+        try Expect.equal(
+            optionalAnswerResult.record.outcome,
+            .succeeded,
+            "optional answer completes the Program"
+        )
+
+        let optionalAnswerOutput = try Expect.notNil(
+            optionalAnswerResult.output,
+            "optional-answer branch returns Program output"
+        )
+
+        try Expect.equal(
+            optionalAnswerOutput,
+            "seed:required-answer:optional-answer",
+            "Program continues after both answered asks"
+        )
+        try Expect.equal(
+            optionalAnswerResult.record.steps.count,
+            2,
+            "optional-answer continuation contains exactly two semantic ask steps"
+        )
+        try Expect.equal(
+            optionalAnswerResult.record.steps[0].index,
+            0,
+            "replayed required answer remains step zero"
+        )
+        try Expect.equal(
+            optionalAnswerResult.record.steps[1].index,
+            1,
+            "resumed optional answer remains step one"
+        )
+        try Expect.equal(
+            optionalAnswerResult.record.steps[0].kind,
+            .user_input,
+            "replayed first step retains user-input identity"
+        )
+        try Expect.equal(
+            optionalAnswerResult.record.steps[1].kind,
+            .user_input,
+            "resumed second step retains user-input identity"
+        )
+
+        let replayedRequiredReply = try JSONToolBridge.decode(
+            UserInputReply.self,
+            from: try Expect.notNil(
+                optionalAnswerResult.record.steps[0].output,
+                "optional-answer branch retains replayed required reply"
+            )
+        )
+        let recordedOptionalAnswer = try JSONToolBridge.decode(
+            UserInputReply.self,
+            from: try Expect.notNil(
+                optionalAnswerResult.record.steps[1].output,
+                "optional-answer branch records second reply"
+            )
+        )
+
+        try Expect.equal(
+            replayedRequiredReply,
+            .text(
+                "required-answer"
+            ),
+            "second resume replays the prior required answer rather than requesting it again"
+        )
+        try Expect.equal(
+            recordedOptionalAnswer,
+            .text(
+                "optional-answer"
+            ),
+            "optional answer remains an answered reply rather than skip"
+        )
+
+        let optionalSkipResult = try await runner.resume(
+            ProgramUserInputResumeFixture(),
+            from: durableSecondCheckpoint,
+            interaction: AgentInteraction.Response(
+                request: secondRequest,
+                resolution: .user_input(
+                    .skip
+                )
+            )
+        )
+
+        try Expect.equal(
+            optionalSkipResult.record.outcome,
+            .succeeded,
+            "explicit skip of optional Program input completes execution"
+        )
+
+        let optionalSkipOutput = try Expect.notNil(
+            optionalSkipResult.output,
+            "optional-skip branch returns Program output"
+        )
+
+        try Expect.equal(
+            optionalSkipOutput,
+            "seed:required-answer:skipped",
+            "Program observes explicit optional skip distinctly from an answer"
+        )
+        try Expect.equal(
+            optionalSkipResult.record.steps.count,
+            2,
+            "optional-skip continuation also contains exactly two semantic ask steps"
+        )
+        try Expect.equal(
+            optionalSkipResult.record.steps[0].index,
+            0,
+            "optional-skip branch replays required step zero"
+        )
+        try Expect.equal(
+            optionalSkipResult.record.steps[1].index,
+            1,
+            "optional-skip branch resolves optional step one"
+        )
+
+        let skipBranchRequiredReply = try JSONToolBridge.decode(
+            UserInputReply.self,
+            from: try Expect.notNil(
+                optionalSkipResult.record.steps[0].output,
+                "optional-skip branch retains replayed required reply"
+            )
+        )
+        let recordedOptionalSkip = try JSONToolBridge.decode(
+            UserInputReply.self,
+            from: try Expect.notNil(
+                optionalSkipResult.record.steps[1].output,
+                "optional-skip branch records second reply"
+            )
+        )
+
+        try Expect.equal(
+            skipBranchRequiredReply,
+            .text(
+                "required-answer"
+            ),
+            "optional-skip branch replays the same completed required step"
+        )
+        try Expect.equal(
+            recordedOptionalSkip,
+            .skip,
+            "optional skip is durably distinct from an empty or absent answer"
         )
 
         return [
             .field(
-                "initial_outcome",
-                initial.record.outcome.rawValue
+                "required_skip_rejected",
+                String(requiredSkipRejected)
             ),
             .field(
-                "interaction_kind",
-                request.kind.rawValue
+                "second_step_index",
+                String(secondCheckpoint.suspendedStep.index)
             ),
             .field(
-                "resumed_outcome",
-                resumed.record.outcome.rawValue
+                "optional_answer_output",
+                optionalAnswerOutput
             ),
             .field(
-                "output",
-                resumedOutput
+                "optional_skip_output",
+                optionalSkipOutput
+            ),
+            .field(
+                "answer_steps",
+                String(optionalAnswerResult.record.steps.count)
+            ),
+            .field(
+                "skip_steps",
+                String(optionalSkipResult.record.steps.count)
             ),
         ]
     }
