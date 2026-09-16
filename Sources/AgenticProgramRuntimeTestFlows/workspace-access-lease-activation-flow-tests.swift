@@ -1,6 +1,3 @@
-import Agentic
-import AgenticExecution
-import AgenticIO
 import AgenticRuntime
 import AgenticWorkspace
 import Foundation
@@ -66,98 +63,49 @@ extension AgenticProgramRuntimeFlowTesting {
         let activatedAt = Date(
             timeIntervalSince1970: 1_800_000_000
         )
-        let preparedIntentID = PreparedIntentIdentifier(
-            rawValue: "fixture-path-grant-intent"
-        )
-        let activator = FixtureWorkspaceAccessActivator(
-            baseWorkspace: baseWorkspace,
-            currentTurnID: currentTurnID,
-            activatedAt: activatedAt
-        )
-        let baseRegistry = try AgenticRuntimePreparedOperations.registry()
-        let registry = try AgenticRuntimePreparedOperations.registry(
-            workspaceAccessActivator: activator
-        )
-
-        try Expect.equal(
-            baseRegistry.contains(
-                PreparedPathGrantOperation.schema
-            ),
-            false,
-            "Runtime does not install path-grant execution without an explicit workspace-access activator"
-        )
-        try Expect.equal(
-            registry.contains(
-                PreparedPathGrantOperation.schema
-            ),
-            true,
-            "Runtime installs prepared path-grant execution only when a workspace-access activator is supplied"
-        )
-
         let turnRootID = PathAccessRootIdentifier(
             rawValue: "fixture_turn"
         )
-        let turnPlan = PreparedPathGrantOperation.Plan(
+        let turnRequest = WorkspaceAccessRequest(
             overlay: try fixtureWorkspaceAccessOverlay(
                 rootID: turnRootID,
                 label: "Fixture Turn",
                 rootURL: turnRoot,
                 grantID: "fixture-turn-grant"
             ),
-            lifetime: .turn,
             durationSeconds: 60
         )
-        let turnResultEnvelope = try await registry.execute(
-            try PreparedPathGrantOperation.envelope(
-                turnPlan
-            ),
-            context: .init(
-                sessionID: currentTurnID,
-                preparedIntentID: preparedIntentID
-            )
+        let turnLease = try AgentWorkspaceAccessLease(
+            overlay: turnRequest.overlay,
+            lifetime: .turn,
+            durationSeconds: turnRequest.durationSeconds,
+            activatedAt: activatedAt,
+            sourceTurnID: currentTurnID
         )
-        let turnResult = try PreparedPathGrantExecutor.result(
-            from: turnResultEnvelope
-        )
-
-        try Expect.equal(
-            turnResult.lease.overlay,
-            turnPlan.overlay,
-            "prepared path-grant execution delegates the exact approved workspace overlay without reconstruction"
-        )
-        try Expect.equal(
-            turnResult.lease.lifetime,
-            .turn,
-            "prepared path-grant execution preserves exact requested lifetime"
-        )
-        try Expect.equal(
-            turnResult.lease.sourceTurnID,
-            currentTurnID,
-            "turn-scoped activation binds the lease to the activating turn"
-        )
-        try Expect.equal(
-            turnResult.lease.preparedIntentID,
-            preparedIntentID,
-            "workspace-access lease preserves prepared-intent provenance"
-        )
-        try Expect.equal(
-            turnResult.lease.expiresAt,
-            activatedAt.addingTimeInterval(60),
-            "wall-clock duration starts at activation rather than request authoring"
-        )
-
-        guard let turnEffective = try await activator.effectiveWorkspace(
-            turnID: currentTurnID,
-            at: activatedAt
-        ) else {
-            throw WorkspaceAccessLeaseActivationFixtureError
-                .workspace_missing
-        }
-        guard let otherTurnBeforeSession =
-            try await activator.effectiveWorkspace(
-                turnID: otherTurnID,
+        var leases = try AgentWorkspaceAccessLeases()
+            .activating(
+                turnLease,
+                baseWorkspace: baseWorkspace,
+                turnID: currentTurnID,
                 at: activatedAt
             )
+
+        try Expect.equal(
+            turnLease.expiresAt,
+            activatedAt.addingTimeInterval(60),
+            "wall-clock duration starts when workspace authority is granted"
+        )
+
+        guard let turnEffective = try leases.effectiveWorkspace(
+            base: baseWorkspace,
+            turnID: currentTurnID,
+            at: activatedAt
+        ),
+              let otherTurnBeforeSession = try leases.effectiveWorkspace(
+                base: baseWorkspace,
+                turnID: otherTurnID,
+                at: activatedAt
+              )
         else {
             throw WorkspaceAccessLeaseActivationFixtureError
                 .workspace_missing
@@ -197,50 +145,42 @@ extension AgenticProgramRuntimeFlowTesting {
         let sessionRootID = PathAccessRootIdentifier(
             rawValue: "fixture_session"
         )
-        let sessionPlan = PreparedPathGrantOperation.Plan(
+        let sessionRequest = WorkspaceAccessRequest(
             overlay: try fixtureWorkspaceAccessOverlay(
                 rootID: sessionRootID,
                 label: "Fixture Session",
                 rootURL: sessionRoot,
                 grantID: "fixture-session-grant"
-            ),
-            lifetime: .session
-        )
-        let sessionResultEnvelope = try await registry.execute(
-            try PreparedPathGrantOperation.envelope(
-                sessionPlan
-            ),
-            context: .init(
-                sessionID: currentTurnID,
-                preparedIntentID: PreparedIntentIdentifier(
-                    rawValue: "fixture-session-path-grant-intent"
-                )
             )
         )
-        let sessionResult = try PreparedPathGrantExecutor.result(
-            from: sessionResultEnvelope
+        let sessionLease = try AgentWorkspaceAccessLease(
+            overlay: sessionRequest.overlay,
+            lifetime: .session,
+            sourceTurnID: currentTurnID
         )
 
-        guard let currentWithSession =
-            try await activator.effectiveWorkspace(
-                turnID: currentTurnID,
+        leases = try leases.activating(
+            sessionLease,
+            baseWorkspace: baseWorkspace,
+            turnID: currentTurnID,
+            at: activatedAt
+        )
+
+        guard let currentWithSession = try leases.effectiveWorkspace(
+            base: baseWorkspace,
+            turnID: currentTurnID,
+            at: activatedAt
+        ),
+              let otherWithSession = try leases.effectiveWorkspace(
+                base: baseWorkspace,
+                turnID: otherTurnID,
                 at: activatedAt
-            ),
-              let otherWithSession =
-                try await activator.effectiveWorkspace(
-                    turnID: otherTurnID,
-                    at: activatedAt
-                )
+              )
         else {
             throw WorkspaceAccessLeaseActivationFixtureError
                 .workspace_missing
         }
 
-        try Expect.equal(
-            sessionResult.lease.lifetime,
-            .session,
-            "session-scoped prepared grant produces a session lease"
-        )
         try Expect.equal(
             currentWithSession.accessController.rootIdentifiers.count,
             3,
@@ -266,48 +206,98 @@ extension AgenticProgramRuntimeFlowTesting {
             "turn-scoped root remains isolated from another turn"
         )
 
-        let encoded = try JSONEncoder().encode(
-            await activator.snapshot()
+        let encodedLeases = try JSONEncoder().encode(
+            leases
         )
-        let decoded = try JSONDecoder().decode(
+        let decodedLeases = try JSONDecoder().decode(
             AgentWorkspaceAccessLeases.self,
-            from: encoded
+            from: encodedLeases
         )
 
         try Expect.equal(
-            decoded,
-            await activator.snapshot(),
+            decodedLeases,
+            leases,
             "workspace-access leases survive durable encode/decode"
         )
 
-        await activator.endTurn(
-            currentTurnID
+        let suspension = AgentSuspension.workspace_access(
+            turnRequest,
+            metadata: [
+                "toolCallID": "fixture-request",
+                "toolName": "request_path_grant"
+            ]
+        )
+        let interaction = AgentInteraction.Request(
+            sessionID: currentTurnID,
+            suspension: suspension
+        )
+        let response = AgentInteraction.Response(
+            request: interaction,
+            resolution: .workspace_access(
+                .grant_for_turn
+            )
+        )
+        let encodedResponse = try JSONEncoder().encode(
+            response
+        )
+        let decodedResponse = try JSONDecoder().decode(
+            AgentInteraction.Response.self,
+            from: encodedResponse
         )
 
-        guard let afterTurn =
-            try await activator.effectiveWorkspace(
-                turnID: currentTurnID,
-                at: activatedAt
+        try Expect.equal(
+            interaction.kind,
+            .workspace_access,
+            "workspace-access suspension projects a first-class interaction kind"
+        )
+        try Expect.equal(
+            decodedResponse,
+            response,
+            "workspace-access interaction resolution survives durable encode/decode"
+        )
+        try Expect.equal(
+            WorkspaceAccessResolution.grant_for_turn.lifetime,
+            .turn,
+            "turn grant resolution projects turn-scoped lease lifetime"
+        )
+        try Expect.equal(
+            WorkspaceAccessResolution.grant_for_session.lifetime,
+            .session,
+            "session grant resolution projects session-scoped lease lifetime"
+        )
+        try Expect.equal(
+            WorkspaceAccessResolution.deny.lifetime,
+            nil,
+            "denial installs no workspace authority lifetime"
+        )
+
+        let afterTurn = leases
+            .endingTurn(
+                currentTurnID
             )
-        else {
+        guard let afterTurnWorkspace = try afterTurn.effectiveWorkspace(
+            base: baseWorkspace,
+            turnID: currentTurnID,
+            at: activatedAt
+        ) else {
             throw WorkspaceAccessLeaseActivationFixtureError
                 .workspace_missing
         }
 
         try Expect.equal(
-            afterTurn.accessController.rootIdentifiers.count,
+            afterTurnWorkspace.accessController.rootIdentifiers.count,
             2,
-            "ending a turn removes its turn-scoped authority while preserving session authority"
+            "ending a turn removes turn-scoped authority while preserving session authority"
         )
         try Expect.equal(
-            afterTurn.accessController.rootIdentifiers.contains(
+            afterTurnWorkspace.accessController.rootIdentifiers.contains(
                 turnRootID
             ),
             false,
             "ended turn no longer has its temporary turn root"
         )
         try Expect.equal(
-            afterTurn.accessController.rootIdentifiers.contains(
+            afterTurnWorkspace.accessController.rootIdentifiers.contains(
                 sessionRootID
             ),
             true,
@@ -336,80 +326,19 @@ extension AgenticProgramRuntimeFlowTesting {
             .field(
                 "after_turn_roots",
                 String(
-                    afterTurn.accessController.rootIdentifiers.count
+                    afterTurnWorkspace.accessController.rootIdentifiers.count
                 )
             ),
             .field(
-                "prepared_operation",
-                PreparedPathGrantOperation.schema.identifier.rawValue
+                "interaction_kind",
+                interaction.kind.rawValue
             ),
         ]
     }
 }
 
-private actor FixtureWorkspaceAccessActivator:
-    AgentWorkspaceAccessActivating
-{
-    let baseWorkspace: AgentWorkspace
-    let currentTurnID: String
-    let activatedAt: Date
-    var leases = AgentWorkspaceAccessLeases()
-
-    init(
-        baseWorkspace: AgentWorkspace,
-        currentTurnID: String,
-        activatedAt: Date
-    ) {
-        self.baseWorkspace = baseWorkspace
-        self.currentTurnID = currentTurnID
-        self.activatedAt = activatedAt
-    }
-
-    func activate(
-        _ plan: PreparedPathGrantOperation.Plan,
-        context: PreparedOperation.Context
-    ) async throws -> AgentWorkspaceAccessLease {
-        let lease = try AgentWorkspaceAccessLease(
-            overlay: plan.overlay,
-            lifetime: plan.lifetime,
-            durationSeconds: plan.durationSeconds,
-            activatedAt: activatedAt,
-            sourceTurnID: currentTurnID,
-            preparedIntentID: context.preparedIntentID
-        )
-
-        leases = try leases.activating(
-            lease,
-            baseWorkspace: baseWorkspace,
-            turnID: currentTurnID,
-            at: activatedAt
-        )
-
-        return lease
-    }
-
-    func effectiveWorkspace(
-        turnID: String,
-        at date: Date
-    ) throws -> AgentWorkspace? {
-        try leases.effectiveWorkspace(
-            base: baseWorkspace,
-            turnID: turnID,
-            at: date
-        )
-    }
-
-    func snapshot() -> AgentWorkspaceAccessLeases {
-        leases
-    }
-
-    func endTurn(
-        _ turnID: String
-    ) {
-        leases = leases.endingTurn(
-            turnID
-        )
-    }
+private enum WorkspaceAccessLeaseActivationFixtureError: Error {
+    case workspace_missing
 }
 
 private func fixtureWorkspaceAccessOverlay(
@@ -428,6 +357,7 @@ private func fixtureWorkspaceAccessOverlay(
                         root: rootURL,
                         policy: .defaults.workspace
                     ),
+                    details: "Runtime workspace-access lease fixture.",
                     isDefault: false
                 ),
                 grant: .init(
@@ -436,7 +366,6 @@ private func fixtureWorkspaceAccessOverlay(
                     mode: .read_only,
                     capabilities: [
                         .list,
-                        .scan,
                         .read,
                     ],
                     allowedTools: [
@@ -447,10 +376,4 @@ private func fixtureWorkspaceAccessOverlay(
             ),
         ]
     )
-}
-
-private enum WorkspaceAccessLeaseActivationFixtureError:
-    Error
-{
-    case workspace_missing
 }

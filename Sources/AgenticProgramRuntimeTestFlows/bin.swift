@@ -230,7 +230,7 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             "prepared-intent-runtime-execution",
             tags: [
                 "agentic-runtime",
-                "prepared-intent",
+                "interaction",
                 "prepared-operation",
                 "execution",
                 "registry",

@@ -1,4 +1,5 @@
 import Agentic
+import AgenticWorkspace
 
 public struct AgentRunResult: Sendable, Codable, Hashable {
     public let sessionID: String
@@ -144,6 +145,10 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         suspension?.pendingUserInput
     }
 
+    public var pendingWorkspaceAccess: WorkspaceAccessRequest? {
+        suspension?.pendingWorkspaceAccess
+    }
+
     public var isCompleted: Bool {
         response != nil
             && suspension == nil
@@ -165,5 +170,9 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
 
     public var isAwaitingUserInput: Bool {
         pendingUserInput != nil
+    }
+
+    public var isAwaitingWorkspaceAccess: Bool {
+        pendingWorkspaceAccess != nil
     }
 }

@@ -61,6 +61,13 @@ public extension AgentRunner {
                 reply: reply,
                 metadata: response.metadata
             )
+
+        case .workspace_access(let resolution):
+            return try await executor.resume(
+                checkpoint,
+                workspaceAccessResolution: resolution,
+                metadata: response.metadata
+            )
         }
     }
 }

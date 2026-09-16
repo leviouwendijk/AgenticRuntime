@@ -99,6 +99,18 @@ public struct ToolLoopExecutor: Sendable {
             metadata: metadata
         )
     }
+
+    public func resume(
+        _ checkpoint: AgentHistoryCheckpoint,
+        workspaceAccessResolution: WorkspaceAccessResolution,
+        metadata: [String: String] = [:]
+    ) async throws -> AgentRunResult {
+        try await resumeWithWorkspaceAccess(
+            checkpoint,
+            resolution: workspaceAccessResolution,
+            metadata: metadata
+        )
+    }
 }
 
 extension ToolLoopExecutor {
@@ -128,6 +140,12 @@ extension ToolLoopExecutor {
         let kind: String
         let prompt: String
         let reply: UserInputReply
+        let metadata: [String: String]
+    }
+
+    struct WorkspaceAccessResumePayload: Encodable, Sendable {
+        let kind: String
+        let resolution: WorkspaceAccessResolution
         let metadata: [String: String]
     }
 

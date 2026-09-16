@@ -1,6 +1,7 @@
 import Agentic
 import AgenticExecution
 import AgenticTools
+import AgenticWorkspace
 import Foundation
 import Primitives
 
@@ -229,6 +230,45 @@ extension ToolLoopExecutor {
                 toolCallID: toolCall.id,
                 toolName: toolCall.name,
                 summary: request.prompt
+            ),
+            to: &checkpoint
+        )
+
+        try await saveCheckpoint(
+            &checkpoint
+        )
+
+        return .result(
+            try suspendedResult(
+                from: checkpoint
+            )
+        )
+    }
+
+    func suspendForWorkspaceAccess(
+        _ request: WorkspaceAccessRequest,
+        toolCall: AgentToolCall,
+        checkpoint: inout AgentHistoryCheckpoint
+    ) async throws -> ToolProcessingOutcome {
+        let suspension = AgentSuspension.workspace_access(
+            request,
+            metadata: [
+                "toolCallID": toolCall.id,
+                "toolName": toolCall.name
+            ]
+        )
+
+        checkpoint.suspend(
+            suspension
+        )
+
+        try await appendRunEvent(
+            .init(
+                kind: .pending_workspace_access,
+                iteration: checkpoint.state.iteration,
+                toolCallID: toolCall.id,
+                toolName: toolCall.name,
+                summary: "workspace access resolution required"
             ),
             to: &checkpoint
         )

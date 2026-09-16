@@ -12,6 +12,7 @@ public enum AgentInteraction {
     {
         case approval
         case user_input
+        case workspace_access
     }
 
     public typealias Requirement = AgentSuspensionReason
@@ -61,6 +62,7 @@ public enum AgentInteraction {
     {
         case approval(ApprovalDecision)
         case user_input(UserInputReply)
+        case workspace_access(WorkspaceAccessResolution)
 
         private enum CodingKeys:
             String,
@@ -69,6 +71,7 @@ public enum AgentInteraction {
             case kind
             case approval
             case user_input
+            case workspace_access
         }
 
         private enum CodingKind:
@@ -77,6 +80,7 @@ public enum AgentInteraction {
         {
             case approval
             case user_input
+            case workspace_access
 
             init(
                 from decoder: any Decoder
@@ -92,6 +96,9 @@ public enum AgentInteraction {
 
                 case "user_input", "userInput":
                     self = .user_input
+
+                case "workspace_access", "workspaceAccess":
+                    self = .workspace_access
 
                 default:
                     throw DecodingError.dataCorruptedError(
@@ -140,6 +147,14 @@ public enum AgentInteraction {
                         )
                     )
                 }
+
+            case .workspace_access:
+                self = .workspace_access(
+                    try container.decode(
+                        WorkspaceAccessResolution.self,
+                        forKey: .workspace_access
+                    )
+                )
             }
         }
 
@@ -170,6 +185,16 @@ public enum AgentInteraction {
                     reply,
                     forKey: .user_input
                 )
+
+            case .workspace_access(let resolution):
+                try container.encode(
+                    CodingKind.workspace_access,
+                    forKey: .kind
+                )
+                try container.encode(
+                    resolution,
+                    forKey: .workspace_access
+                )
             }
         }
 
@@ -180,6 +205,9 @@ public enum AgentInteraction {
 
             case .user_input:
                 return .user_input
+
+            case .workspace_access:
+                return .workspace_access
             }
         }
     }
@@ -238,6 +266,9 @@ public extension AgentSuspensionReason {
 
         case .user_input:
             return .user_input
+
+        case .workspace_access:
+            return .workspace_access
         }
     }
 }

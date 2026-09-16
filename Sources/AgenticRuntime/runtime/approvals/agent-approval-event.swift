@@ -83,6 +83,7 @@ public extension AgentApprovalEvent {
              .model_stream_interrupted,
              .model_stream_failed,
              .pending_user_input,
+             .pending_workspace_access,
              .tool_result,
              .tool_error,
              .cost_projected,

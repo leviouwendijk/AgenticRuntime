@@ -1,19 +1,23 @@
 import Agentic
+import AgenticWorkspace
 import Foundation
 
 public enum AgentSuspensionReason: Sendable, Codable, Hashable {
     case approval(PendingApproval)
     case user_input(UserInputRequest)
+    case workspace_access(WorkspaceAccessRequest)
 
     private enum CodingKeys: String, CodingKey {
         case kind
         case approval
         case user_input
+        case workspace_access
     }
 
     private enum Kind: String, Codable {
         case approval
         case user_input
+        case workspace_access
 
         init(
             from decoder: any Decoder
@@ -29,6 +33,9 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
 
             case "user_input", "userInput":
                 self = .user_input
+
+            case "workspace_access", "workspaceAccess":
+                self = .workspace_access
 
             default:
                 throw DecodingError.dataCorruptedError(
@@ -66,6 +73,14 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
                     forKey: .user_input
                 )
             )
+
+        case .workspace_access:
+            self = .workspace_access(
+                try container.decode(
+                    WorkspaceAccessRequest.self,
+                    forKey: .workspace_access
+                )
+            )
         }
     }
 
@@ -96,6 +111,16 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
                 userInput,
                 forKey: .user_input
             )
+
+        case .workspace_access(let request):
+            try container.encode(
+                Kind.workspace_access,
+                forKey: .kind
+            )
+            try container.encode(
+                request,
+                forKey: .workspace_access
+            )
         }
     }
 
@@ -109,6 +134,14 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
 
     public var pendingUserInput: UserInputRequest? {
         guard case .user_input(let value) = self else {
+            return nil
+        }
+
+        return value
+    }
+
+    public var pendingWorkspaceAccess: WorkspaceAccessRequest? {
+        guard case .workspace_access(let value) = self else {
             return nil
         }
 
@@ -158,11 +191,27 @@ public struct AgentSuspension: Sendable, Codable, Hashable, Identifiable {
         )
     }
 
+    public static func workspace_access(
+        _ request: WorkspaceAccessRequest,
+        metadata: [String: String] = [:]
+    ) -> Self {
+        .init(
+            reason: .workspace_access(
+                request
+            ),
+            metadata: metadata
+        )
+    }
+
     public var pendingApproval: PendingApproval? {
         reason.pendingApproval
     }
 
     public var pendingUserInput: UserInputRequest? {
         reason.pendingUserInput
+    }
+
+    public var pendingWorkspaceAccess: WorkspaceAccessRequest? {
+        reason.pendingWorkspaceAccess
     }
 }

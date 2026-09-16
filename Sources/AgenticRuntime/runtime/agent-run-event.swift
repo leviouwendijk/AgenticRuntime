@@ -17,6 +17,7 @@ public struct AgentRunEvent: Sendable, Codable, Hashable, Identifiable {
         case tool_skipped
         case pending_approval
         case pending_user_input
+        case pending_workspace_access
         case tool_result
         case tool_error
         case cost_projected

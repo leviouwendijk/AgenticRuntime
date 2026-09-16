@@ -3,9 +3,7 @@ import AgenticIO
 
 public enum AgenticRuntimePreparedOperations {
     public static func registry(
-        fileMutationRecorder: AgentFileMutationRecorder? = nil,
-        workspaceAccessActivator:
-            (any AgentWorkspaceAccessActivating)? = nil
+        fileMutationRecorder: AgentFileMutationRecorder? = nil
     ) throws -> PreparedOperationRegistry {
         var registry = PreparedOperationRegistry()
 
@@ -14,14 +12,6 @@ public enum AgenticRuntimePreparedOperations {
         ).register(
             into: &registry
         )
-
-        if let workspaceAccessActivator {
-            try registry.register(
-                PreparedPathGrantExecutor(
-                    activator: workspaceAccessActivator
-                )
-            )
-        }
 
         return registry
     }

@@ -184,4 +184,8 @@ extension ToolLoopExecutor {
     var userInputSiblingReason: String {
         "Skipped because a prior tool request paused for user input. Re-submit only still-needed tool calls after receiving the user's answer."
     }
+
+    var workspaceAccessSiblingReason: String {
+        "Skipped because a prior tool request paused for workspace access resolution. Re-submit only still-needed tool calls after authority is resolved."
+    }
 }

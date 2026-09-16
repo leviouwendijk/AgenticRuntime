@@ -1,5 +1,3 @@
-import Agentic
-import AgenticIO
 import AgenticWorkspace
 import Foundation
 
@@ -15,7 +13,6 @@ public struct AgentWorkspaceAccessLease:
     public let activatedAt: Date
     public let expiresAt: Date?
     public let sourceTurnID: String?
-    public let preparedIntentID: PreparedIntentIdentifier?
 
     public init(
         id: String = UUID().uuidString,
@@ -23,8 +20,7 @@ public struct AgentWorkspaceAccessLease:
         lifetime: PathGrantLifetime,
         durationSeconds: TimeInterval? = nil,
         activatedAt: Date = Date(),
-        sourceTurnID: String? = nil,
-        preparedIntentID: PreparedIntentIdentifier? = nil
+        sourceTurnID: String? = nil
     ) throws {
         let expiresAt: Date?
 
@@ -51,8 +47,7 @@ public struct AgentWorkspaceAccessLease:
             lifetime: lifetime,
             activatedAt: activatedAt,
             expiresAt: expiresAt,
-            sourceTurnID: sourceTurnID,
-            preparedIntentID: preparedIntentID
+            sourceTurnID: sourceTurnID
         )
     }
 
@@ -62,8 +57,7 @@ public struct AgentWorkspaceAccessLease:
         lifetime: PathGrantLifetime,
         activatedAt: Date,
         expiresAt: Date?,
-        sourceTurnID: String?,
-        preparedIntentID: PreparedIntentIdentifier?
+        sourceTurnID: String?
     ) throws {
         let id = id.trimmingCharacters(
             in: .whitespacesAndNewlines
@@ -108,7 +102,6 @@ public struct AgentWorkspaceAccessLease:
         self.activatedAt = activatedAt
         self.expiresAt = expiresAt
         self.sourceTurnID = sourceTurnID
-        self.preparedIntentID = preparedIntentID
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -118,7 +111,6 @@ public struct AgentWorkspaceAccessLease:
         case activatedAt
         case expiresAt
         case sourceTurnID
-        case preparedIntentID
     }
 
     public init(
@@ -152,10 +144,6 @@ public struct AgentWorkspaceAccessLease:
             sourceTurnID: container.decodeIfPresent(
                 String.self,
                 forKey: .sourceTurnID
-            ),
-            preparedIntentID: container.decodeIfPresent(
-                PreparedIntentIdentifier.self,
-                forKey: .preparedIntentID
             )
         )
     }
@@ -231,9 +219,7 @@ private extension AgentWorkspaceAccessLease {
             allowedTools: grant.allowedTools,
             reason: grant.reason,
             expiresAt: effectiveExpiresAt,
-            sourcePreparedIntentID:
-                grant.sourcePreparedIntentID
-                ?? preparedIntentID,
+            sourcePreparedIntentID: grant.sourcePreparedIntentID,
             metadata: grant.metadata
         )
     }
