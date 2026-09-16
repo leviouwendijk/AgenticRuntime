@@ -142,6 +142,19 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runApplicationProgramInstallation()
         },
         TestFlow(
+            "application-gateway-availability",
+            tags: [
+                "agentic-runtime",
+                "application",
+                "model",
+                "gateway",
+                "availability",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runApplicationGatewayAvailability()
+        },
+        TestFlow(
             "program-governed-tool-execution",
             tags: [
                 "agentic-runtime",

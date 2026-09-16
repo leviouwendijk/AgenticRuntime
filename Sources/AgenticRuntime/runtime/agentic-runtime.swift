@@ -50,21 +50,9 @@ public struct AgenticRuntime:
             ] = registration
         }
 
-        var gatewayOverrides: [any AgentModelGateway] = []
-
-        gatewayOverrides.reserveCapacity(
-            application.gatewayFactories.count
-        )
-
-        for factory in application.gatewayFactories {
-            gatewayOverrides.append(
-                try await factory.make()
-            )
-        }
-
         let modelCatalogs = try await AgentModelCatalogs(
             modelProviders: application.modelProviders,
-            gatewayOverrides: gatewayOverrides
+            gatewayFactories: application.gatewayFactories
         )
 
         self.application = application
