@@ -1,7 +1,15 @@
 import Agentic
 import Foundation
+import Macros
+import Schema
 
-public struct AgentSessionMetadata: Sendable, Codable, Hashable, Identifiable {
+@JSONSchema
+public struct AgentSessionMetadata:
+    Sendable,
+    Codable,
+    Hashable,
+    Identifiable
+{
     public var sessionID: String
     public var createdAt: Date
     public var updatedAt: Date
@@ -9,7 +17,7 @@ public struct AgentSessionMetadata: Sendable, Codable, Hashable, Identifiable {
     public var status: AgentSessionStatus
     public var profileID: String?
     public var workspaceAttached: Bool
-    public var branch: AgentSessionBranch?
+    public var branch: SessionBranch?
     public var metadata: [String: String]
 
     public init(
@@ -20,7 +28,7 @@ public struct AgentSessionMetadata: Sendable, Codable, Hashable, Identifiable {
         status: AgentSessionStatus = .active,
         profileID: String? = nil,
         workspaceAttached: Bool = false,
-        branch: AgentSessionBranch? = nil,
+        branch: SessionBranch? = nil,
         metadata: [String: String] = [:]
     ) {
         self.sessionID = sessionID

@@ -1,4 +1,5 @@
 import Agentic
+import AgenticIO
 import Foundation
 
 public struct ModeContextDefaults: Sendable, Codable, Hashable {
@@ -19,13 +20,13 @@ public struct ModeContextDefaults: Sendable, Codable, Hashable {
 public struct ModeContextApplication: Sendable, Codable, Hashable {
     public var plan: ContextCompositionPlan
     public var composed: ComposedContext
-    public var message: AgentMessage?
+    public var message: Message?
     public var metadata: [String: String]
 
     public init(
         plan: ContextCompositionPlan,
         composed: ComposedContext,
-        message: AgentMessage?,
+        message: Message?,
         metadata: [String: String]
     ) {
         self.plan = plan
@@ -81,12 +82,12 @@ public extension ModeRuntimeApplication {
     }
 
     func contextMessage(
-        role: AgentRole = .system,
+        role: MessageRole = .system,
         composer: ContextComposer = .init(),
         defaults: ModeContextDefaults = .default,
         additionalSources: [ContextSource] = [],
         additionalMetadata: [String: String] = [:]
-    ) throws -> AgentMessage? {
+    ) throws -> Message? {
         let composed = try composedContext(
             composer: composer,
             defaults: defaults,
@@ -101,14 +102,14 @@ public extension ModeRuntimeApplication {
             return nil
         }
 
-        return AgentMessage(
+        return Message(
             role: role,
             text: text
         )
     }
 
     func contextApplication(
-        role: AgentRole = .system,
+        role: MessageRole = .system,
         composer: ContextComposer = .init(),
         defaults: ModeContextDefaults = .default,
         additionalSources: [ContextSource] = [],
@@ -127,7 +128,7 @@ public extension ModeRuntimeApplication {
         )
         let message = text.isEmpty
             ? nil
-            : AgentMessage(
+            : Message(
                 role: role,
                 text: text
             )
@@ -149,12 +150,12 @@ public extension ModeRuntimeApplication {
         generationConfiguration: AgentGenerationConfiguration = .default,
         additionalMetadata: [String: String] = [:]
     ) throws -> AgentRequest {
-        var messages: [AgentMessage] = []
+        var messages: [Message] = []
 
         if let system,
            !system.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             messages.append(
-                AgentMessage(
+                Message(
                     role: .system,
                     text: system
                 )
@@ -171,7 +172,7 @@ public extension ModeRuntimeApplication {
         }
 
         messages.append(
-            AgentMessage(
+            Message(
                 role: .user,
                 text: user
             )
@@ -188,7 +189,7 @@ public extension ModeRuntimeApplication {
     }
 
     func request(
-        messages baseMessages: [AgentMessage],
+        messages baseMessages: [Message],
         injectContextAtStart: Bool = true,
         composer: ContextComposer = .init(),
         generationConfiguration: AgentGenerationConfiguration = .default,

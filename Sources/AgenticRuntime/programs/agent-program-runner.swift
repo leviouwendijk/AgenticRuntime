@@ -1,10 +1,9 @@
 import Agentic
 import AgenticExecution
-import AgenticPrograms
 import Foundation
 import Primitives
 
-public struct AgentProgramRunner: Sendable {
+public struct ProgramRunner: Sendable {
     public var services: AgentRuntimeServices
 
     public init(
@@ -13,13 +12,13 @@ public struct AgentProgramRunner: Sendable {
         self.services = services
     }
 
-    public func execute<Program: AgentProgram>(
-        _ program: Program,
-        input: Program.Input,
-        realization: AgentProgramRealization<Program>? = nil,
+    public func execute<ProgramType: Program>(
+        _ program: ProgramType,
+        input: ProgramType.Input,
+        realization: ProgramRealization<ProgramType>? = nil,
         sessionID: String? = nil,
         metadata: [String: String] = [:]
-    ) async throws -> AgentProgramExecution<Program> {
+    ) async throws -> ProgramExecution<ProgramType> {
         try await run(
             program,
             input: input,
@@ -31,12 +30,12 @@ public struct AgentProgramRunner: Sendable {
         )
     }
 
-    public func resume<Program: AgentProgram>(
-        _ program: Program,
-        from checkpoint: AgentProgramCheckpoint,
+    public func resume<ProgramType: Program>(
+        _ program: ProgramType,
+        from checkpoint: ProgramCheckpoint,
         interaction response: AgentInteraction.Response
-    ) async throws -> AgentProgramExecution<Program> {
-        let resume = try AgentProgramCheckpoint.Resume<Program>(
+    ) async throws -> ProgramExecution<ProgramType> {
+        let resume = try ProgramCheckpoint.Resume<ProgramType>(
             checkpoint: checkpoint,
             response: response
         )
@@ -51,14 +50,14 @@ public struct AgentProgramRunner: Sendable {
         )
     }
 
-    private func run<Program: AgentProgram>(
-        _ program: Program,
-        input: Program.Input,
-        realization: AgentProgramRealization<Program>?,
+    private func run<ProgramType: Program>(
+        _ program: ProgramType,
+        input: ProgramType.Input,
+        realization: ProgramRealization<ProgramType>?,
         sessionID: String,
         metadata: [String: String],
-        resume: AgentProgramCheckpoint.Resume<Program>?
-    ) async throws -> AgentProgramExecution<Program> {
+        resume: ProgramCheckpoint.Resume<ProgramType>?
+    ) async throws -> ProgramExecution<ProgramType> {
         let inputValue = try JSONToolBridge.encode(input)
         let realizationValue: JSONValue?
 
@@ -68,7 +67,7 @@ public struct AgentProgramRunner: Sendable {
             realizationValue = nil
         }
 
-        let trace = AgentProgramExecutionTrace(
+        let trace = ProgramExecutionTrace(
             replaySteps: resume?.completedSteps ?? [],
             expectedSuspendedStep: resume?.suspendedStep
         )
@@ -79,16 +78,16 @@ public struct AgentProgramRunner: Sendable {
             new
         }
         let resumeControl = resume.map {
-            AgentProgramResumeControl(resume: $0)
+            ProgramResumeControl(resume: $0)
         }
-        let userInputInvoker = AgentProgramRecordingUserInputInvoker(
+        let userInputInvoker = ProgramRecordingUserInputInvoker(
             trace: trace,
             resumeControl: resumeControl
         )
 
-        let inferenceInvoker: (any AgentInferenceInvoking)?
+        let inferenceInvoker: (any InferenceInvoking)?
         if let inferenceExecutor = services.program.inference {
-            inferenceInvoker = AgentProgramRecordingInferenceInvoker<Program>(
+            inferenceInvoker = ProgramRecordingInferenceInvoker<ProgramType>(
                 executor: inferenceExecutor,
                 realization: realization,
                 trace: trace
@@ -97,9 +96,9 @@ public struct AgentProgramRunner: Sendable {
             inferenceInvoker = nil
         }
 
-        let toolInvoker: (any AgentProgramToolInvoking)?
+        let toolInvoker: (any ProgramToolInvoking)?
         if let toolExecutor = services.program.tools {
-            toolInvoker = AgentProgramRecordingToolInvoker(
+            toolInvoker = ProgramRecordingToolInvoker(
                 executor: toolExecutor,
                 trace: trace,
                 resumeControl: resumeControl
@@ -108,9 +107,9 @@ public struct AgentProgramRunner: Sendable {
             toolInvoker = nil
         }
 
-        let programInvoker: (any AgentProgramInvoking)?
+        let programInvoker: (any ProgramInvoking)?
         if let nestedProgramInvoker = services.program.invoker {
-            programInvoker = AgentProgramRecordingProgramInvoker(
+            programInvoker = ProgramRecordingProgramInvoker(
                 invoker: nestedProgramInvoker,
                 trace: trace
             )
@@ -118,7 +117,7 @@ public struct AgentProgramRunner: Sendable {
             programInvoker = nil
         }
 
-        let context = AgentProgramContext(
+        let context = ProgramContext(
             inference: inferenceInvoker,
             tools: toolInvoker,
             programs: programInvoker,
@@ -140,11 +139,9 @@ public struct AgentProgramRunner: Sendable {
             let outputValue = try JSONToolBridge.encode(output)
             let completedAt = Date()
             let steps = await trace.snapshot()
-            let record = AgentProgramExecutionRecord(
+            let record = ProgramExecutionRecord(
                 sessionID: sessionID,
-                programIdentifier: Program.descriptor.identifier,
-                programVersion: Program.descriptor.version,
-                realizationIdentifier: realization?.id,
+                programIdentifier: ProgramType.definition.identifier,
                 input: inputValue,
                 output: outputValue,
                 steps: steps,
@@ -162,7 +159,7 @@ public struct AgentProgramRunner: Sendable {
                 output: output,
                 record: record
             )
-        } catch let signal as AgentProgramSuspensionSignal {
+        } catch let signal as ProgramSuspensionSignal {
             let completedAt = Date()
             let steps = await trace.snapshot()
 
@@ -171,15 +168,14 @@ public struct AgentProgramRunner: Sendable {
                     step.suspension?.id == signal.suspension.id
                 }
             ) else {
-                throw AgentProgramReplayError.step_mismatch(
+                throw ProgramReplayError.step_mismatch(
                     index: steps.count
                 )
             }
 
-            let checkpoint = AgentProgramCheckpoint(
+            let checkpoint = ProgramCheckpoint(
                 sessionID: sessionID,
-                programIdentifier: Program.descriptor.identifier,
-                programVersion: Program.descriptor.version,
+                programIdentifier: ProgramType.definition.identifier,
                 input: inputValue,
                 realization: realizationValue,
                 completedSteps: steps.filter { step in
@@ -190,11 +186,9 @@ public struct AgentProgramRunner: Sendable {
                 startedAt: startedAt,
                 metadata: executionMetadata
             )
-            let record = AgentProgramExecutionRecord(
+            let record = ProgramExecutionRecord(
                 sessionID: sessionID,
-                programIdentifier: Program.descriptor.identifier,
-                programVersion: Program.descriptor.version,
-                realizationIdentifier: realization?.id,
+                programIdentifier: ProgramType.definition.identifier,
                 input: inputValue,
                 steps: steps,
                 outcome: .suspended,
@@ -216,11 +210,9 @@ public struct AgentProgramRunner: Sendable {
         } catch {
             let completedAt = Date()
             let steps = await trace.snapshot()
-            let record = AgentProgramExecutionRecord(
+            let record = ProgramExecutionRecord(
                 sessionID: sessionID,
-                programIdentifier: Program.descriptor.identifier,
-                programVersion: Program.descriptor.version,
-                realizationIdentifier: realization?.id,
+                programIdentifier: ProgramType.definition.identifier,
                 input: inputValue,
                 steps: steps,
                 outcome: .failed,

@@ -11,11 +11,7 @@ extension ToolLoopExecutor {
             exposure: toolExposure,
             policy: configuration.toolExecutionPolicy,
             recovery: configuration.recovery,
-            context: AgentToolExecutionContext(
-                workspace: tooling.workspace,
-                sessionID: sessionID,
-                executionMode: .model_tool_call
-            ),
+            workspace: tooling.workspace,
             approvalHandler: tooling.approvalHandler,
             resolutionObserver: { invocation in
                 await journal.append(
@@ -25,7 +21,7 @@ extension ToolLoopExecutor {
         )
 
         return AgentModelInvocationContext(
-            toolCallResolver: RuntimeAgentToolCallResolver(
+            toolCallResolver: RuntimeToolCallResolver(
                 resolver: governed,
                 registry: tooling.registry,
                 exposure: toolExposure

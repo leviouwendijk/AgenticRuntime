@@ -1,6 +1,6 @@
 import Agentic
 import AgenticExecution
-import AgenticWorkspace
+import Workspace
 import Primitives
 import Schema
 import Macros
@@ -16,6 +16,7 @@ public struct ReadPreparedIntentToolInput: Sendable, Codable, Hashable {
     }
 }
 
+@JSONSchema
 public struct ReadPreparedIntentToolOutput: Sendable, Codable, Hashable {
     public let intent: PreparedIntent
 
@@ -26,15 +27,21 @@ public struct ReadPreparedIntentToolOutput: Sendable, Codable, Hashable {
     }
 }
 
-public struct ReadPreparedIntentTool: AgentTool {
+public struct ReadPreparedIntentTool: Tool {
     public typealias Input = ReadPreparedIntentToolInput
     public typealias Output = ReadPreparedIntentToolOutput
 
-    public static let identifier: AgentToolIdentifier = "read_prepared_intent"
+    public static let identifier: ToolIdentifier = "read_prepared_intent"
     public static let description = "Read a prepared intent and its exact review payload."
     public static let risk: ActionRisk = .observe
 
-    public var identifier: AgentToolIdentifier { Self.identifier }
+    public static let definition: ToolDefinition = .init(
+        identifier: Self.identifier,
+        purpose: Self.description,
+        risk: Self.risk
+    )
+
+    public var identifier: ToolIdentifier { Self.identifier }
     public var description: String { Self.description }
     public var risk: ActionRisk { Self.risk }
 
@@ -48,13 +55,12 @@ public struct ReadPreparedIntentTool: AgentTool {
 
     public func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
 
         return .init(
-            toolName: name,
-            risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
+            tool: Self.definition.identifier,
+            risk: Self.definition.risk,
             summary: "Read prepared intent \(input.id.rawValue).",
             sideEffects: []
         )
@@ -62,7 +68,7 @@ public struct ReadPreparedIntentTool: AgentTool {
 
     public func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> Output {
 
         return ReadPreparedIntentToolOutput(

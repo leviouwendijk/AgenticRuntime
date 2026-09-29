@@ -27,7 +27,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
     public var pendingApproval: PendingApproval?
     public var failure: AgentRunFailure?
     public var costRecord: AgentCostRecord?
-    public var exposedToolIdentifiers: [AgentToolIdentifier]?
+    public var exposedToolIdentifiers: [ToolIdentifier]?
     public let startedAt: Date
     public var updatedAt: Date
 
@@ -110,7 +110,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
             forKey: .costRecord
         )
         exposedToolIdentifiers = try container.decodeIfPresent(
-            [AgentToolIdentifier].self,
+            [ToolIdentifier].self,
             forKey: .exposedToolIdentifiers
         )
         let decodedUpdatedAt = try container.decode(
@@ -138,7 +138,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         pendingApproval: PendingApproval? = nil,
         failure: AgentRunFailure? = nil,
         costRecord: AgentCostRecord? = nil,
-        exposedToolIdentifiers: [AgentToolIdentifier]? = nil,
+        exposedToolIdentifiers: [ToolIdentifier]? = nil,
         startedAt: Date = Date(),
         updatedAt: Date? = nil
     ) {

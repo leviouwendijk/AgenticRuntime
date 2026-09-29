@@ -3,11 +3,11 @@ import Foundation
 
 public struct AgentSession: Sendable, Codable, Hashable, Identifiable {
     public let id: String
-    public var messages: [AgentMessage]
+    public var messages: [Message]
 
     public init(
         id: String,
-        messages: [AgentMessage] = []
+        messages: [Message] = []
     ) {
         self.id = id
         self.messages = messages
@@ -16,7 +16,7 @@ public struct AgentSession: Sendable, Codable, Hashable, Identifiable {
 
 public extension AgentSession {
     init(
-        messages: [AgentMessage] = []
+        messages: [Message] = []
     ) {
         self.init(
             id: UUID().uuidString,

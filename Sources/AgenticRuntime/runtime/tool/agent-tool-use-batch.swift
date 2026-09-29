@@ -1,6 +1,5 @@
 import Agentic
 import AgenticExecution
-import AgenticRecovery
 import Foundation
 
 public enum AgentToolUseStatus: String, Sendable, Codable, Hashable, CaseIterable {
@@ -27,18 +26,18 @@ public enum AgentToolUseDisposition: String, Sendable, Codable, Hashable, CaseIt
 }
 
 public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
-    public var toolCall: AgentToolCall
+    public var toolCall: ToolCall
     public var disposition: AgentToolUseDisposition
     public var preflight: ToolPreflight?
-    public var result: AgentToolResult?
+    public var result: ToolResult?
     public var recovery: Recovery.Record?
     public var updatedAt: Date
 
     public init(
-        toolCall: AgentToolCall,
+        toolCall: ToolCall,
         disposition: AgentToolUseDisposition = .pending,
         preflight: ToolPreflight? = nil,
-        result: AgentToolResult? = nil,
+        result: ToolResult? = nil,
         recovery: Recovery.Record? = nil,
         updatedAt: Date = Date()
     ) {
@@ -91,7 +90,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
     public init(
         id: String = UUID().uuidString,
         assistantMessageID: String,
-        toolCalls: [AgentToolCall],
+        toolCalls: [ToolCall],
         status: AgentToolUseStatus = .open,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
@@ -121,7 +120,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
     }
 
     public init(
-        assistantMessage: AgentMessage,
+        assistantMessage: Message,
         status: AgentToolUseStatus = .open
     ) {
         self.init(
@@ -131,7 +130,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
         )
     }
 
-    public var toolCalls: [AgentToolCall] {
+    public var toolCalls: [ToolCall] {
         records.map(\.toolCall)
     }
 
@@ -159,7 +158,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
 
     public func remaining(
         after toolCallID: String
-    ) -> [AgentToolCall] {
+    ) -> [ToolCall] {
         guard let index = records.firstIndex(where: { record in
             record.toolCall.id == toolCallID
         }) else {
@@ -183,7 +182,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
         toolCallID: String,
         disposition: AgentToolUseDisposition,
         preflight: ToolPreflight? = nil,
-        result: AgentToolResult? = nil,
+        result: ToolResult? = nil,
         recovery: Recovery.Record? = nil,
         now: Date = Date()
     ) {
@@ -241,8 +240,8 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
     }
 }
 
-private extension AgentMessage {
-    var toolUseCalls: [AgentToolCall] {
+private extension Message {
+    var toolUseCalls: [ToolCall] {
         content.blocks.compactMap { block in
             guard case .tool_call(let call) = block else {
                 return nil

@@ -5,7 +5,7 @@ import TestFlows
 extension AgenticProgramRuntimeFlowTesting {
     static func runApplicationGatewayAvailability()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let identifier = AgentModelGatewayIdentifier(
             "fixture.application.unavailable"

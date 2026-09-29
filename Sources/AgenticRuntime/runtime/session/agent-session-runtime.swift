@@ -1,6 +1,5 @@
 import Agentic
 import AgenticExecution
-import AgenticTools
 import Foundation
 
 public struct AgentSessionRuntime: Sendable {
@@ -58,7 +57,7 @@ public struct AgentSessionRuntime: Sendable {
         title: String? = nil,
         metadata extraMetadata: [String: String] = [:]
     ) async throws -> AgentSessionRuntime {
-        let branch = AgentSessionBranch(
+        let branch = SessionBranch(
             parentSessionID: self.sessionID,
             branchedAtEventID: branchedAtEventID,
             branchedAtCheckpointID: branchedAtCheckpointID,
@@ -107,7 +106,7 @@ public struct AgentSessionRuntime: Sendable {
             model: model,
             configuration: resolvedConfiguration,
             tooling: tooling.using(
-                workspace: environment.workspace
+                workspace: try environment.workspace?.context()
             ),
             extensions: extensions,
             recording: recording.resolving(
@@ -340,9 +339,9 @@ private extension AgentSessionRuntime {
     }
 
     func recordSessionBranch(
-        _ branch: AgentSessionBranch
+        _ branch: SessionBranch
     ) async throws {
-        let event = AgentSessionBranchEvent(
+        let event = SessionBranchEvent(
             sessionID: sessionID,
             branch: branch
         )
@@ -370,18 +369,6 @@ private extension AgentSessionRuntime {
         }
 
         return .active
-    }
-}
-
-public extension AgentSessionRuntime {
-    func artifactToolSet() throws -> CoreArtifactToolSet {
-        guard let artifactStore = stores.artifactStore else {
-            throw AgentArtifactError.durableStorageRequired
-        }
-
-        return CoreArtifactToolSet(
-            store: artifactStore
-        )
     }
 }
 

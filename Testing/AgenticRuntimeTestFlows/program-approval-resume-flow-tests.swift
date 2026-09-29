@@ -1,12 +1,12 @@
 import Agentic
 import AgenticExecution
-import AgenticInference
-import AgenticPrograms
 import AgenticRuntime
+import Foundation
 import Primitives
 import Schema
 import Macros
 import TestFlows
+import Workspace
 
 private actor ProgramReplayProbe {
     private var inferenceExecutions = 0
@@ -49,6 +49,7 @@ private actor ProgramReplayProbe {
     }
 }
 
+@JSONSchema
 private struct ProgramReplayInput:
     Sendable,
     Codable,
@@ -75,6 +76,7 @@ private struct ProgramReplayToolInput:
     let value: String
 }
 
+@JSONSchema
 private struct ProgramReplayToolOutput:
     Sendable,
     Codable,
@@ -83,6 +85,7 @@ private struct ProgramReplayToolOutput:
     let value: String
 }
 
+@JSONSchema
 private struct ProgramReplayOutput:
     Sendable,
     Codable,
@@ -92,44 +95,68 @@ private struct ProgramReplayOutput:
 }
 
 private enum ProgramReplayInference:
-    AgentInference
+    Inference
 {
     typealias Input = ProgramReplayInput
     typealias Output = ProgramReplayInferenceOutput
 
-    static let definition = AgentInferenceDefinition(
+    static let definition = InferenceDefinition(
         identifier: "fixture.program_replay.prepare",
         purpose: "Prepare deterministic fixture data before a governed Program effect."
     )
 }
 
+private enum ProgramReplayRealization:
+    InferenceRealization
+{
+    typealias InferenceType = ProgramReplayInference
+
+    static let strategy: InferenceStrategyIdentifier =
+        "fixture.program_replay"
+    static let instructions =
+        "Produce deterministic replay fixture output."
+    static let budget: InferenceBudget = .singleAttempt
+
+    static let definition =
+        InferenceRealizationDefinition<InferenceType>(
+            identifier: "fixture.program_replay.realization",
+            configuration: .init(
+                strategy: strategy,
+                instructions: instructions,
+                budget: budget
+            )
+        )
+}
+
 private struct ProgramReplayProgram:
-    AgentProgram
+    Program
 {
     typealias Input = ProgramReplayInput
     typealias Output = ProgramReplayOutput
 
-    static let preparationSite: AgentInferenceSiteIdentifier =
-        "fixture.program_replay.preparation"
+    static let preparationSite = InferenceSite<
+        ProgramReplayProgram,
+        ProgramReplayInference
+    >(
+        identifier: "fixture.program_replay.preparation"
+    )
 
-    static let descriptor = AgentProgramDescriptor(
+    static let definition = ProgramDefinition(
         identifier: "fixture.program_replay",
-        title: "Program replay fixture",
-        summary: "Proves suspended native Programs resume by deterministic semantic-step replay.",
-        version: "1"
+        purpose: "Proves suspended native Programs resume by deterministic semantic-step replay.",
+        title: "Program replay fixture"
     )
 
     func run(
         _ input: Input,
-        in context: AgentProgramContext
+        in context: ProgramContext
     ) async throws -> Output {
         let prepared = try await context.infer(
-            ProgramReplayInference.self,
-            at: Self.preparationSite,
+            Self.preparationSite,
             input: input
         )
         let mutation = try await context.invoke(
-            AgentToolIdentifier(
+            ToolIdentifier(
                 "fixture.program_replay.mutation"
             ),
             input: ProgramReplayToolInput(
@@ -138,7 +165,7 @@ private struct ProgramReplayProgram:
             as: ProgramReplayToolOutput.self
         )
         let tail = try await context.invoke(
-            AgentToolIdentifier(
+            ToolIdentifier(
                 "fixture.program_replay.tail"
             ),
             input: ProgramReplayToolInput(
@@ -154,42 +181,30 @@ private struct ProgramReplayProgram:
 }
 
 private struct ProgramReplayInferenceExecutor:
-    AgentInferenceExecuting
+    InferenceExecuting
 {
     let probe: ProgramReplayProbe
 
-    func execute<Inference: AgentInference>(
-        _ inference: Inference.Type,
-        input: Inference.Input,
-        realization: AgentInferenceRealization
-    ) async throws -> AgentInferenceExecutionResult<Inference.Output> {
-        _ = inference
-        _ = realization
-
-        let inputValue = try JSONToolBridge.encode(input)
-        let decoded = try JSONToolBridge.decode(
+    func execute(
+        _ invocation: InferenceInvocation
+    ) async throws -> InferenceInvocationResult {
+        let decoded = try JSONDecoder().decode(
             ProgramReplayInput.self,
-            from: inputValue
+            from: invocation.input
         )
 
         await probe.recordInference()
 
-        let outputValue = try JSONToolBridge.encode(
-            ProgramReplayInferenceOutput(
-                value: "prepared:\(decoded.value)"
-            )
-        )
-        let output = try JSONToolBridge.decode(
-            Inference.Output.self,
-            from: outputValue
+        let output = ProgramReplayInferenceOutput(
+            value: "prepared:\(decoded.value)"
         )
 
         return .init(
-            output: output,
-            record: AgentInferenceExecutionRecord(
-                inference: Inference.definition.identifier,
-                strategy: realization.strategy,
-                budget: realization.budget,
+            output: try JSONEncoder().encode(output),
+            record: InferenceExecutionRecord(
+                inference: invocation.definition.identifier,
+                strategy: invocation.realization.strategy,
+                budget: invocation.realization.budget,
                 metadata: [
                     "fixture": "program_replay",
                 ]
@@ -199,36 +214,42 @@ private struct ProgramReplayInferenceExecutor:
 }
 
 private struct ProgramReplayMutationTool:
-    AgentTool
+    Tool
 {
     typealias Input = ProgramReplayToolInput
     typealias Output = ProgramReplayToolOutput
 
-    let identifier: AgentToolIdentifier =
+    let identifier: ToolIdentifier =
         "fixture.program_replay.mutation"
     let description =
         "Fixture mutation that may execute only after Program approval resume."
     let risk: ActionRisk = .boundedmutate
+
+    static let definition = ToolDefinition(
+        identifier: "fixture.program_replay.mutation",
+        purpose: "Fixture mutation that may execute only after Program approval resume.",
+        risk: .boundedmutate
+    )
+
     let probe: ProgramReplayProbe
 
     func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace _: WorkspaceContext?
     ) async throws -> ToolPreflight {
         _ = input
         let revision = await probe.revision()
 
         return ToolPreflight(
-            toolName: identifier.rawValue,
+            tool: identifier,
             risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
             summary: "Program replay mutation preflight \(revision)"
         )
     }
 
     func call(
         _ input: Input,
-        context _: AgentToolExecutionContext
+        workspace _: WorkspaceContext?
     ) async throws -> Output {
         await probe.recordMutation()
 
@@ -239,35 +260,41 @@ private struct ProgramReplayMutationTool:
 }
 
 private struct ProgramReplayTailTool:
-    AgentTool
+    Tool
 {
     typealias Input = ProgramReplayToolInput
     typealias Output = ProgramReplayToolOutput
 
-    let identifier: AgentToolIdentifier =
+    let identifier: ToolIdentifier =
         "fixture.program_replay.tail"
     let description =
         "Observe fixture proving Program execution continues after resume."
     let risk: ActionRisk = .observe
+
+    static let definition = ToolDefinition(
+        identifier: "fixture.program_replay.tail",
+        purpose: "Observe fixture proving Program execution continues after resume.",
+        risk: .observe
+    )
+
     let probe: ProgramReplayProbe
 
     func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace _: WorkspaceContext?
     ) async throws -> ToolPreflight {
         _ = input
 
         return ToolPreflight(
-            toolName: identifier.rawValue,
+            tool: identifier,
             risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
             summary: description
         )
     }
 
     func call(
         _ input: Input,
-        context _: AgentToolExecutionContext
+        workspace _: WorkspaceContext?
     ) async throws -> Output {
         await probe.recordTail()
 
@@ -287,7 +314,7 @@ private enum ProgramReplayFixtureError:
 extension AgenticProgramRuntimeFlowTesting {
     static func runProgramApprovalResumeReplay()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let realization = try programReplayRealization()
         let approvedProbe = ProgramReplayProbe()
@@ -344,9 +371,10 @@ extension AgenticProgramRuntimeFlowTesting {
             throw ProgramReplayFixtureError.missing_interaction_request
         }
 
-        let roundTrippedCheckpoint = try JSONToolBridge.decode(
-            AgentProgramCheckpoint.self,
-            from: try JSONToolBridge.encode(checkpoint)
+        let roundTrippedCheckpoint = try JSONValue.encoding(
+            checkpoint
+        ).decode(
+            ProgramCheckpoint.self
         )
 
         try Expect.equal(
@@ -401,9 +429,10 @@ extension AgenticProgramRuntimeFlowTesting {
             "resume preserves Program session identity"
         )
 
-        let approvedOutput = try JSONToolBridge.decode(
-            ProgramReplayOutput.self,
-            from: approved.record.output ?? .null
+        let approvedOutput = try (
+            approved.record.output ?? .null
+        ).decode(
+            ProgramReplayOutput.self
         )
 
         try Expect.equal(
@@ -598,42 +627,30 @@ extension AgenticProgramRuntimeFlowTesting {
 
 private func programReplayRealization()
     throws
-    -> AgentProgramRealization<ProgramReplayProgram>
+    -> ProgramRealization<ProgramReplayProgram>
 {
-    AgentProgramRealization(
-        id: "fixture.program_replay.realization",
-        inferences: try AgentProgramInferenceBindings(
-            [
-                .init(
-                    site: ProgramReplayProgram.preparationSite,
-                    inference: ProgramReplayInference.definition.identifier,
-                    realization: AgentInferenceRealization(
-                        strategy: "fixture.program_replay",
-                        modelSelection: .executor,
-                        instructions: "Produce deterministic replay fixture output.",
-                        budget: .singleAttempt
-                    )
-                ),
-            ]
+    ProgramReplayProgram.realization {
+        ProgramReplayProgram.preparationSite.use(
+            ProgramReplayRealization.self
         )
-    )
+    }
 }
 
 private func programReplayRunner(
     probe: ProgramReplayProbe
-) throws -> AgentProgramRunner {
+) throws -> ProgramRunner {
     let registry = try ToolRegistry {
         ProgramReplayMutationTool(probe: probe)
         ProgramReplayTailTool(probe: probe)
     }
 
-    return AgentProgramRunner(
+    return ProgramRunner(
         services: .init(
             program: .init(
                 inference: ProgramReplayInferenceExecutor(
                     probe: probe
                 ),
-                tools: GovernedAgentProgramToolExecutor(
+                tools: GovernedProgramToolExecutor(
                     registry: registry,
                     policy: .init(
                         autonomyMode: .auto_observe

@@ -1,7 +1,7 @@
 import Agentic
 import AgenticExecution
 import AgenticUsage
-import AgenticWorkspace
+import Workspace
 import Foundation
 
 public struct ToolLoopExecutor: Sendable {

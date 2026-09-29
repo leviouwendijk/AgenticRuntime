@@ -1,20 +1,17 @@
 import Agentic
 import AgenticExecution
-import AgenticInference
-import AgenticPrograms
-import AgenticRecovery
 import Foundation
 import Primitives
 
-actor AgentProgramExecutionTrace {
+actor ProgramExecutionTrace {
     private var nextIndex = 0
-    private var records: [AgentProgramStepRecord] = []
-    private let replaySteps: [AgentProgramStepRecord]
-    private let expectedSuspendedStep: AgentProgramStepRecord?
+    private var records: [ProgramStepRecord] = []
+    private let replaySteps: [ProgramStepRecord]
+    private let expectedSuspendedStep: ProgramStepRecord?
 
     init(
-        replaySteps: [AgentProgramStepRecord] = [],
-        expectedSuspendedStep: AgentProgramStepRecord? = nil
+        replaySteps: [ProgramStepRecord] = [],
+        expectedSuspendedStep: ProgramStepRecord? = nil
     ) {
         self.replaySteps = replaySteps
         self.expectedSuspendedStep = expectedSuspendedStep
@@ -28,9 +25,9 @@ actor AgentProgramExecutionTrace {
 
     func replay(
         index: Int,
-        kind: AgentProgramStepKind,
+        kind: ProgramStepKind,
         input: JSONValue
-    ) throws -> AgentProgramStepRecord? {
+    ) throws -> ProgramStepRecord? {
         if index < replaySteps.count {
             let record = replaySteps[index]
 
@@ -39,7 +36,7 @@ actor AgentProgramExecutionTrace {
                   record.input == input,
                   record.isReplayableCompletedStep
             else {
-                throw AgentProgramReplayError.step_mismatch(
+                throw ProgramReplayError.step_mismatch(
                     index: index
                 )
             }
@@ -53,7 +50,7 @@ actor AgentProgramExecutionTrace {
             guard expectedSuspendedStep.kind == kind,
                   expectedSuspendedStep.input == input
             else {
-                throw AgentProgramReplayError.step_mismatch(
+                throw ProgramReplayError.step_mismatch(
                     index: index
                 )
             }
@@ -63,63 +60,75 @@ actor AgentProgramExecutionTrace {
     }
 
     func append(
-        _ record: AgentProgramStepRecord
+        _ record: ProgramStepRecord
     ) {
         records.append(record)
     }
 
-    func snapshot() -> [AgentProgramStepRecord] {
+    func snapshot() -> [ProgramStepRecord] {
         records.sorted {
             $0.index < $1.index
         }
     }
 }
 
-struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
-    AgentInferenceInvoking
+struct ProgramRecordingInferenceInvoker<ProgramType: Program>:
+    InferenceInvoking
 {
-    let executor: any AgentInferenceExecuting
-    let realization: AgentProgramRealization<Program>?
-    let trace: AgentProgramExecutionTrace
+    let executor: any InferenceExecuting
+    let realization: ProgramRealization<ProgramType>?
+    let trace: ProgramExecutionTrace
 
-    func infer<Inference: AgentInference>(
-        _ inference: Inference.Type,
-        at site: AgentInferenceSiteIdentifier,
-        input: Inference.Input
-    ) async throws -> Inference.Output {
+    func infer<
+        SiteProgramType: Program,
+        InferenceType: Inference
+    >(
+        _ site: InferenceSite<SiteProgramType, InferenceType>,
+        input: InferenceType.Input
+    ) async throws -> InferenceType.Output {
+        guard site.program == ProgramType.definition.identifier else {
+            throw ProgramInferenceInvocationError.programMismatch(
+                site: site.identifier,
+                expected: ProgramType.definition.identifier,
+                received: site.program
+            )
+        }
+
+        let ownedSite = InferenceSite<ProgramType, InferenceType>(
+            identifier: site.identifier
+        )
         let inputValue = try JSONToolBridge.encode(input)
         let index = await trace.reserveIndex()
         let startedAt = Date()
-        var appliedRealization: AgentInferenceRealization?
+        var appliedRealization: InferenceRealizationConfiguration?
 
         do {
-            let invocation = try AgentProgramInferenceInvocation<Inference>(
-                inference,
-                at: site,
+            let invocation = try ProgramInferenceInvocation(
+                ownedSite,
                 in: realization
             )
             let inferenceIdentifier = invocation.inference
-            appliedRealization = invocation.realization
+            appliedRealization = invocation.configuration
 
             if let replayed = try await trace.replay(
                 index: index,
                 kind: .inference(
-                    site: site,
+                    site: site.identifier,
                     inference: inferenceIdentifier
                 ),
                 input: inputValue
             ) {
                 guard replayed.inference.realization
-                        == invocation.realization,
+                        == invocation.configuration,
                       let outputValue = replayed.output
                 else {
-                    throw AgentProgramReplayError.step_mismatch(
+                    throw ProgramReplayError.step_mismatch(
                         index: index
                     )
                 }
 
                 let output = try JSONToolBridge.decode(
-                    Inference.Output.self,
+                    InferenceType.Output.self,
                     from: outputValue
                 )
 
@@ -140,13 +149,13 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                 .init(
                     index: index,
                     kind: .inference(
-                        site: site,
+                        site: site.identifier,
                         inference: inferenceIdentifier
                     ),
                     input: inputValue,
                     output: outputValue,
                     inference: .init(
-                        realization: invocation.realization,
+                        realization: invocation.configuration,
                         execution: execution.record
                     ),
                     startedAt: startedAt,
@@ -159,15 +168,15 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
             )
 
             return execution.output
-        } catch let error as AgentProgramInferenceFailure {
+        } catch let error as ProgramInferenceFailure {
             let completedAt = Date()
 
             await trace.append(
                 .init(
                     index: index,
                     kind: .inference(
-                        site: site,
-                        inference: Inference.definition.identifier
+                        site: site.identifier,
+                        inference: InferenceType.definition.identifier
                     ),
                     input: inputValue,
                     inference: .init(
@@ -193,8 +202,8 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
                 .init(
                     index: index,
                     kind: .inference(
-                        site: site,
-                        inference: Inference.definition.identifier
+                        site: site.identifier,
+                        inference: InferenceType.definition.identifier
                     ),
                     input: inputValue,
                     inference: .init(
@@ -215,15 +224,15 @@ struct AgentProgramRecordingInferenceInvoker<Program: AgentProgram>:
     }
 }
 
-struct AgentProgramRecordingToolInvoker:
-    AgentProgramToolInvoking
+struct ProgramRecordingToolInvoker:
+    ProgramToolInvoking
 {
-    let executor: any AgentProgramToolExecuting
-    let trace: AgentProgramExecutionTrace
-    let resumeControl: AgentProgramResumeControl?
+    let executor: any ProgramToolExecuting
+    let trace: ProgramExecutionTrace
+    let resumeControl: ProgramResumeControl?
 
     func invoke<Input, Output>(
-        _ identifier: AgentToolIdentifier,
+        _ identifier: ToolIdentifier,
         input: Input,
         as output: Output.Type
     ) async throws -> Output
@@ -247,7 +256,7 @@ struct AgentProgramRecordingToolInvoker:
             guard let replayedOutput = replayed.output,
                   replayed.failure == nil
             else {
-                throw AgentProgramReplayError.invalid_completed_step(
+                throw ProgramReplayError.invalid_completed_step(
                     index: index
                 )
             }
@@ -266,7 +275,7 @@ struct AgentProgramRecordingToolInvoker:
         var recovery: Recovery.Record?
 
         do {
-            let execution: AgentToolExecutionResult
+            let execution: ToolExecutionResult
 
             if let resumeControl,
                let resolution = try await resumeControl.resolution(
@@ -313,7 +322,7 @@ struct AgentProgramRecordingToolInvoker:
             )
 
             return decoded
-        } catch let signal as AgentProgramSuspensionSignal {
+        } catch let signal as ProgramSuspensionSignal {
             let completedAt = Date()
 
             await trace.append(
@@ -333,7 +342,7 @@ struct AgentProgramRecordingToolInvoker:
             )
 
             throw signal
-        } catch let error as AgentProgramToolFailure {
+        } catch let error as ProgramToolFailure {
             let completedAt = Date()
 
             await trace.append(
@@ -380,17 +389,17 @@ struct AgentProgramRecordingToolInvoker:
     }
 }
 
-struct AgentProgramRecordingProgramInvoker:
-    AgentProgramInvoking
+struct ProgramRecordingProgramInvoker:
+    ProgramInvoking
 {
-    let invoker: any AgentProgramInvoking
-    let trace: AgentProgramExecutionTrace
+    let invoker: any ProgramInvoking
+    let trace: ProgramExecutionTrace
 
-    func invoke<Program: AgentProgram>(
-        _ program: Program.Type,
-        input: Program.Input,
-        in context: AgentProgramContext
-    ) async throws -> Program.Output {
+    func invoke<ProgramType: Program>(
+        _ program: ProgramType.Type,
+        input: ProgramType.Input,
+        in context: ProgramContext
+    ) async throws -> ProgramType.Output {
         let inputValue = try JSONToolBridge.encode(input)
         let index = await trace.reserveIndex()
         let startedAt = Date()
@@ -398,17 +407,17 @@ struct AgentProgramRecordingProgramInvoker:
         do {
             if let replayed = try await trace.replay(
                 index: index,
-                kind: .program(Program.descriptor.identifier),
+                kind: .program(ProgramType.definition.identifier),
                 input: inputValue
             ) {
                 guard let outputValue = replayed.output else {
-                    throw AgentProgramReplayError.invalid_completed_step(
+                    throw ProgramReplayError.invalid_completed_step(
                         index: index
                     )
                 }
 
                 let output = try JSONToolBridge.decode(
-                    Program.Output.self,
+                    ProgramType.Output.self,
                     from: outputValue
                 )
 
@@ -427,7 +436,7 @@ struct AgentProgramRecordingProgramInvoker:
             await trace.append(
                 .init(
                     index: index,
-                    kind: .program(Program.descriptor.identifier),
+                    kind: .program(ProgramType.definition.identifier),
                     input: inputValue,
                     output: outputValue,
                     startedAt: startedAt,
@@ -440,17 +449,17 @@ struct AgentProgramRecordingProgramInvoker:
             )
 
             return output
-        } catch is AgentProgramSuspensionSignal {
-            let error = AgentProgramReplayError
+        } catch is ProgramSuspensionSignal {
+            let error = ProgramReplayError
                 .nested_program_suspension_unsupported(
-                    Program.descriptor.identifier
+                    ProgramType.definition.identifier
                 )
             let completedAt = Date()
 
             await trace.append(
                 .init(
                     index: index,
-                    kind: .program(Program.descriptor.identifier),
+                    kind: .program(ProgramType.definition.identifier),
                     input: inputValue,
                     failure: .init(error: error),
                     startedAt: startedAt,
@@ -469,7 +478,7 @@ struct AgentProgramRecordingProgramInvoker:
             await trace.append(
                 .init(
                     index: index,
-                    kind: .program(Program.descriptor.identifier),
+                    kind: .program(ProgramType.definition.identifier),
                     input: inputValue,
                     failure: .init(error: error),
                     startedAt: startedAt,

@@ -37,7 +37,7 @@ public extension AgentRunner {
             model: model,
             configuration: resolvedConfiguration,
             tooling: tooling.using(
-                workspace: environment.workspace
+                workspace: try environment.workspace?.context()
             ),
             extensions: extensions,
             recording: resolvedRecording

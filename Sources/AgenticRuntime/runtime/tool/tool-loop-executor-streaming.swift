@@ -138,7 +138,7 @@ extension ToolLoopExecutor {
                 turnIndex: turnIndex,
                 nativeInvocations: await journal.snapshot()
             )
-        } catch RuntimeAgentToolCallBoundary.exposure_changed {
+        } catch RuntimeToolCallBoundary.exposure_changed {
             try await finishNativeExposureBoundary(
                 invocations: await journal.snapshot(),
                 checkpoint: &checkpoint
@@ -320,7 +320,7 @@ extension ToolLoopExecutor {
                     iteration: checkpoint.state.iteration,
                     messageID: accumulator.partial.messageID,
                     toolCallID: toolCall.id,
-                    toolName: toolCall.name,
+                    toolName: toolCall.tool.rawValue,
                     summary: "streamed tool call"
                 ),
                 to: &checkpoint
@@ -333,7 +333,7 @@ extension ToolLoopExecutor {
                     iteration: checkpoint.state.iteration,
                     messageID: accumulator.partial.messageID,
                     toolCallID: result.toolCallID,
-                    toolName: result.name,
+                    toolName: result.tool?.rawValue,
                     summary: result.isError
                         ? "streamed tool result error"
                         : "streamed tool result"

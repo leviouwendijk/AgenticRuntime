@@ -1,11 +1,10 @@
 import Agentic
 import AgenticExecution
-import AgenticPrograms
-import AgenticRecovery
 import AgenticRuntime
 import Primitives
 import Schema
 import TestFlows
+import Workspace
 
 private enum ClassificationPropagationCallError: Error {
     case authorization_required
@@ -40,7 +39,8 @@ private struct ClassificationPropagationInput:
 private struct ClassificationPropagationOutput:
     Sendable,
     Codable,
-    Hashable
+    Hashable,
+    JSONSchemaProviding
 {
     let resultIsError: Bool
     let kind: String
@@ -49,23 +49,66 @@ private struct ClassificationPropagationOutput:
     let outcome: String
     let hasPlan: Bool
     let attempts: Int
+
+    static var jsonschema: JSONSchema {
+        .object(
+            properties: [
+                .init(
+                    name: "resultIsError",
+                    schema: .boolean(),
+                    required: true
+                ),
+                .init(
+                    name: "kind",
+                    schema: .string(),
+                    required: true
+                ),
+                .init(
+                    name: "effect",
+                    schema: .string(),
+                    required: true
+                ),
+                .init(
+                    name: "retry",
+                    schema: .string(),
+                    required: true
+                ),
+                .init(
+                    name: "outcome",
+                    schema: .string(),
+                    required: true
+                ),
+                .init(
+                    name: "hasPlan",
+                    schema: .boolean(),
+                    required: true
+                ),
+                .init(
+                    name: "attempts",
+                    schema: .integer(),
+                    required: true
+                ),
+            ],
+            additionalProperties: .disallowed
+        )
+    }
 }
 
 private struct ClassificationPropagationProgram:
-    AgentProgram
+    Program
 {
     typealias Input = ClassificationPropagationInput
     typealias Output = ClassificationPropagationOutput
 
-    static let descriptor = AgentProgramDescriptor(
+    static let definition = ProgramDefinition(
         identifier: "fixture.classification_propagation_program",
-        title: "Classification propagation fixture",
-        summary: "Proves a classified tool failure propagates through Runtime into authored Program handling without mechanical retry."
+        purpose: "Proves a classified tool failure propagates through Runtime into authored Program handling without mechanical retry.",
+        title: "Classification propagation fixture"
     )
 
     func run(
         _ input: Input,
-        in context: AgentProgramContext
+        in context: ProgramContext
     ) async throws -> Output {
         try await context.invoke(
             "fixture.classification_propagation",
@@ -90,21 +133,27 @@ private struct ClassificationPropagationProgram:
     }
 }
 
-private struct ClassificationPropagationTool: AgentTool {
+private struct ClassificationPropagationTool: Tool {
     typealias Input = ClassificationPropagationInput
     typealias Output = ClassificationPropagationOutput
 
     let probe: ClassificationPropagationProbe
 
-    let identifier: AgentToolIdentifier =
+    let identifier: ToolIdentifier =
         "fixture.classification_propagation"
     let description =
         "Fixture proving classified tool evidence propagates without mechanical recovery."
     let risk: ActionRisk = .observe
 
+    static let definition = ToolDefinition(
+        identifier: "fixture.classification_propagation",
+        purpose: "Fixture proving classified tool evidence propagates without mechanical recovery.",
+        risk: .observe
+    )
+
     func call(
         _ input: Input,
-        context _: AgentToolExecutionContext
+        workspace _: WorkspaceContext?
     ) async throws -> Output {
         _ = input
         await probe.recordCall()
@@ -114,9 +163,8 @@ private struct ClassificationPropagationTool: AgentTool {
 
     func classify(
         _ error: any Error,
-        phase: AgentToolCallPhase,
-        input _: Input?,
-        context: AgentToolExecutionContext
+        phase: ToolCall.Phase,
+        input _: Input?
     ) -> Recovery.Incident? {
         guard
             phase == .call,
@@ -134,9 +182,7 @@ private struct ClassificationPropagationTool: AgentTool {
             retrySafety: .safe,
             scope: .init(
                 kind: .tool,
-                identifier:
-                    context.toolCallID
-                    ?? identifier.rawValue
+                identifier: identifier.rawValue
             ),
             message: "fixture authorization failure occurred before any effect was applied"
         )
@@ -146,7 +192,7 @@ private struct ClassificationPropagationTool: AgentTool {
 extension AgenticProgramRuntimeFlowTesting {
     static func runToolClassificationPropagation()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let probe = ClassificationPropagationProbe()
         let registry = try ToolRegistry {
@@ -154,10 +200,10 @@ extension AgenticProgramRuntimeFlowTesting {
                 probe: probe
             )
         }
-        let runner = AgentProgramRunner(
+        let runner = ProgramRunner(
             services: .init(
                 program: .init(
-                    tools: GovernedAgentProgramToolExecutor(
+                    tools: GovernedProgramToolExecutor(
                         registry: registry,
                         policy: .init(
                             autonomyMode: .auto_observe
@@ -196,7 +242,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.equal(
             step.failure?.type,
-            String(reflecting: AgentProgramToolFailure.self),
+            String(reflecting: ProgramToolFailure.self),
             "failed tool step preserves the public Program tool failure"
         )
         try Expect.equal(

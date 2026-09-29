@@ -1,13 +1,12 @@
 import Agentic
 import AgenticExecution
-import AgenticPrograms
 import Foundation
 import Primitives
 
-public struct AgentRuntimeProgramRegistration:
+public struct ProgramRegistration:
     Sendable
 {
-    public let registeredProgram: RegisteredAgentProgram
+    public let registeredProgram: RegisteredProgram
 
     private let executeHandler:
         @Sendable (
@@ -15,20 +14,20 @@ public struct AgentRuntimeProgramRegistration:
             JSONValue?,
             AgentRuntimeServices,
             [String: String]
-        ) async throws -> AgentProgramExecutionRecord
+        ) async throws -> ProgramExecutionRecord
 
     private let resumeHandler:
         @Sendable (
-            AgentProgramCheckpoint,
+            ProgramCheckpoint,
             AgentInteraction.Response,
             AgentRuntimeServices
-        ) async throws -> AgentProgramExecutionRecord
+        ) async throws -> ProgramExecutionRecord
 
-    public init<Program: AgentProgram>(
-        _ program: Program,
-        defaultRealization: AgentProgramRealization<Program>? = nil
+    public init<ProgramType: Program>(
+        _ program: ProgramType,
+        defaultRealization: ProgramRealization<ProgramType>? = nil
     ) {
-        self.registeredProgram = RegisteredAgentProgram(
+        self.registeredProgram = RegisteredProgram(
             program
         )
 
@@ -39,22 +38,22 @@ public struct AgentRuntimeProgramRegistration:
             metadata
             in
             let decodedInput = try JSONToolBridge.decode(
-                Program.Input.self,
+                ProgramType.Input.self,
                 from: input
             )
 
-            let appliedRealization: AgentProgramRealization<Program>?
+            let appliedRealization: ProgramRealization<ProgramType>?
 
             if let realization {
                 appliedRealization = try JSONToolBridge.decode(
-                    AgentProgramRealization<Program>.self,
+                    ProgramRealization<ProgramType>.self,
                     from: realization
                 )
             } else {
                 appliedRealization = defaultRealization
             }
 
-            let execution = try await AgentProgramRunner(
+            let execution = try await ProgramRunner(
                 services: services
             ).execute(
                 program,
@@ -71,7 +70,7 @@ public struct AgentRuntimeProgramRegistration:
             response,
             services
             in
-            let execution = try await AgentProgramRunner(
+            let execution = try await ProgramRunner(
                 services: services
             ).resume(
                 program,
@@ -83,12 +82,12 @@ public struct AgentRuntimeProgramRegistration:
         }
     }
 
-    public var identifier: AgentProgramIdentifier {
+    public var identifier: ProgramIdentifier {
         registeredProgram.identifier
     }
 
-    public var descriptor: AgentProgramDescriptor {
-        registeredProgram.descriptor
+    public var definition: ProgramDefinition {
+        registeredProgram.definition
     }
 
     public func execute(
@@ -96,7 +95,7 @@ public struct AgentRuntimeProgramRegistration:
         realization: JSONValue? = nil,
         services: AgentRuntimeServices = .init(),
         metadata: [String: String] = [:]
-    ) async throws -> AgentProgramExecutionRecord {
+    ) async throws -> ProgramExecutionRecord {
         try await executeHandler(
             input,
             realization,
@@ -106,10 +105,10 @@ public struct AgentRuntimeProgramRegistration:
     }
 
     public func resume(
-        from checkpoint: AgentProgramCheckpoint,
+        from checkpoint: ProgramCheckpoint,
         interaction response: AgentInteraction.Response,
         services: AgentRuntimeServices = .init()
-    ) async throws -> AgentProgramExecutionRecord {
+    ) async throws -> ProgramExecutionRecord {
         try await resumeHandler(
             checkpoint,
             response,
@@ -118,13 +117,13 @@ public struct AgentRuntimeProgramRegistration:
     }
 }
 
-public enum AgentRuntimeProgramExecutionError:
+public enum ProgramExecutionError:
     Error,
     Sendable,
     LocalizedError
 {
     case registrationUnavailable(
-        AgentProgramIdentifier
+        ProgramIdentifier
     )
 
     public var errorDescription: String? {

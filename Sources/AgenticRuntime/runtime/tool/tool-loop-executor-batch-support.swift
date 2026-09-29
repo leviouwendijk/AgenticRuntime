@@ -1,6 +1,5 @@
 import Agentic
 import AgenticExecution
-import AgenticRecovery
 import Primitives
 
 extension ToolLoopExecutor {
@@ -39,8 +38,8 @@ extension ToolLoopExecutor {
     }
 
     func appendToolResult(
-        _ result: AgentToolResult,
-        for toolCall: AgentToolCall,
+        _ result: ToolResult,
+        for toolCall: ToolCall,
         disposition: AgentToolUseDisposition,
         recovery: Recovery.Record? = nil,
         to checkpoint: inout AgentHistoryCheckpoint,
@@ -71,7 +70,7 @@ extension ToolLoopExecutor {
                 kind: result.isError ? .tool_error : .tool_result,
                 iteration: checkpoint.state.iteration,
                 toolCallID: result.toolCallID,
-                toolName: result.name,
+                toolName: result.tool?.rawValue,
                 summary: summary
             ),
             to: &checkpoint
@@ -80,7 +79,7 @@ extension ToolLoopExecutor {
 
     func markToolPreflight(
         _ preflight: ToolPreflight,
-        for toolCall: AgentToolCall,
+        for toolCall: ToolCall,
         on checkpoint: inout AgentHistoryCheckpoint
     ) {
         guard var batch = checkpoint.toolBatch else {
@@ -98,7 +97,7 @@ extension ToolLoopExecutor {
     }
 
     func suspendToolBatch(
-        for toolCall: AgentToolCall,
+        for toolCall: ToolCall,
         disposition: AgentToolUseDisposition,
         on checkpoint: inout AgentHistoryCheckpoint
     ) {
@@ -155,17 +154,17 @@ extension ToolLoopExecutor {
     }
 
     func makeSkippedToolResult(
-        for toolCall: AgentToolCall,
+        for toolCall: ToolCall,
         disposition: AgentToolUseDisposition,
         reason: String
-    ) -> AgentToolResult {
-        AgentToolResult(
+    ) -> ToolResult {
+        ToolResult(
             toolCallID: toolCall.id,
-            name: toolCall.name,
+            tool: toolCall.tool,
             output: .object([
                 "kind": .string("tool_error"),
                 "toolCallID": .string(toolCall.id),
-                "toolName": .string(toolCall.name),
+                "toolName": .string(toolCall.tool.rawValue),
                 "disposition": .string(disposition.rawValue),
                 "message": .string(reason)
             ]),

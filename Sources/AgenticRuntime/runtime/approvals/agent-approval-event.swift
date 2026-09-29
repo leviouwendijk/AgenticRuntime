@@ -1,8 +1,23 @@
 import AgenticExecution
 import Foundation
+import Macros
+import Schema
 
-public struct AgentApprovalEvent: Sendable, Codable, Hashable, Identifiable {
-    public enum Kind: String, Sendable, Codable, Hashable, CaseIterable {
+@JSONSchema
+public struct AgentApprovalEvent:
+    Sendable,
+    Codable,
+    Hashable,
+    Identifiable
+{
+    @JSONSchema
+    public enum Kind:
+        String,
+        Sendable,
+        Codable,
+        Hashable,
+        CaseIterable
+    {
         case tool_preflight
         case pending_approval
         case approval_decision

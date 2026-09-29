@@ -1,8 +1,8 @@
 import AgenticExecution
 import AgenticIO
-import AgenticTools
+import AgenticStandard
 
-public struct CoreToolSet: AgentToolSet {
+public struct CoreToolSet: AgentToolProvider {
     public let contextComposer: ContextComposer
     public let includeInteractionTools: Bool
     // public let fileMutationRecorder: AgentFileMutationRecorder?
@@ -17,7 +17,7 @@ public struct CoreToolSet: AgentToolSet {
         // self.fileMutationRecorder = fileMutationRecorder
     }
 
-    public func register(
+    public func registerTools(
         into registry: inout ToolRegistry
     ) throws {
         try registry.register {
@@ -33,7 +33,7 @@ public struct CoreToolSet: AgentToolSet {
             )
 
             if includeInteractionTools {
-                CoreInteractionToolSet()
+                Standard.Tools.ClarifyWithUser()
             }
         }
     }

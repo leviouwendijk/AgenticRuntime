@@ -188,7 +188,7 @@ extension ToolLoopExecutor {
                 )
             )
             response = result.response
-        } catch RuntimeAgentToolCallBoundary.exposure_changed {
+        } catch RuntimeToolCallBoundary.exposure_changed {
             try await finishNativeExposureBoundary(
                 invocations: await journal.snapshot(),
                 checkpoint: &checkpoint
@@ -316,7 +316,7 @@ extension ToolLoopExecutor {
     //     }
 
     //     for toolCall in calls {
-    //         if toolCall.name == ClarifyWithUserTool.identifier.rawValue {
+    //         if toolCall.name == Standard.Tools.ClarifyWithUser.identifier.rawValue {
     //             return try await suspendForUserInput(
     //                 toolCall,
     //                 checkpoint: &checkpoint

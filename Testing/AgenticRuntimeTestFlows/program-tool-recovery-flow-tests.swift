@@ -1,12 +1,11 @@
 import Foundation
 import Agentic
 import AgenticExecution
-import AgenticRecovery
 import AgenticRuntime
-import AgenticPrograms
 import Primitives
 import Schema
 import TestFlows
+import Workspace
 
 private enum ProgramToolRecoveryMode:
     Sendable,
@@ -54,9 +53,23 @@ private struct ProgramToolRecoveryInput:
 private struct ProgramToolRecoveryOutput:
     Sendable,
     Codable,
-    Hashable
+    Hashable,
+    JSONSchemaProviding
 {
     let status: String
+
+    static var jsonschema: JSONSchema {
+        .object(
+            properties: [
+                .init(
+                    name: "status",
+                    schema: .string(),
+                    required: true
+                ),
+            ],
+            additionalProperties: .disallowed
+        )
+    }
 }
 
 private struct ProgramToolRecoveryProbeSnapshot: Sendable {
@@ -92,17 +105,23 @@ private actor ProgramToolRecoveryProbe {
     }
 }
 
-private struct ProgramToolRecoveryFixtureTool: AgentTool {
+private struct ProgramToolRecoveryFixtureTool: Tool {
     typealias Input = ProgramToolRecoveryInput
     typealias Output = ProgramToolRecoveryOutput
 
     let mode: ProgramToolRecoveryMode
     let probe: ProgramToolRecoveryProbe
 
-    let identifier: AgentToolIdentifier =
+    let identifier: ToolIdentifier =
         "fixture.program_tool_recovery"
     let description =
         "Exercises governed Program tool recovery."
+
+    static let definition = ToolDefinition(
+        identifier: "fixture.program_tool_recovery",
+        purpose: "Exercises governed Program tool recovery.",
+        risk: .boundedmutate
+    )
 
     var risk: ActionRisk {
         switch mode {
@@ -118,14 +137,14 @@ private struct ProgramToolRecoveryFixtureTool: AgentTool {
 
     func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
         _ = input
-        _ = context
+        _ = workspace
         await probe.recordPreflight()
 
         return ToolPreflight(
-            toolName: identifier.rawValue,
+            tool: identifier,
             risk: risk,
             summary: "Program governed tool recovery fixture."
         )
@@ -133,7 +152,7 @@ private struct ProgramToolRecoveryFixtureTool: AgentTool {
 
     func call(
         _ input: Input,
-        context _: AgentToolExecutionContext
+        workspace _: WorkspaceContext?
     ) async throws -> Output {
         _ = input
         let number = await probe.recordCall()
@@ -161,9 +180,8 @@ private struct ProgramToolRecoveryFixtureTool: AgentTool {
 
     func classify(
         _ error: any Error,
-        phase: AgentToolCallPhase,
-        input _: Input?,
-        context: AgentToolExecutionContext
+        phase: ToolCall.Phase,
+        input _: Input?
     ) -> Recovery.Incident? {
         guard
             phase == .call,
@@ -181,9 +199,7 @@ private struct ProgramToolRecoveryFixtureTool: AgentTool {
                 retrySafety: .safe,
                 scope: .init(
                     kind: .tool,
-                    identifier:
-                        context.toolCallID
-                        ?? identifier.rawValue
+                    identifier: identifier.rawValue
                 ),
                 message: "fixture observe operation failed before applying effects"
             )
@@ -198,9 +214,7 @@ private struct ProgramToolRecoveryFixtureTool: AgentTool {
                 retrySafety: .requires_reconciliation,
                 scope: .init(
                     kind: .tool,
-                    identifier:
-                        context.toolCallID
-                        ?? identifier.rawValue
+                    identifier: identifier.rawValue
                 ),
                 message: "fixture Program mutation outcome is unknown"
             )
@@ -212,11 +226,11 @@ private struct ProgramToolRecoveryFixtureTool: AgentTool {
 
     func reconcile(
         _ input: Input,
-        after failure: AgentToolCallFailure,
-        context: AgentToolExecutionContext
-    ) async throws -> AgentToolReconciliation<Output>? {
+        after failure: ToolCall.Failure,
+        workspace: WorkspaceContext?
+    ) async throws -> ToolCall.Reconciliation<Output>? {
         _ = input
-        _ = context
+        _ = workspace
 
         guard failure.phase == .call else {
             return nil
@@ -306,7 +320,7 @@ private func runProgramToolRecovery(
     let registry = try ToolRegistry {
         tool
     }
-    let executor = GovernedAgentProgramToolExecutor(
+    let executor = GovernedProgramToolExecutor(
         registry: registry,
         policy: ToolExecutionPolicy(
             autonomyMode: .auto_bounded_mutate
@@ -315,15 +329,14 @@ private func runProgramToolRecovery(
     )
     let execution = try await executor.invoke(
         tool.identifier,
-        input: try JSONToolBridge.encode(
+        input: try JSONValue.encoding(
             ProgramToolRecoveryInput()
         )
     )
 
     return (
-        output: try JSONToolBridge.decode(
-            ProgramToolRecoveryOutput.self,
-            from: execution.result.output
+        output: try execution.result.output.decode(
+            ProgramToolRecoveryOutput.self
         ),
         recovery: execution.recovery,
         snapshot: await probe.snapshot()
@@ -346,23 +359,23 @@ private func runProgramToolResumeRecovery()
     let registry = try ToolRegistry {
         tool
     }
-    let executor = GovernedAgentProgramToolExecutor(
+    let executor = GovernedProgramToolExecutor(
         registry: registry,
         policy: ToolExecutionPolicy(
             autonomyMode: .auto_observe
         ),
         recovery: programToolRecoveryPolicy()
     )
-    let call = AgentToolCall(
+    let call = ToolCall(
         id: "fixture-program-resume-recovery",
-        name: tool.identifier.rawValue,
-        input: try JSONToolBridge.encode(
+        tool: tool.identifier,
+        input: try JSONValue.encoding(
             ProgramToolRecoveryInput()
         )
     )
     let review = try await executor.invoker.review(
         call,
-        context: executor.context
+        workspace: executor.workspace
     )
 
     try Expect.equal(
@@ -381,16 +394,15 @@ private func runProgramToolResumeRecovery()
     )
 
     return (
-        output: try JSONToolBridge.decode(
-            ProgramToolRecoveryOutput.self,
-            from: execution.result.output
+        output: try execution.result.output.decode(
+            ProgramToolRecoveryOutput.self
         ),
         recovery: execution.recovery,
         snapshot: await probe.snapshot()
     )
 }
 
-private struct ProgramToolRecoveryProgram: AgentProgram {
+private struct ProgramToolRecoveryProgram: Program {
     enum Handling: Sendable {
         case none
         case recover_applied
@@ -408,15 +420,15 @@ private struct ProgramToolRecoveryProgram: AgentProgram {
         self.handling = handling
     }
 
-    static let descriptor = AgentProgramDescriptor(
+    static let definition = ProgramDefinition(
         identifier: "fixture.program_tool_recovery_program",
-        title: "Program tool recovery evidence",
-        summary: "Proves tool recovery evidence survives Program execution recording."
+        purpose: "Proves tool recovery evidence survives Program execution recording.",
+        title: "Program tool recovery evidence"
     )
 
     func run(
         _ input: Input,
-        in context: AgentProgramContext
+        in context: ProgramContext
     ) async throws -> Output {
         switch handling {
         case .none:
@@ -435,7 +447,7 @@ private struct ProgramToolRecoveryProgram: AgentProgram {
                 guard
                     failure.effect == .applied,
                     failure.result.isError,
-                    failure.result.name == "fixture.program_tool_recovery",
+                    failure.result.tool == ToolIdentifier("fixture.program_tool_recovery"),
                     failure.result.output != .null
                 else {
                     throw failure
@@ -451,11 +463,11 @@ private struct ProgramToolRecoveryProgram: AgentProgram {
                 "fixture.program_tool_recovery",
                 input: input,
                 as: Output.self
-            ) { failure -> AgentProgramToolFailure.Handling<Output> in
+            ) { failure -> ProgramToolFailure.Handling<Output> in
                 guard
                     failure.effect == .unknown,
                     failure.result.isError,
-                    failure.result.name == "fixture.program_tool_recovery",
+                    failure.result.tool == ToolIdentifier("fixture.program_tool_recovery"),
                     failure.result.output != .null
                 else {
                     return .recover(
@@ -475,7 +487,7 @@ private func runRecordedProgramToolRecovery(
     _ mode: ProgramToolRecoveryMode,
     handling: ProgramToolRecoveryProgram.Handling = .none
 ) async throws -> (
-    execution: AgentProgramExecution<ProgramToolRecoveryProgram>,
+    execution: ProgramExecution<ProgramToolRecoveryProgram>,
     snapshot: ProgramToolRecoveryProbeSnapshot
 ) {
     let probe = ProgramToolRecoveryProbe()
@@ -486,14 +498,14 @@ private func runRecordedProgramToolRecovery(
     let registry = try ToolRegistry {
         tool
     }
-    let executor = GovernedAgentProgramToolExecutor(
+    let executor = GovernedProgramToolExecutor(
         registry: registry,
         policy: ToolExecutionPolicy(
             autonomyMode: .auto_bounded_mutate
         ),
         recovery: programToolRecoveryPolicy()
     )
-    let runner = AgentProgramRunner(
+    let runner = ProgramRunner(
         services: .init(
             program: .init(
                 tools: executor
@@ -516,7 +528,7 @@ private func runRecordedProgramToolRecovery(
 extension AgenticProgramRuntimeFlowTesting {
     static func runProgramGovernedToolRecovery()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let observe = try await runProgramToolRecovery(
             .observe_retry
@@ -770,7 +782,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.equal(
             authoredAppliedStep.failure?.type,
-            String(reflecting: AgentProgramToolFailure.self),
+            String(reflecting: ProgramToolFailure.self),
             "mechanical failure crosses Runtime through the public Program failure type"
         )
         try Expect.equal(
@@ -805,12 +817,12 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.equal(
             authoredUnknownStep.failure?.type,
-            String(reflecting: AgentProgramToolFailure.self),
+            String(reflecting: ProgramToolFailure.self),
             ".propagate preserves the public Program tool failure at the failed step"
         )
         try Expect.equal(
             authoredUnknown.execution.record.failure?.type,
-            String(reflecting: AgentProgramToolFailure.self),
+            String(reflecting: ProgramToolFailure.self),
             ".propagate rethrows the same public Program tool failure"
         )
         try Expect.equal(

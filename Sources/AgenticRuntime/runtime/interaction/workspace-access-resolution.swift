@@ -1,4 +1,13 @@
-import AgenticWorkspace
+public enum WorkspaceAccessLifetime:
+    String,
+    Sendable,
+    Codable,
+    Hashable,
+    CaseIterable
+{
+    case turn
+    case session
+}
 
 public enum WorkspaceAccessResolution:
     String,
@@ -11,7 +20,7 @@ public enum WorkspaceAccessResolution:
     case grant_for_turn
     case grant_for_session
 
-    public var lifetime: PathGrantLifetime? {
+    public var lifetime: WorkspaceAccessLifetime? {
         switch self {
         case .deny:
             return nil

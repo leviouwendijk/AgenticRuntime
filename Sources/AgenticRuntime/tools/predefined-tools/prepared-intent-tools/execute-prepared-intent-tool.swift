@@ -1,5 +1,6 @@
 import Agentic
 import AgenticExecution
+import Workspace
 import Foundation
 import Primitives
 import Schema
@@ -16,6 +17,7 @@ public struct ExecutePreparedIntentToolInput: Sendable, Codable, Hashable {
     }
 }
 
+@JSONSchema
 public struct ExecutePreparedIntentToolOutput: Sendable, Codable, Hashable {
     public let intent: PreparedIntent
     public let result: PreparedOperation.ResultEnvelope
@@ -29,13 +31,19 @@ public struct ExecutePreparedIntentToolOutput: Sendable, Codable, Hashable {
     }
 }
 
-public struct ExecutePreparedIntentTool: AgentTool {
+public struct ExecutePreparedIntentTool: Tool {
     public typealias Input = ExecutePreparedIntentToolInput
     public typealias Output = ExecutePreparedIntentToolOutput
 
-    public let identifier: AgentToolIdentifier = .execute_prepared_intent
-    public let description = "Execute an approved prepared intent through its stored versioned prepared operation."
-    public let risk: ActionRisk = .boundedmutate
+    public static let identifier: ToolIdentifier = .execute_prepared_intent
+    public static let description = "Execute an approved prepared intent through its stored versioned prepared operation."
+    public static let risk: ActionRisk = .boundedmutate
+
+    public static let definition: ToolDefinition = .init(
+        identifier: Self.identifier,
+        purpose: Self.description,
+        risk: Self.risk
+    )
 
     public let executor: PreparedIntentExecutor
 
@@ -47,7 +55,7 @@ public struct ExecutePreparedIntentTool: AgentTool {
 
     public func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
         let intent = try await executor.manager.executableIntent(
             id: input.id
@@ -61,35 +69,43 @@ public struct ExecutePreparedIntentTool: AgentTool {
             )
         }
 
+        let approved = intent.preflight
+        let targets = approved.access.targets.isEmpty
+            ? "none"
+            : approved.access.targets.joined(
+                separator: ", "
+            )
+
         return .init(
-            toolName: name,
-            risk: intent.reviewPayload.risk,
-            workspaceRoot: context.workspace?.rootURL.path,
-            targetPaths: intent.reviewPayload.target.map { [$0] } ?? [],
+            tool: Self.definition.identifier,
+            risk: approved.risk,
             summary: """
             Execute approved prepared intent \(intent.id.rawValue).
 
             Status: \(intent.status.rawValue)
             Operation: \(intent.operation.schema.identifier.rawValue)
-            Target: \(intent.reviewPayload.target ?? "none")
+            Target: \(targets)
             """,
-            estimatedRuntimeSeconds: 1,
-            sideEffects: intent.reviewPayload.expectedSideEffects
+            access: approved.access,
+            estimates: approved.estimates,
+            preview: approved.preview,
+            sideEffects: approved.sideEffects,
+            policyChecks: approved.policyChecks + [
+                "prepared_intent_approved",
+            ],
+            warnings: approved.warnings
         )
     }
 
     public func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> Output {
         let execution = try await executor.execute(
             id: input.id,
             context: .init(
-                workspace: context.workspace,
-                workspaceLocation: context.workspaceLocation,
-                sessionID: context.sessionID,
-                preparedIntentID: input.id,
-                metadata: context.metadata
+                workspace: workspace,
+                preparedIntentID: input.id
             )
         )
 

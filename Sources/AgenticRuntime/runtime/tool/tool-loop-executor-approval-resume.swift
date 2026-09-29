@@ -21,15 +21,14 @@ public extension ToolLoopExecutor {
                     kind: .tool_approved,
                     iteration: checkpoint.state.iteration,
                     toolCallID: pendingApproval.toolCall.id,
-                    toolName: pendingApproval.toolCall.name,
+                    toolName: pendingApproval.toolCall.tool.rawValue,
                     summary: metadata["summary"] ?? "approved after suspended review"
                 ),
                 to: &checkpoint
             )
 
             let execution = try await executeApprovedToolCall(
-                pendingApproval.toolCall,
-                preflight: pendingApproval.preflight
+                pendingApproval
             )
             let result = execution.result
 
@@ -89,7 +88,7 @@ public extension ToolLoopExecutor {
                     kind: .tool_denied,
                     iteration: checkpoint.state.iteration,
                     toolCallID: pendingApproval.toolCall.id,
-                    toolName: pendingApproval.toolCall.name,
+                    toolName: pendingApproval.toolCall.tool.rawValue,
                     summary: metadata["summary"] ?? "denied after suspended review"
                 ),
                 to: &checkpoint
@@ -133,7 +132,7 @@ public extension ToolLoopExecutor {
                     kind: .tool_skipped,
                     iteration: checkpoint.state.iteration,
                     toolCallID: pendingApproval.toolCall.id,
-                    toolName: pendingApproval.toolCall.name,
+                    toolName: pendingApproval.toolCall.tool.rawValue,
                     summary: metadata["summary"] ?? "skipped after suspended review"
                 ),
                 to: &checkpoint

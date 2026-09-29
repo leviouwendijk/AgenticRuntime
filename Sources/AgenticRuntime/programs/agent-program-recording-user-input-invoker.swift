@@ -1,13 +1,13 @@
 import Agentic
-import AgenticPrograms
+import AgenticExecution
 import Foundation
 import Primitives
 
-struct AgentProgramRecordingUserInputInvoker:
-    AgentProgramUserInputInvoking
+struct ProgramRecordingUserInputInvoker:
+    ProgramUserInputInvoking
 {
-    let trace: AgentProgramExecutionTrace
-    let resumeControl: AgentProgramResumeControl?
+    let trace: ProgramExecutionTrace
+    let resumeControl: ProgramResumeControl?
 
     func ask(
         _ request: UserInputRequest
@@ -24,7 +24,7 @@ struct AgentProgramRecordingUserInputInvoker:
             input: inputValue
         ) {
             guard let outputValue = replayed.output else {
-                throw AgentProgramReplayError.invalid_completed_step(
+                throw ProgramReplayError.invalid_completed_step(
                     index: index
                 )
             }
@@ -93,7 +93,7 @@ struct AgentProgramRecordingUserInputInvoker:
             )
         )
 
-        throw AgentProgramSuspensionSignal(
+        throw ProgramSuspensionSignal(
             suspension: suspension
         )
     }

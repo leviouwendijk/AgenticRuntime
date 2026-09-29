@@ -61,7 +61,6 @@ public struct PreparedIntentExecutor: Sendable {
 
         let operationContext = PreparedOperation.Context(
             workspace: context.workspace,
-            workspaceLocation: context.workspaceLocation,
             sessionID:
                 intent.sessionID
                 ?? context.sessionID

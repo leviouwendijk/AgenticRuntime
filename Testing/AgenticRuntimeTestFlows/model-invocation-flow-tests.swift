@@ -5,7 +5,7 @@ import TestFlows
 extension AgenticProgramRuntimeFlowTesting {
     static func runModelInvocationTransport()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let recorder = FixtureModelInvocationRecorder()
         let invoker = FixtureModelInvoker(
@@ -25,7 +25,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let request = AgentRequest(
             messages: [
-                AgentMessage(
+                Message(
                     role: .user,
                     text: "exercise invocation transport"
                 ),
@@ -93,7 +93,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
     static func runModelInvocationStreamingCompletion()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let recorder = FixtureModelInvocationRecorder()
         let invoker = FixtureModelInvoker(
@@ -102,7 +102,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let selection = AgentModelSelection.reviewer
         let request = AgentRequest(
             messages: [
-                AgentMessage(
+                Message(
                     role: .user,
                     text: "exercise streaming completion"
                 ),
@@ -161,10 +161,10 @@ extension AgenticProgramRuntimeFlowTesting {
 
     static func runModeModelSelectionPropagation()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let expectedSelection = AgentModelSelection.reviewer
-        let mode = AgenticMode(
+        let mode = Mode(
             id: "fixture-review-mode",
             title: "Fixture review",
             routeDefaults: .init(
@@ -193,7 +193,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let request = AgentRequest(
             messages: [
-                AgentMessage(
+                Message(
                     role: .user,
                     text: "exercise mode model selection"
                 ),
@@ -237,7 +237,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
     static func runRuntimeServicesRecordingPropagation()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let modelRecorder = FixtureModelInvocationRecorder()
         let eventSink = FixtureRuntimeEventSink()
@@ -255,7 +255,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let request = AgentRequest(
             messages: [
-                AgentMessage(
+                Message(
                     role: .user,
                     text: "exercise shared recording services"
                 ),
@@ -294,17 +294,17 @@ extension AgenticProgramRuntimeFlowTesting {
 }
 
 private actor FixtureRuntimeEventSink: AgentRunEventSink {
-    private var messages: [AgentMessage] = []
+    private var messages: [Message] = []
 
     func recordMessage(
-        _ message: AgentMessage
+        _ message: Message
     ) async throws {
         messages.append(
             message
         )
     }
 
-    func snapshot() -> [AgentMessage] {
+    func snapshot() -> [Message] {
         messages
     }
 }
@@ -379,7 +379,7 @@ private func fixtureInvocationResult(
     routeResult: AgentModelRouteResult? = nil
 ) -> AgentModelInvocationResult {
     let response = AgentResponse(
-        message: AgentMessage(
+        message: Message(
             role: .assistant,
             text: "fixture-response"
         ),

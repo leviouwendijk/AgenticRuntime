@@ -1,7 +1,7 @@
 import Agentic
 import AgenticExecution
 import AgenticUsage
-import AgenticWorkspace
+import Workspace
 import Foundation
 
 public extension Agentic {
@@ -11,7 +11,7 @@ public extension Agentic {
         public func environment(
             explicitHome: AgentHome? = nil,
             explicitHomeRootURL: URL? = nil,
-            explicitWorkspace: AgentWorkspace? = nil,
+            explicitWorkspace: Workspace? = nil,
             currentdir: URL = URL(
                 fileURLWithPath: FileManager.default.currentDirectoryPath,
                 isDirectory: true

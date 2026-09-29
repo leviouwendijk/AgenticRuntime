@@ -1,25 +1,25 @@
-import AgenticWorkspace
+import Workspace
 import Foundation
 
-public struct AgentWorkspaceAccessLeases:
+public struct WorkspaceAccessLeases:
     Sendable,
     Codable,
     Hashable
 {
-    public let values: [AgentWorkspaceAccessLease]
+    public let values: [WorkspaceAccessLease]
 
     public init() {
         self.values = []
     }
 
     public init(
-        values: [AgentWorkspaceAccessLease]
+        values: [WorkspaceAccessLease]
     ) throws {
         var ids: Set<String> = []
 
         for lease in values {
             guard ids.insert(lease.id).inserted else {
-                throw AgentWorkspaceAccessLeasesError
+                throw WorkspaceAccessLeasesError
                     .duplicate_lease(
                         lease.id
                     )
@@ -30,7 +30,7 @@ public struct AgentWorkspaceAccessLeases:
     }
 
     private init(
-        validatedValues: [AgentWorkspaceAccessLease]
+        validatedValues: [WorkspaceAccessLease]
     ) {
         self.values = validatedValues
     }
@@ -48,7 +48,7 @@ public struct AgentWorkspaceAccessLeases:
 
         try self.init(
             values: container.decodeIfPresent(
-                [AgentWorkspaceAccessLease].self,
+                [WorkspaceAccessLease].self,
                 forKey: .values
             ) ?? []
         )
@@ -57,7 +57,7 @@ public struct AgentWorkspaceAccessLeases:
     public func active(
         for turnID: String?,
         at date: Date = Date()
-    ) -> [AgentWorkspaceAccessLease] {
+    ) -> [WorkspaceAccessLease] {
         values.filter { lease in
             lease.isActive(
                 for: turnID,
@@ -67,10 +67,10 @@ public struct AgentWorkspaceAccessLeases:
     }
 
     public func effectiveWorkspace(
-        base: AgentWorkspace?,
+        base: Workspace?,
         turnID: String?,
         at date: Date = Date()
-    ) throws -> AgentWorkspace? {
+    ) throws -> Workspace? {
         let active = active(
             for: turnID,
             at: date
@@ -79,28 +79,30 @@ public struct AgentWorkspaceAccessLeases:
         guard !active.isEmpty else {
             return base
         }
-        guard let base else {
-            throw AgentWorkspaceAccessLeasesError
+        guard var workspace = base else {
+            throw WorkspaceAccessLeasesError
                 .base_workspace_required
         }
 
-        return try base.applying(
-            try active.map { lease in
-                try lease.effectiveOverlay()
-            }
-        )
+        for lease in active {
+            try lease.install(
+                into: &workspace
+            )
+        }
+
+        return workspace
     }
 
     public func activating(
-        _ lease: AgentWorkspaceAccessLease,
-        baseWorkspace: AgentWorkspace?,
+        _ lease: WorkspaceAccessLease,
+        baseWorkspace: Workspace?,
         turnID: String?,
         at date: Date = Date()
     ) throws -> Self {
         if lease.lifetime == .turn,
            lease.sourceTurnID != turnID
         {
-            throw AgentWorkspaceAccessLeasesError
+            throw WorkspaceAccessLeasesError
                 .turn_context_mismatch(
                     expected: lease.sourceTurnID,
                     actual: turnID
@@ -148,7 +150,7 @@ public struct AgentWorkspaceAccessLeases:
     }
 }
 
-public enum AgentWorkspaceAccessLeasesError:
+public enum WorkspaceAccessLeasesError:
     Error,
     Sendable,
     Hashable,
@@ -167,7 +169,7 @@ public enum AgentWorkspaceAccessLeasesError:
             return "Workspace access lease '\(id)' is already active."
 
         case .base_workspace_required:
-            return "Temporary workspace access overlays require an attached base workspace."
+            return "Temporary workspace access requires an attached base workspace."
 
         case .turn_context_mismatch(let expected, let actual):
             return "Turn-scoped workspace access lease belongs to turn '\(expected ?? "none")', not '\(actual ?? "none")'."

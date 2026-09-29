@@ -1,45 +1,41 @@
 import Agentic
 import AgenticExecution
-import AgenticPrograms
 import Foundation
 import Primitives
 
-/// Durable continuation material for an AgentProgram that reaches an
+/// Durable continuation material for an Program that reaches an
 /// interaction boundary.
 ///
 /// This is the persisted representation. Executable resume state is constructed
-/// through AgentProgramCheckpoint.Resume<Program>'s throwing initializer.
-public struct AgentProgramCheckpoint:
+/// through ProgramCheckpoint.Resume<Program>'s throwing initializer.
+public struct ProgramCheckpoint:
     Sendable,
     Codable,
     Hashable
 {
     public var sessionID: String
-    public var programIdentifier: AgentProgramIdentifier
-    public var programVersion: String?
+    public var programIdentifier: ProgramIdentifier
     public var input: JSONValue
     public var realization: JSONValue?
-    public var completedSteps: [AgentProgramStepRecord]
-    public var suspendedStep: AgentProgramStepRecord
+    public var completedSteps: [ProgramStepRecord]
+    public var suspendedStep: ProgramStepRecord
     public var suspension: AgentSuspension
     public var startedAt: Date
     public var metadata: [String: String]
 
     public init(
         sessionID: String,
-        programIdentifier: AgentProgramIdentifier,
-        programVersion: String? = nil,
+        programIdentifier: ProgramIdentifier,
         input: JSONValue,
         realization: JSONValue? = nil,
-        completedSteps: [AgentProgramStepRecord],
-        suspendedStep: AgentProgramStepRecord,
+        completedSteps: [ProgramStepRecord],
+        suspendedStep: ProgramStepRecord,
         suspension: AgentSuspension,
         startedAt: Date,
         metadata: [String: String] = [:]
     ) {
         self.sessionID = sessionID
         self.programIdentifier = programIdentifier
-        self.programVersion = programVersion
         self.input = input
         self.realization = realization
         self.completedSteps = completedSteps
@@ -57,14 +53,14 @@ public struct AgentProgramCheckpoint:
     }
 }
 
-public extension AgentProgramCheckpoint {
-    struct Resume<Program: AgentProgram>: Sendable {
+public extension ProgramCheckpoint {
+    struct Resume<ProgramType: Program>: Sendable {
         public let sessionID: String
-        public let input: Program.Input
-        public let realization: AgentProgramRealization<Program>?
-        public let completedSteps: [AgentProgramStepRecord]
-        public let suspendedStep: AgentProgramStepRecord
-        let interactionResolution: AgentProgramCheckpointResolution
+        public let input: ProgramType.Input
+        public let realization: ProgramRealization<ProgramType>?
+        public let completedSteps: [ProgramStepRecord]
+        public let suspendedStep: ProgramStepRecord
+        let interactionResolution: ProgramCheckpointResolution
         public let startedAt: Date
         public let metadata: [String: String]
 
@@ -109,26 +105,16 @@ public extension AgentProgramCheckpoint {
         }
 
         public init(
-            checkpoint: AgentProgramCheckpoint,
+            checkpoint: ProgramCheckpoint,
             response: AgentInteraction.Response
         ) throws {
             guard checkpoint.programIdentifier
-                    == Program.descriptor.identifier
+                    == ProgramType.definition.identifier
             else {
-                throw AgentProgramReplayError.program_mismatch(
+                throw ProgramReplayError.program_mismatch(
                     expected: checkpoint.programIdentifier,
-                    actual: Program.descriptor.identifier
+                    actual: ProgramType.definition.identifier
                 )
-            }
-
-            guard checkpoint.programVersion
-                    == Program.descriptor.version
-            else {
-                throw AgentProgramReplayError
-                    .program_version_mismatch(
-                        expected: checkpoint.programVersion,
-                        actual: Program.descriptor.version
-                    )
             }
 
             for (expectedIndex, step) in
@@ -137,7 +123,7 @@ public extension AgentProgramCheckpoint {
                 guard step.index == expectedIndex,
                       step.isReplayableCompletedStep
                 else {
-                    throw AgentProgramReplayError
+                    throw ProgramReplayError
                         .invalid_completed_step(
                             index: expectedIndex
                         )
@@ -151,7 +137,7 @@ public extension AgentProgramCheckpoint {
                   checkpoint.suspendedStep.suspension
                     == checkpoint.suspension
             else {
-                throw AgentProgramReplayError.step_mismatch(
+                throw ProgramReplayError.step_mismatch(
                     index: checkpoint.suspendedStep.index
                 )
             }
@@ -172,7 +158,7 @@ public extension AgentProgramCheckpoint {
                 )
             }
 
-            let interactionResolution: AgentProgramCheckpointResolution
+            let interactionResolution: ProgramCheckpointResolution
 
             switch (
                 checkpoint.suspendedStep.kind,
@@ -184,12 +170,12 @@ public extension AgentProgramCheckpoint {
             ):
                 guard pendingApproval.requirement
                         == .needs_human_review,
-                      pendingApproval.toolCall.name
-                        == toolIdentifier.rawValue,
+                      pendingApproval.toolCall.tool
+                        == toolIdentifier,
                       pendingApproval.toolCall.input
                         == checkpoint.suspendedStep.input
                 else {
-                    throw AgentProgramReplayError
+                    throw ProgramReplayError
                         .invalid_suspension
                 }
 
@@ -215,7 +201,7 @@ public extension AgentProgramCheckpoint {
                     request
                 ) == checkpoint.suspendedStep.input
                 else {
-                    throw AgentProgramReplayError
+                    throw ProgramReplayError
                         .invalid_suspension
                 }
 
@@ -237,19 +223,19 @@ public extension AgentProgramCheckpoint {
                 )
 
             default:
-                throw AgentProgramReplayError
+                throw ProgramReplayError
                     .invalid_suspension
             }
 
             let input = try JSONToolBridge.decode(
-                Program.Input.self,
+                ProgramType.Input.self,
                 from: checkpoint.input
             )
-            let realization: AgentProgramRealization<Program>?
+            let realization: ProgramRealization<ProgramType>?
 
             if let value = checkpoint.realization {
                 realization = try JSONToolBridge.decode(
-                    AgentProgramRealization<Program>.self,
+                    ProgramRealization<ProgramType>.self,
                     from: value
                 )
             } else {
@@ -272,22 +258,18 @@ public extension AgentProgramCheckpoint {
     }
 }
 
-public enum AgentProgramReplayError:
+public enum ProgramReplayError:
     Error,
     Sendable,
     LocalizedError
 {
-    case tool_resume_unsupported(AgentToolIdentifier)
+    case tool_resume_unsupported(ToolIdentifier)
     case nested_program_suspension_unsupported(
-        AgentProgramIdentifier
+        ProgramIdentifier
     )
     case program_mismatch(
-        expected: AgentProgramIdentifier,
-        actual: AgentProgramIdentifier
-    )
-    case program_version_mismatch(
-        expected: String?,
-        actual: String?
+        expected: ProgramIdentifier,
+        actual: ProgramIdentifier
     )
     case invalid_completed_step(index: Int)
     case invalid_suspension
@@ -305,9 +287,6 @@ public enum AgentProgramReplayError:
         case .program_mismatch(let expected, let actual):
             return "Program checkpoint belongs to '\(expected.rawValue)', not '\(actual.rawValue)'."
 
-        case .program_version_mismatch(let expected, let actual):
-            return "Program checkpoint version '\(expected ?? "<none>")' does not match '\(actual ?? "<none>")'."
-
         case .invalid_completed_step(let index):
             return "Program checkpoint contains a non-replayable completed step at index \(index)."
 
@@ -323,14 +302,14 @@ public enum AgentProgramReplayError:
     }
 }
 
-struct AgentProgramSuspensionSignal:
+struct ProgramSuspensionSignal:
     Error,
     Sendable
 {
     let suspension: AgentSuspension
 }
 
-enum AgentProgramCheckpointResolution:
+enum ProgramCheckpointResolution:
     Sendable
 {
     case approval(
@@ -343,20 +322,20 @@ enum AgentProgramCheckpointResolution:
     )
 }
 
-struct AgentProgramResumeResolution:
+struct ProgramResumeResolution:
     Sendable
 {
     let pendingApproval: PendingApproval
     let decision: ApprovalDecision
 }
 
-actor AgentProgramResumeControl {
-    private let expectedStep: AgentProgramStepRecord
-    private let interactionResolution: AgentProgramCheckpointResolution
+actor ProgramResumeControl {
+    private let expectedStep: ProgramStepRecord
+    private let interactionResolution: ProgramCheckpointResolution
     private var consumed = false
 
-    init<Program: AgentProgram>(
-        resume: AgentProgramCheckpoint.Resume<Program>
+    init<ProgramType: Program>(
+        resume: ProgramCheckpoint.Resume<ProgramType>
     ) {
         self.expectedStep = resume.suspendedStep
         self.interactionResolution = resume.interactionResolution
@@ -364,16 +343,16 @@ actor AgentProgramResumeControl {
 
     func resolution(
         at index: Int,
-        identifier: AgentToolIdentifier,
+        identifier: ToolIdentifier,
         input: JSONValue
-    ) throws -> AgentProgramResumeResolution? {
+    ) throws -> ProgramResumeResolution? {
         if index < expectedStep.index {
             return nil
         }
 
         if index > expectedStep.index {
             guard consumed else {
-                throw AgentProgramReplayError.step_mismatch(
+                throw ProgramReplayError.step_mismatch(
                     index: index
                 )
             }
@@ -388,11 +367,11 @@ actor AgentProgramResumeControl {
                   let pendingApproval,
                   let decision
               ) = interactionResolution,
-              pendingApproval.toolCall.name
-                == identifier.rawValue,
+              pendingApproval.toolCall.tool
+                == identifier,
               pendingApproval.toolCall.input == input
         else {
-            throw AgentProgramReplayError.step_mismatch(
+            throw ProgramReplayError.step_mismatch(
                 index: index
             )
         }
@@ -415,7 +394,7 @@ actor AgentProgramResumeControl {
 
         if index > expectedStep.index {
             guard consumed else {
-                throw AgentProgramReplayError.step_mismatch(
+                throw ProgramReplayError.step_mismatch(
                     index: index
                 )
             }
@@ -436,7 +415,7 @@ actor AgentProgramResumeControl {
               ) = interactionResolution,
               resumedRequest == request
         else {
-            throw AgentProgramReplayError.step_mismatch(
+            throw ProgramReplayError.step_mismatch(
                 index: index
             )
         }
@@ -447,7 +426,7 @@ actor AgentProgramResumeControl {
 
     func requireConsumed() throws {
         guard consumed else {
-            throw AgentProgramReplayError
+            throw ProgramReplayError
                 .suspended_step_not_consumed(
                     index: expectedStep.index
                 )

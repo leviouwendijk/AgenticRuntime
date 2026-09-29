@@ -1,8 +1,16 @@
 import Agentic
 import AgenticExecution
 import Foundation
+import Macros
+import Schema
 
-public struct AgentSessionSummary: Sendable, Codable, Hashable, Identifiable {
+@JSONSchema
+public struct AgentSessionSummary:
+    Sendable,
+    Codable,
+    Hashable,
+    Identifiable
+{
     public let metadata: AgentSessionMetadata
     public let hasCheckpoint: Bool
     public let hasTranscript: Bool
@@ -31,7 +39,12 @@ public struct AgentSessionSummary: Sendable, Codable, Hashable, Identifiable {
     }
 }
 
-public struct AgentSessionInspection: Sendable, Codable, Hashable {
+@JSONSchema
+public struct AgentSessionInspection:
+    Sendable,
+    Codable,
+    Hashable
+{
     public let summary: AgentSessionSummary
     public let transcriptEventCount: Int
     public let approvalEventCount: Int
@@ -255,7 +268,7 @@ public struct AgentSessionCatalog: Sendable {
 
     public func loadTranscript(
         sessionID: String
-    ) async throws -> [AgentTranscriptEvent] {
+    ) async throws -> [TranscriptEvent] {
         guard
             let transcriptfile = environment.transcriptfile(
                 sessionID: sessionID

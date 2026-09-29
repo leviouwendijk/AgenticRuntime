@@ -3,7 +3,7 @@ import AgenticExecution
 
 public typealias OperatorSessionCatalogToolSet = SessionCatalogToolSet
 
-public struct SessionCatalogToolSet: AgentToolSet {
+public struct SessionCatalogToolSet: AgentToolProvider {
     public let catalog: AgentSessionCatalog
 
     public init(
@@ -12,7 +12,7 @@ public struct SessionCatalogToolSet: AgentToolSet {
         self.catalog = catalog
     }
 
-    public func register(
+    public func registerTools(
         into registry: inout ToolRegistry
     ) throws {
         try registry.register {

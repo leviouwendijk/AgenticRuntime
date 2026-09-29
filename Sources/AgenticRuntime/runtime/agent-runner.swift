@@ -1,8 +1,8 @@
 import Agentic
 import AgenticExecution
-import AgenticTools
+import AgenticStandard
 import AgenticUsage
-import AgenticWorkspace
+import Workspace
 import Foundation
 
 public actor AgentRunner {
@@ -205,11 +205,11 @@ extension AgentRunner {
 
         if configuration.toolExposure.usesDiscovery,
            registry.registeredTool(
-               identifiedBy: FindToolsTool.identifier
+               identifiedBy: Standard.Tools.FindTools.identifier
            ) == nil {
             try registry.register(
-                FindToolsTool(
-                    registry: registry,
+                Standard.Tools.FindTools(
+                    availability: registry,
                     exposure: exposure
                 )
             )

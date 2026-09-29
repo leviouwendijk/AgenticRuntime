@@ -1,34 +1,38 @@
-import AgenticWorkspace
+import AgenticIO
+import Workspace
 import Foundation
+import Path
 
-public struct AgentWorkspaceAccessLease:
+public struct WorkspaceAccessLease:
     Sendable,
     Codable,
     Hashable,
     Identifiable
 {
     public let id: String
-    public let overlay: WorkspaceAccessOverlay
-    public let lifetime: PathGrantLifetime
+    public let request: WorkspaceAccessRequest
+    public let lifetime: WorkspaceAccessLifetime
     public let activatedAt: Date
     public let expiresAt: Date?
     public let sourceTurnID: String?
 
     public init(
         id: String = UUID().uuidString,
-        overlay: WorkspaceAccessOverlay,
-        lifetime: PathGrantLifetime,
+        request: WorkspaceAccessRequest,
+        lifetime: WorkspaceAccessLifetime,
         durationSeconds: TimeInterval? = nil,
         activatedAt: Date = Date(),
         sourceTurnID: String? = nil
     ) throws {
+        let durationSeconds = durationSeconds
+            ?? request.durationSeconds
         let expiresAt: Date?
 
         if let durationSeconds {
             guard durationSeconds.isFinite,
                   durationSeconds >= 0
             else {
-                throw AgentWorkspaceAccessLeaseError
+                throw WorkspaceAccessLeaseError
                     .invalid_duration(
                         durationSeconds
                     )
@@ -43,7 +47,7 @@ public struct AgentWorkspaceAccessLease:
 
         try self.init(
             id: id,
-            overlay: overlay,
+            request: request,
             lifetime: lifetime,
             activatedAt: activatedAt,
             expiresAt: expiresAt,
@@ -53,8 +57,8 @@ public struct AgentWorkspaceAccessLease:
 
     private init(
         id: String,
-        overlay: WorkspaceAccessOverlay,
-        lifetime: PathGrantLifetime,
+        request: WorkspaceAccessRequest,
+        lifetime: WorkspaceAccessLifetime,
         activatedAt: Date,
         expiresAt: Date?,
         sourceTurnID: String?
@@ -64,7 +68,7 @@ public struct AgentWorkspaceAccessLease:
         )
 
         guard !id.isEmpty else {
-            throw AgentWorkspaceAccessLeaseError.empty_id
+            throw WorkspaceAccessLeaseError.empty_id
         }
 
         let sourceTurnID = sourceTurnID?
@@ -76,7 +80,7 @@ public struct AgentWorkspaceAccessLease:
             guard let sourceTurnID,
                   !sourceTurnID.isEmpty
             else {
-                throw AgentWorkspaceAccessLeaseError
+                throw WorkspaceAccessLeaseError
                     .turn_lifetime_requires_turn_id
             }
         }
@@ -89,7 +93,7 @@ public struct AgentWorkspaceAccessLease:
             guard duration.isFinite,
                   duration >= 0
             else {
-                throw AgentWorkspaceAccessLeaseError
+                throw WorkspaceAccessLeaseError
                     .invalid_duration(
                         duration
                     )
@@ -97,7 +101,7 @@ public struct AgentWorkspaceAccessLease:
         }
 
         self.id = id
-        self.overlay = overlay
+        self.request = request
         self.lifetime = lifetime
         self.activatedAt = activatedAt
         self.expiresAt = expiresAt
@@ -106,7 +110,7 @@ public struct AgentWorkspaceAccessLease:
 
     private enum CodingKeys: String, CodingKey {
         case id
-        case overlay
+        case request
         case lifetime
         case activatedAt
         case expiresAt
@@ -125,12 +129,12 @@ public struct AgentWorkspaceAccessLease:
                 String.self,
                 forKey: .id
             ),
-            overlay: container.decode(
-                WorkspaceAccessOverlay.self,
-                forKey: .overlay
+            request: container.decode(
+                WorkspaceAccessRequest.self,
+                forKey: .request
             ),
             lifetime: container.decode(
-                PathGrantLifetime.self,
+                WorkspaceAccessLifetime.self,
                 forKey: .lifetime
             ),
             activatedAt: container.decode(
@@ -167,65 +171,71 @@ public struct AgentWorkspaceAccessLease:
         }
     }
 
-    public func effectiveOverlay() throws -> WorkspaceAccessOverlay {
-        try WorkspaceAccessOverlay(
-            roots: try overlay.roots.map { grantedRoot in
-                try .init(
-                    root: grantedRoot.root,
-                    grant: effectiveGrant(
-                        grantedRoot.grant
-                    ),
-                    selection: grantedRoot.selection
-                )
-            },
-            grants: overlay.grants.map(
-                effectiveGrant
-            )
+    public func install(
+        into workspace: inout Workspace
+    ) throws {
+        let rootIdentifier = PathAccessRootIdentifier(
+            rawValue: request.rootID
         )
-    }
-}
+        let rootURL = URL(
+            fileURLWithPath: request.rootPath,
+            isDirectory: true
+        )
+        .standardizedFileURL
+        .resolvingSymlinksInPath()
 
-private extension AgentWorkspaceAccessLease {
-    func effectiveGrant(
-        _ grant: PathGrant
-    ) -> PathGrant {
-        let effectiveExpiresAt: Date?
+        let root = PathAccessRoot(
+            id: rootIdentifier,
+            label: request.label,
+            scope: try PathAccessScope(
+                root: rootURL,
+                policy: .defaults.workspace
+            ),
+            isDefault: false
+        )
+        let grant = try WorkspaceGrant(
+            id: WorkspaceGrantIdentifier(
+                "workspace-access-\(id)"
+            ),
+            rootIdentifier: rootIdentifier,
+            capabilities: Set(
+                request.capabilities
+            ),
+            expiresAt: expiresAt
+        )
 
-        switch (
-            grant.expiresAt,
-            expiresAt
+        if let existing = workspace.root(
+            identifier: rootIdentifier
         ) {
-        case (.some(let grantExpiry), .some(let leaseExpiry)):
-            effectiveExpiresAt = min(
-                grantExpiry,
-                leaseExpiry
+            guard existing.rootURL
+                .standardizedFileURL
+                .resolvingSymlinksInPath()
+                == rootURL
+            else {
+                throw WorkspaceAccessLeaseError
+                    .root_identifier_conflict(
+                        rootIdentifier.rawValue
+                    )
+            }
+
+            _ = try workspace.install(
+                grant
             )
-
-        case (.some(let grantExpiry), .none):
-            effectiveExpiresAt = grantExpiry
-
-        case (.none, .some(let leaseExpiry)):
-            effectiveExpiresAt = leaseExpiry
-
-        case (.none, .none):
-            effectiveExpiresAt = nil
+            return
         }
 
-        return .init(
-            id: grant.id,
-            rootID: grant.rootID,
-            mode: grant.mode,
-            capabilities: grant.capabilities,
-            allowedTools: grant.allowedTools,
-            reason: grant.reason,
-            expiresAt: effectiveExpiresAt,
-            sourcePreparedIntentID: grant.sourcePreparedIntentID,
-            metadata: grant.metadata
-        )
+        _ = try workspace.install { installation in
+            installation.install(
+                root
+            )
+            installation.install(
+                grant
+            )
+        }
     }
 }
 
-public enum AgentWorkspaceAccessLeaseError:
+public enum WorkspaceAccessLeaseError:
     Error,
     Sendable,
     Hashable,
@@ -234,6 +244,7 @@ public enum AgentWorkspaceAccessLeaseError:
     case empty_id
     case turn_lifetime_requires_turn_id
     case invalid_duration(TimeInterval)
+    case root_identifier_conflict(String)
 
     public var errorDescription: String? {
         switch self {
@@ -245,6 +256,9 @@ public enum AgentWorkspaceAccessLeaseError:
 
         case .invalid_duration(let duration):
             return "Workspace access lease duration '\(duration)' must be finite and non-negative."
+
+        case .root_identifier_conflict(let identifier):
+            return "Workspace access lease root '\(identifier)' conflicts with an existing workspace root."
         }
     }
 }

@@ -1,6 +1,6 @@
 import Agentic
 import AgenticExecution
-import AgenticWorkspace
+import Workspace
 import Primitives
 import Schema
 import Macros
@@ -25,16 +25,17 @@ public struct ReadAgentTranscriptToolInput: Sendable, Codable, Hashable {
     }
 }
 
+@JSONSchema
 public struct ReadAgentTranscriptToolOutput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let totalEventCount: Int
     public let returnedEventCount: Int
-    public let events: [AgentTranscriptEvent]
+    public let events: [TranscriptEvent]
 
     public init(
         sessionID: String,
         totalEventCount: Int,
-        events: [AgentTranscriptEvent]
+        events: [TranscriptEvent]
     ) {
         self.sessionID = sessionID
         self.totalEventCount = totalEventCount
@@ -43,15 +44,21 @@ public struct ReadAgentTranscriptToolOutput: Sendable, Codable, Hashable {
     }
 }
 
-public struct ReadAgentTranscriptTool: AgentTool {
+public struct ReadAgentTranscriptTool: Tool {
     public typealias Input = ReadAgentTranscriptToolInput
     public typealias Output = ReadAgentTranscriptToolOutput
 
-    public static let identifier: AgentToolIdentifier = "read_agent_transcript"
+    public static let identifier: ToolIdentifier = "read_agent_transcript"
     public static let description = "Read transcript events for a durable Agentic session."
     public static let risk: ActionRisk = .observe
 
-    public var identifier: AgentToolIdentifier {
+    public static let definition: ToolDefinition = .init(
+        identifier: Self.identifier,
+        purpose: Self.description,
+        risk: Self.risk
+    )
+
+    public var identifier: ToolIdentifier {
         Self.identifier
     }
 
@@ -73,13 +80,12 @@ public struct ReadAgentTranscriptTool: AgentTool {
 
     public func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
 
         return .init(
-            toolName: name,
-            risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
+            tool: Self.definition.identifier,
+            risk: Self.definition.risk,
             summary: "Read transcript events for session \(input.sessionID).",
             sideEffects: []
         )
@@ -87,7 +93,7 @@ public struct ReadAgentTranscriptTool: AgentTool {
 
     public func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> Output {
 
         var events = try await catalog.loadTranscript(

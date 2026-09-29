@@ -40,7 +40,7 @@ public struct AgentStreamAccumulator: Sendable {
     }
 
     private mutating func append(
-        _ block: AgentContentBlock
+        _ block: MessageContentBlock
     ) {
         guard case .text(let incomingText) = block,
               let last = partial.blocks.last,

@@ -2,12 +2,12 @@ import Agentic
 import AgenticExecution
 
 public struct PendingApproval: Sendable, Codable, Hashable {
-    public let toolCall: AgentToolCall
+    public let toolCall: ToolCall
     public let preflight: ToolPreflight
     public let requirement: ApprovalRequirement
 
     public init(
-        toolCall: AgentToolCall,
+        toolCall: ToolCall,
         preflight: ToolPreflight,
         requirement: ApprovalRequirement
     ) {

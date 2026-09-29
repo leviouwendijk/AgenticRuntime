@@ -1,6 +1,6 @@
 import Agentic
 import AgenticExecution
-import AgenticWorkspace
+import Workspace
 import Primitives
 import Schema
 import Macros
@@ -36,6 +36,7 @@ public struct ReadAgentArtifactToolInput: Sendable, Codable, Hashable {
     }
 }
 
+@JSONSchema
 public struct ReadAgentArtifactToolOutput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let artifact: AgentArtifact
@@ -55,15 +56,21 @@ public struct ReadAgentArtifactToolOutput: Sendable, Codable, Hashable {
     }
 }
 
-public struct ReadAgentArtifactTool: AgentTool {
+public struct ReadAgentArtifactTool: Tool {
     public typealias Input = ReadAgentArtifactToolInput
     public typealias Output = ReadAgentArtifactToolOutput
 
-    public static let identifier: AgentToolIdentifier = "read_agent_artifact"
+    public static let identifier: ToolIdentifier = "read_agent_artifact"
     public static let description = "Read an artifact emitted for a durable Agentic session."
     public static let risk: ActionRisk = .observe
 
-    public var identifier: AgentToolIdentifier {
+    public static let definition: ToolDefinition = .init(
+        identifier: Self.identifier,
+        purpose: Self.description,
+        risk: Self.risk
+    )
+
+    public var identifier: ToolIdentifier {
         Self.identifier
     }
 
@@ -85,13 +92,12 @@ public struct ReadAgentArtifactTool: AgentTool {
 
     public func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
 
         return .init(
-            toolName: name,
-            risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
+            tool: Self.definition.identifier,
+            risk: Self.definition.risk,
             summary: "Read artifact \(input.id) for session \(input.sessionID).",
             sideEffects: []
         )
@@ -99,7 +105,7 @@ public struct ReadAgentArtifactTool: AgentTool {
 
     public func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> Output {
 
         let record = try await catalog.loadArtifact(

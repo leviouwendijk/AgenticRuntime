@@ -1,9 +1,7 @@
 import Agentic
 import AgenticExecution
-import AgenticInference
-import AgenticPrograms
 import AgenticUsage
-import AgenticWorkspace
+import Workspace
 
 /// Shared execution capabilities available to Runtime consumers.
 ///
@@ -44,12 +42,12 @@ public struct AgentRuntimeServices: Sendable {
     /// derived from run configuration and checkpoint state by the runner.
     public struct Tooling: Sendable {
         public var registry: ToolRegistry
-        public var workspace: AgentWorkspace?
+        public var workspace: WorkspaceContext?
         public var approvalHandler: (any ToolApprovalHandler)?
 
         public init(
             registry: ToolRegistry = .init(),
-            workspace: AgentWorkspace? = nil,
+            workspace: WorkspaceContext? = nil,
             approvalHandler: (any ToolApprovalHandler)? = nil
         ) {
             self.registry = registry
@@ -68,7 +66,7 @@ public struct AgentRuntimeServices: Sendable {
         }
 
         public func using(
-            workspace: AgentWorkspace?
+            workspace: WorkspaceContext?
         ) -> Self {
             .init(
                 registry: registry,
@@ -112,19 +110,19 @@ public struct AgentRuntimeServices: Sendable {
         }
     }
 
-    /// Program execution capabilities currently consumed by AgentProgramRunner.
+    /// Program execution capabilities currently consumed by ProgramRunner.
     ///
-    /// Inference consumes AgenticInference's canonical executor directly; tools
+    /// Inference consumes Agentic's canonical executor directly; tools
     /// retain their governed Runtime boundary for approval and resume semantics.
     public struct Program: Sendable {
-        public var inference: (any AgentInferenceExecuting)?
-        public var tools: (any AgentProgramToolExecuting)?
-        public var invoker: (any AgentProgramInvoking)?
+        public var inference: (any InferenceExecuting)?
+        public var tools: (any ProgramToolExecuting)?
+        public var invoker: (any ProgramInvoking)?
 
         public init(
-            inference: (any AgentInferenceExecuting)? = nil,
-            tools: (any AgentProgramToolExecuting)? = nil,
-            invoker: (any AgentProgramInvoking)? = nil
+            inference: (any InferenceExecuting)? = nil,
+            tools: (any ProgramToolExecuting)? = nil,
+            invoker: (any ProgramInvoking)? = nil
         ) {
             self.inference = inference
             self.tools = tools

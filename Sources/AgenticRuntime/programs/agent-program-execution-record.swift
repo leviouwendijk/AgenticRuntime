@@ -1,11 +1,8 @@
 import Agentic
-import AgenticInference
-import AgenticPrograms
-import AgenticRecovery
 import Foundation
 import Primitives
 
-public enum AgentProgramExecutionOutcome:
+public enum ProgramExecutionOutcome:
     String,
     Sendable,
     Codable,
@@ -16,21 +13,21 @@ public enum AgentProgramExecutionOutcome:
     case failed
 }
 
-public enum AgentProgramStepKind:
+public enum ProgramStepKind:
     Sendable,
     Codable,
     Hashable
 {
     case inference(
-        site: AgentInferenceSiteIdentifier,
-        inference: AgentInferenceIdentifier
+        site: InferenceSiteIdentifier,
+        inference: InferenceIdentifier
     )
-    case tool(AgentToolIdentifier)
+    case tool(ToolIdentifier)
     case user_input
-    case program(AgentProgramIdentifier)
+    case program(ProgramIdentifier)
 }
 
-public struct AgentProgramFailureRecord:
+public struct ProgramFailureRecord:
     Sendable,
     Codable,
     Hashable
@@ -65,7 +62,7 @@ public struct AgentProgramFailureRecord:
     }
 }
 
-public struct AgentProgramStepRecord:
+public struct ProgramStepRecord:
     Sendable,
     Codable,
     Hashable
@@ -75,12 +72,12 @@ public struct AgentProgramStepRecord:
         Codable,
         Hashable
     {
-        public var realization: AgentInferenceRealization?
-        public var execution: AgentInferenceExecutionRecord?
+        public var realization: InferenceRealizationConfiguration?
+        public var execution: InferenceExecutionRecord?
 
         public init(
-            realization: AgentInferenceRealization? = nil,
-            execution: AgentInferenceExecutionRecord? = nil
+            realization: InferenceRealizationConfiguration? = nil,
+            execution: InferenceExecutionRecord? = nil
         ) {
             self.realization = realization
             self.execution = execution
@@ -88,14 +85,14 @@ public struct AgentProgramStepRecord:
     }
 
     public var index: Int
-    public var kind: AgentProgramStepKind
+    public var kind: ProgramStepKind
     public var input: JSONValue
     public var output: JSONValue?
-    public var toolResult: AgentToolResult?
+    public var toolResult: ToolResult?
     public var inference: Inference
     public var recovery: Recovery.Record?
     public var suspension: AgentSuspension?
-    public var failure: AgentProgramFailureRecord?
+    public var failure: ProgramFailureRecord?
     public var startedAt: Date
     public var completedAt: Date
     public var durationMilliseconds: Int
@@ -103,14 +100,14 @@ public struct AgentProgramStepRecord:
 
     public init(
         index: Int,
-        kind: AgentProgramStepKind,
+        kind: ProgramStepKind,
         input: JSONValue,
         output: JSONValue? = nil,
-        toolResult: AgentToolResult? = nil,
+        toolResult: ToolResult? = nil,
         inference: Inference = .init(),
         recovery: Recovery.Record? = nil,
         suspension: AgentSuspension? = nil,
-        failure: AgentProgramFailureRecord? = nil,
+        failure: ProgramFailureRecord? = nil,
         startedAt: Date,
         completedAt: Date,
         durationMilliseconds: Int,
@@ -132,22 +129,20 @@ public struct AgentProgramStepRecord:
     }
 }
 
-public struct AgentProgramExecutionRecord:
+public struct ProgramExecutionRecord:
     Sendable,
     Codable,
     Hashable
 {
     public var sessionID: String?
-    public var programIdentifier: AgentProgramIdentifier
-    public var programVersion: String?
-    public var realizationIdentifier: AgentProgramRealizationIdentifier?
+    public var programIdentifier: ProgramIdentifier
     public var input: JSONValue
     public var output: JSONValue?
-    public var steps: [AgentProgramStepRecord]
-    public var outcome: AgentProgramExecutionOutcome
+    public var steps: [ProgramStepRecord]
+    public var outcome: ProgramExecutionOutcome
     public var suspension: AgentSuspension?
-    public var checkpoint: AgentProgramCheckpoint?
-    public var failure: AgentProgramFailureRecord?
+    public var checkpoint: ProgramCheckpoint?
+    public var failure: ProgramFailureRecord?
     public var startedAt: Date
     public var completedAt: Date
     public var durationMilliseconds: Int
@@ -155,16 +150,14 @@ public struct AgentProgramExecutionRecord:
 
     public init(
         sessionID: String? = nil,
-        programIdentifier: AgentProgramIdentifier,
-        programVersion: String? = nil,
-        realizationIdentifier: AgentProgramRealizationIdentifier? = nil,
+        programIdentifier: ProgramIdentifier,
         input: JSONValue,
         output: JSONValue? = nil,
-        steps: [AgentProgramStepRecord] = [],
-        outcome: AgentProgramExecutionOutcome,
+        steps: [ProgramStepRecord] = [],
+        outcome: ProgramExecutionOutcome,
         suspension: AgentSuspension? = nil,
-        checkpoint: AgentProgramCheckpoint? = nil,
-        failure: AgentProgramFailureRecord? = nil,
+        checkpoint: ProgramCheckpoint? = nil,
+        failure: ProgramFailureRecord? = nil,
         startedAt: Date,
         completedAt: Date,
         durationMilliseconds: Int,
@@ -172,8 +165,6 @@ public struct AgentProgramExecutionRecord:
     ) {
         self.sessionID = sessionID
         self.programIdentifier = programIdentifier
-        self.programVersion = programVersion
-        self.realizationIdentifier = realizationIdentifier
         self.input = input
         self.output = output
         self.steps = steps
@@ -196,15 +187,15 @@ public struct AgentProgramExecutionRecord:
     }
 }
 
-public struct AgentProgramExecution<Program: AgentProgram>:
+public struct ProgramExecution<ProgramType: Program>:
     Sendable
 {
-    public var output: Program.Output?
-    public var record: AgentProgramExecutionRecord
+    public var output: ProgramType.Output?
+    public var record: ProgramExecutionRecord
 
     public init(
-        output: Program.Output?,
-        record: AgentProgramExecutionRecord
+        output: ProgramType.Output?,
+        record: ProgramExecutionRecord
     ) {
         self.output = output
         self.record = record
@@ -227,19 +218,19 @@ public struct AgentProgramExecution<Program: AgentProgram>:
     }
 }
 
-extension AgentProgramStepRecord {
-    var replayableToolFailure: AgentProgramToolFailure? {
+extension ProgramStepRecord {
+    var replayableToolFailure: ProgramToolFailure? {
         guard case .tool(let identifier) = kind,
               let toolResult,
-              toolResult.name == identifier.rawValue,
+              toolResult.tool == identifier,
               toolResult.isError,
               failure?.type
-                == String(reflecting: AgentProgramToolFailure.self)
+                == String(reflecting: ProgramToolFailure.self)
         else {
             return nil
         }
 
-        return AgentProgramToolFailure(
+        return ProgramToolFailure(
             tool: identifier,
             result: toolResult,
             recovery: recovery

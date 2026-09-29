@@ -1,22 +1,16 @@
 import Agentic
-import AgenticPrograms
 import AgenticRuntime
 import Primitives
+import Schema
 import TestFlows
 
 extension AgenticProgramRuntimeFlowTesting {
     static func runApplicationProgramInstallation()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let defaultRealization =
-            AgentProgramRealization<ApplicationProgramFixture>(
-                id: "fixture.default_realization",
-                inferences: .empty,
-                metadata: [
-                    "source": "application",
-                ]
-            )
+            try ProgramRealization<ApplicationProgramFixture>()
 
         let application = Agentic.application(
             "fixture.program_application"
@@ -45,23 +39,23 @@ extension AgenticProgramRuntimeFlowTesting {
             "runtime realizes application programs into one ProgramRegistry"
         )
         try Expect.equal(
-            runtime.programs.descriptors.map {
+            runtime.programs.definitions.map {
                 $0.identifier
             },
             [
-                ApplicationProgramFixture.descriptor.identifier,
+                ApplicationProgramFixture.definition.identifier,
             ],
             "runtime exposes installed semantic program descriptors"
         )
 
-        let input = try JSONToolBridge.encode(
+        let input = try JSONValue.encoding(
             ApplicationProgramFixture.Input(
                 value: "runtime"
             )
         )
         let defaultExecution = try await runtime.executeProgram(
             identifiedBy: ApplicationProgramFixture
-                .descriptor.identifier,
+                .definition.identifier,
             input: input,
             metadata: [
                 "invocation": "default",
@@ -70,13 +64,13 @@ extension AgenticProgramRuntimeFlowTesting {
 
         try Expect.equal(
             defaultExecution.outcome,
-            AgentProgramExecutionOutcome.succeeded,
-            "runtime erased program invocation delegates to AgentProgramRunner"
+            ProgramExecutionOutcome.succeeded,
+            "runtime erased program invocation delegates to ProgramRunner"
         )
         try Expect.equal(
-            defaultExecution.realizationIdentifier,
-            defaultRealization.id,
-            "runtime program registration applies its typed default realization"
+            defaultRealization.bindings.count,
+            0,
+            "application accepts an empty typed default Program realization"
         )
         try Expect.equal(
             defaultExecution.metadata[
@@ -86,10 +80,10 @@ extension AgenticProgramRuntimeFlowTesting {
             "runtime program execution preserves invocation metadata"
         )
 
-        let defaultOutput = try JSONToolBridge.decode(
-            ApplicationProgramFixture.Output.self,
-            from: defaultExecution.output
-                ?? .null
+        let defaultOutput = try (
+            defaultExecution.output ?? .null
+        ).decode(
+            ApplicationProgramFixture.Output.self
         )
 
         try Expect.equal(
@@ -99,26 +93,20 @@ extension AgenticProgramRuntimeFlowTesting {
         )
 
         let explicitRealization =
-            AgentProgramRealization<ApplicationProgramFixture>(
-                id: "fixture.explicit_realization",
-                inferences: .empty,
-                metadata: [
-                    "source": "invocation",
-                ]
-            )
+            try ProgramRealization<ApplicationProgramFixture>()
         let explicitExecution = try await runtime.executeProgram(
             identifiedBy: ApplicationProgramFixture
-                .descriptor.identifier,
+                .definition.identifier,
             input: input,
-            realization: try JSONToolBridge.encode(
+            realization: try JSONValue.encoding(
                 explicitRealization
             )
         )
 
         try Expect.equal(
-            explicitExecution.realizationIdentifier,
-            explicitRealization.id,
-            "explicit erased realization overrides the registration default at the Runtime boundary"
+            explicitExecution.outcome,
+            .succeeded,
+            "runtime accepts an explicit erased Program realization override"
         )
 
         var unknownRejected = false
@@ -128,7 +116,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 identifiedBy: "fixture.unknown_program",
                 input: input
             )
-        } catch AgentRuntimeProgramExecutionError
+        } catch ProgramExecutionError
             .registrationUnavailable {
             unknownRejected = true
         }
@@ -146,22 +134,16 @@ extension AgenticProgramRuntimeFlowTesting {
             ),
             .field(
                 "program",
-                runtime.programs.descriptors[0]
+                runtime.programs.definitions[0]
                     .identifier.rawValue
             ),
             .field(
-                "default_realization",
-                defaultExecution
-                    .realizationIdentifier?
-                    .rawValue
-                    ?? "none"
+                "default_outcome",
+                defaultExecution.outcome.rawValue
             ),
             .field(
-                "explicit_realization",
-                explicitExecution
-                    .realizationIdentifier?
-                    .rawValue
-                    ?? "none"
+                "explicit_outcome",
+                explicitExecution.outcome.rawValue
             ),
             .field(
                 "output",
@@ -176,33 +158,61 @@ extension AgenticProgramRuntimeFlowTesting {
 }
 
 private struct ApplicationProgramFixture:
-    AgentProgram
+    Program
 {
     struct Input:
         Sendable,
         Codable,
-        Hashable
+        Hashable,
+        JSONSchemaProviding
     {
         let value: String
+
+        static var jsonschema: JSONSchema {
+            .object(
+                properties: [
+                    .init(
+                        name: "value",
+                        schema: .string(),
+                        required: true
+                    ),
+                ],
+                additionalProperties: .disallowed
+            )
+        }
     }
 
     struct Output:
         Sendable,
         Codable,
-        Hashable
+        Hashable,
+        JSONSchemaProviding
     {
         let value: String
+
+        static var jsonschema: JSONSchema {
+            .object(
+                properties: [
+                    .init(
+                        name: "value",
+                        schema: .string(),
+                        required: true
+                    ),
+                ],
+                additionalProperties: .disallowed
+            )
+        }
     }
 
-    static let descriptor = AgentProgramDescriptor(
+    static let definition = ProgramDefinition(
         identifier: "fixture.application_program",
-        title: "Application Program",
-        summary: "Proves AgenticApplication installs Programs into Runtime."
+        purpose: "Proves AgenticApplication installs Programs into Runtime.",
+        title: "Application Program"
     )
 
     func run(
         _ input: Input,
-        in _: AgentProgramContext
+        in _: ProgramContext
     ) async throws -> Output {
         .init(
             value: "echo:\(input.value)"

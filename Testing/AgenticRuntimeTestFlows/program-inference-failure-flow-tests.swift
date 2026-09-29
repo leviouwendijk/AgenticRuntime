@@ -1,40 +1,80 @@
 import Agentic
-import AgenticInference
-import AgenticPrograms
-import AgenticRecovery
 import AgenticRuntime
 import Foundation
 import Primitives
+import Schema
 import TestFlows
 
 private enum RuntimeInferenceFailureMode:
     String,
     Sendable,
     Codable,
-    Hashable
+    Hashable,
+    CaseIterable,
+    JSONSchemaProviding
 {
     case classified
     case unclassified
+
+    static var jsonschema: JSONSchema {
+        .string(
+            cases: allCases.map(\.rawValue)
+        )
+    }
 }
 
 private struct RuntimeInferenceFailureInput:
     Sendable,
     Codable,
-    Hashable
+    Hashable,
+    JSONSchemaProviding
 {
     let mode: RuntimeInferenceFailureMode
+
+    static var jsonschema: JSONSchema {
+        .object(
+            properties: [
+                .init(
+                    name: "mode",
+                    schema: RuntimeInferenceFailureMode.jsonschema,
+                    required: true
+                ),
+            ],
+            additionalProperties: .disallowed
+        )
+    }
 }
 
 private enum RuntimeInferenceFailureFixtureInference:
-    AgentInference
+    Inference
 {
     typealias Input = RuntimeInferenceFailureInput
     typealias Output = String
 
-    static let definition = AgentInferenceDefinition(
+    static let definition = InferenceDefinition(
         identifier: "fixture.runtime_inference_failure",
         purpose: "Fail deterministically to prove Runtime Program inference failure evidence."
     )
+}
+
+private enum RuntimeInferenceFailureFixtureRealization:
+    InferenceRealization
+{
+    typealias InferenceType = RuntimeInferenceFailureFixtureInference
+
+    static let strategy: InferenceStrategyIdentifier = .direct
+    static let instructions = "Fail deterministically."
+    static let budget: InferenceBudget = .singleAttempt
+
+    static let definition =
+        InferenceRealizationDefinition<InferenceType>(
+            identifier: "fixture.runtime_inference_failure.realization",
+            configuration: .init(
+                strategy: strategy,
+                instructions: instructions,
+                budget: budget
+            )
+        )
 }
 
 private enum RuntimeInferenceFailureFixtureError:
@@ -62,26 +102,16 @@ private actor RuntimeInferenceFailureProbe {
 }
 
 private struct RuntimeInferenceFailureExecutor:
-    AgentInferenceExecuting
+    InferenceExecuting
 {
     let probe: RuntimeInferenceFailureProbe
 
-    func execute<Inference: AgentInference>(
-        _ inference: Inference.Type,
-        input: Inference.Input,
-        realization: AgentInferenceRealization
-    ) async throws
-        -> AgentInferenceExecutionResult<Inference.Output>
-    {
-        _ = inference
-        _ = realization
-
-        let encoded = try JSONToolBridge.encode(
-            input
-        )
-        let fixture = try JSONToolBridge.decode(
+    func execute(
+        _ invocation: InferenceInvocation
+    ) async throws -> InferenceInvocationResult {
+        let fixture = try JSONDecoder().decode(
             RuntimeInferenceFailureInput.self,
-            from: encoded
+            from: invocation.input
         )
 
         await probe.record()
@@ -110,17 +140,17 @@ private struct RuntimeInferenceFailureExecutor:
                 attempts: [],
                 outcome: .propagated
             )
-            let recoveryError = AgentInferenceRecoveryError(
+            let recoveryError = InferenceRecoveryError(
                 record: recovery,
                 message: message
             )
-            let attempt = AgentInferenceAttemptFailure(
+            let attempt = InferenceAttemptFailure(
                 index: 0,
-                adapter: AgentInferenceAdapterIdentifier(
+                adapter: InferenceAdapterIdentifier(
                     rawValue: "fixture.runtime_inference_failure.adapter"
                 ),
-                selection: realization.modelSelection,
-                failure: AgentInferenceFailureRecord(
+                selection: invocation.context.modelSelection,
+                failure: InferenceFailureRecord(
                     capturing: recoveryError,
                     recovery: recovery
                 ),
@@ -132,11 +162,11 @@ private struct RuntimeInferenceFailureExecutor:
                 ]
             )
 
-            throw AgentInferenceExecutionFailure(
+            throw InferenceExecutionFailure(
                 attempt: attempt,
-                inference: Inference.definition.identifier,
-                strategy: realization.strategy,
-                budget: realization.budget,
+                inference: invocation.definition.identifier,
+                strategy: invocation.realization.strategy,
+                budget: invocation.realization.budget,
                 metadata: [
                     "fixture": "runtime_program_inference_failure",
                 ]
@@ -150,33 +180,36 @@ private struct RuntimeInferenceFailureExecutor:
 }
 
 private struct RuntimeInferenceFailureProgram:
-    AgentProgram
+    Program
 {
     typealias Input = RuntimeInferenceFailureInput
     typealias Output = String
 
-    static let site: AgentInferenceSiteIdentifier =
-        "fixture.runtime_inference_failure.site"
+    static let site = InferenceSite<
+        RuntimeInferenceFailureProgram,
+        RuntimeInferenceFailureFixtureInference
+    >(
+        identifier: "fixture.runtime_inference_failure.site"
+    )
 
-    static let descriptor = AgentProgramDescriptor(
+    static let definition = ProgramDefinition(
         identifier: "fixture.runtime_inference_failure_program",
-        title: "Runtime Program inference failure",
-        summary: "Proves Runtime threads typed Program inference failure evidence."
+        purpose: "Proves Runtime threads typed Program inference failure evidence.",
+        title: "Runtime Program inference failure"
     )
 
     func run(
         _ input: Input,
-        in context: AgentProgramContext
+        in context: ProgramContext
     ) async throws -> String {
         switch input.mode {
         case .classified:
             return try await context.infer(
-                RuntimeInferenceFailureFixtureInference.self,
-                at: Self.site,
+                Self.site,
                 input: input
             ) { failure -> String in
                 guard
-                    failure.site == Self.site,
+                    failure.site == Self.site.identifier,
                     failure.inference ==
                         RuntimeInferenceFailureFixtureInference
                             .definition
@@ -195,10 +228,9 @@ private struct RuntimeInferenceFailureProgram:
 
         case .unclassified:
             return try await context.infer(
-                RuntimeInferenceFailureFixtureInference.self,
-                at: Self.site,
+                Self.site,
                 input: input
-            ) { _ -> AgentProgramInferenceFailure.Handling<String> in
+            ) { _ -> ProgramInferenceFailure.Handling<String> in
                 .propagate
             }
         }
@@ -207,34 +239,19 @@ private struct RuntimeInferenceFailureProgram:
 
 private func runtimeInferenceFailureRealization()
     throws
-    -> AgentProgramRealization<RuntimeInferenceFailureProgram>
+    -> ProgramRealization<RuntimeInferenceFailureProgram>
 {
-    AgentProgramRealization(
-        id: "fixture.runtime_inference_failure.realization",
-        inferences: try AgentProgramInferenceBindings(
-            [
-                .init(
-                    site: RuntimeInferenceFailureProgram.site,
-                    inference:
-                        RuntimeInferenceFailureFixtureInference
-                            .definition
-                            .identifier,
-                    realization: AgentInferenceRealization(
-                        strategy: .direct,
-                        modelSelection: .executor,
-                        instructions: "Fail deterministically.",
-                        budget: .singleAttempt
-                    )
-                ),
-            ]
+    RuntimeInferenceFailureProgram.realization {
+        RuntimeInferenceFailureProgram.site.use(
+            RuntimeInferenceFailureFixtureRealization.self
         )
-    )
+    }
 }
 
 private func runtimeInferenceFailureRunner(
     probe: RuntimeInferenceFailureProbe
-) -> AgentProgramRunner {
-    AgentProgramRunner(
+) -> ProgramRunner {
+    ProgramRunner(
         services: .init(
             program: .init(
                 inference: RuntimeInferenceFailureExecutor(
@@ -246,8 +263,8 @@ private func runtimeInferenceFailureRunner(
 }
 
 private func failedInferenceStep(
-    in record: AgentProgramExecutionRecord
-) -> AgentProgramStepRecord? {
+    in record: ProgramExecutionRecord
+) -> ProgramStepRecord? {
     record.steps.first { step in
         guard
             case .inference(
@@ -259,7 +276,7 @@ private func failedInferenceStep(
         }
 
         return
-            site == RuntimeInferenceFailureProgram.site &&
+            site == RuntimeInferenceFailureProgram.site.identifier &&
             inference ==
                 RuntimeInferenceFailureFixtureInference
                     .definition
@@ -271,7 +288,7 @@ private func failedInferenceStep(
 extension AgenticProgramRuntimeFlowTesting {
     static func runProgramInferenceFailureRecoveryEvidence()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let realization = try runtimeInferenceFailureRealization()
 
@@ -335,7 +352,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             classifiedFailure.type,
             String(
-                reflecting: AgentProgramInferenceFailure.self
+                reflecting: ProgramInferenceFailure.self
             ),
             "Runtime step records canonical typed Program inference failure"
         )
@@ -426,14 +443,14 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             unclassifiedFailure.type,
             String(
-                reflecting: AgentProgramInferenceFailure.self
+                reflecting: ProgramInferenceFailure.self
             ),
             "unclassified executor error is wrapped in canonical Program failure"
         )
         try Expect.equal(
             rootFailure.type,
             String(
-                reflecting: AgentProgramInferenceFailure.self
+                reflecting: ProgramInferenceFailure.self
             ),
             "root Program failure remains the canonical typed inference failure"
         )

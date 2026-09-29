@@ -15,9 +15,9 @@ let package = Package(
             ]
         ),
         .executable(
-            name: "aprtest",
+            name: "t_ar_main",
             targets: [
-                "AgenticProgramRuntimeTestFlows",
+                "AgenticRuntimeTestFlows",
             ]
         ),
     ],
@@ -27,23 +27,11 @@ let package = Package(
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/AgenticPrograms.git",
-            branch: "master"
-        ),
-        .package(
-            url: "https://github.com/leviouwendijk/AgenticInference.git",
-            branch: "master"
-        ),
-        .package(
             url: "https://github.com/leviouwendijk/AgenticExecution.git",
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/AgenticRecovery.git",
-            branch: "master"
-        ),
-        .package(
-            url: "https://github.com/leviouwendijk/AgenticWorkspace.git",
+            url: "https://github.com/leviouwendijk/Workspace.git",
             branch: "master"
         ),
         .package(
@@ -79,10 +67,6 @@ let package = Package(
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/AgenticTools.git",
-            branch: "master"
-        ),
-        .package(
             url: "https://github.com/leviouwendijk/Concatenation.git",
             branch: "master"
         ),
@@ -108,24 +92,16 @@ let package = Package(
                     package: "Agentic"
                 ),
                 .product(
-                    name: "AgenticPrograms",
-                    package: "AgenticPrograms"
-                ),
-                .product(
-                    name: "AgenticInference",
-                    package: "AgenticInference"
+                    name: "AgenticStandard",
+                    package: "Agentic"
                 ),
                 .product(
                     name: "AgenticExecution",
                     package: "AgenticExecution"
                 ),
                 .product(
-                    name: "AgenticRecovery",
-                    package: "AgenticRecovery"
-                ),
-                .product(
-                    name: "AgenticWorkspace",
-                    package: "AgenticWorkspace"
+                    name: "Workspace",
+                    package: "Workspace"
                 ),
                 .product(
                     name: "AgenticModels",
@@ -138,10 +114,6 @@ let package = Package(
                 .product(
                     name: "AgenticIO",
                     package: "AgenticIO"
-                ),
-                .product(
-                    name: "AgenticTools",
-                    package: "AgenticTools"
                 ),
                 .product(
                     name: "Primitives",
@@ -186,7 +158,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "AgenticProgramRuntimeTestFlows",
+            name: "AgenticRuntimeTestFlows",
             dependencies: [
                 "AgenticRuntime",
                 .product(
@@ -194,28 +166,16 @@ let package = Package(
                     package: "Agentic"
                 ),
                 .product(
-                    name: "AgenticPrograms",
-                    package: "AgenticPrograms"
-                ),
-                .product(
-                    name: "AgenticInference",
-                    package: "AgenticInference"
-                ),
-                .product(
                     name: "AgenticExecution",
                     package: "AgenticExecution"
                 ),
                 .product(
-                    name: "AgenticRecovery",
-                    package: "AgenticRecovery"
+                    name: "Workspace",
+                    package: "Workspace"
                 ),
                 .product(
                     name: "AgenticIO",
                     package: "AgenticIO"
-                ),
-                .product(
-                    name: "AgenticWorkspace",
-                    package: "AgenticWorkspace"
                 ),
                 .product(
                     name: "Path",
@@ -237,10 +197,30 @@ let package = Package(
                     name: "TestFlows",
                     package: "TestFlows"
                 ),
-            ]
+            ],
+            path: "Testing/AgenticRuntimeTestFlows"
         ),
     ],
     swiftLanguageModes: [
         .v6,
     ]
 )
+
+for target in package.targets {
+    switch target.type {
+    case .regular, .executable, .test, .macro:
+        var settings = target.swiftSettings ?? []
+
+        settings.append(
+            .treatAllWarnings(as: .error)
+        )
+
+        target.swiftSettings = settings
+
+    case .plugin, .system, .binary:
+        break
+
+    @unknown default:
+        break
+    }
+}

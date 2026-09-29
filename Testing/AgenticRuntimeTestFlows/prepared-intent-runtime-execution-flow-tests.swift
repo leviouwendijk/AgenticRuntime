@@ -7,7 +7,7 @@ import TestFlows
 extension AgenticProgramRuntimeFlowTesting {
     static func runPreparedIntentRuntimeExecution()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let preparedIntentsdir =
             FileManager.default.temporaryDirectory
@@ -33,19 +33,35 @@ extension AgenticProgramRuntimeFlowTesting {
             RuntimePreparedOperationFixture()
         )
 
+        let operation = try RuntimePreparedOperationFixture.envelope(
+            .init(
+                value: "payload"
+            )
+        )
+        let tool = ToolIdentifier(
+            rawValue: "runtime_fixture"
+        )
+        let preflight = ToolPreflight(
+            tool: tool,
+            risk: .observe,
+            summary: "Exercise canonical Runtime prepared-operation execution."
+        )
+        let prepared = ToolInvocation.Prepared(
+            review: .init(
+                call: .init(
+                    id: "runtime-prepared-intent-call",
+                    tool: tool,
+                    input: .object([:])
+                ),
+                preflight: preflight,
+                requirement: .needs_human_review
+            ),
+            operation: operation
+        )
         let created = try await manager.create(
             PreparedIntentDraft(
                 sessionID: "fixture-session",
-                operation: try RuntimePreparedOperationFixture.envelope(
-                    .init(
-                        value: "payload"
-                    )
-                ),
-                reviewPayload: .init(
-                    title: "Execute Runtime prepared operation",
-                    summary: "Exercise canonical Runtime prepared-operation execution.",
-                    risk: .observe
-                ),
+                invocation: prepared,
                 metadata: [
                     "fixture": "prepared-intent-runtime-execution",
                 ]

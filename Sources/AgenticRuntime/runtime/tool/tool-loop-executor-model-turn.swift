@@ -1,8 +1,8 @@
 import Agentic
 import AgenticExecution
 import AgenticIO
-import AgenticWorkspace
-import AgenticTools
+import Workspace
+import AgenticStandard
 
 extension ToolLoopExecutor {
     func processToolCalls(
@@ -73,7 +73,7 @@ extension ToolLoopExecutor {
                 continue
             }
 
-            if toolCall.name == ClarifyWithUserTool.identifier.rawValue {
+            if toolCall.tool == Standard.Tools.ClarifyWithUser.identifier {
                 suspendToolBatch(
                     for: toolCall,
                     disposition: .suspended_for_user_input,
@@ -128,13 +128,13 @@ extension ToolLoopExecutor {
                     kind: .tool_preflight,
                     iteration: checkpoint.state.iteration,
                     toolCallID: toolCall.id,
-                    toolName: toolCall.name,
+                    toolName: toolCall.tool.rawValue,
                     summary: preflight.summary
                 ),
                 to: &checkpoint
             )
 
-            if toolCall.name == RequestPathGrantTool.identifier.rawValue {
+            if toolCall.tool == SystemIO.Tools.RequestPathGrant.identifier {
                 let execution = try await executeApprovedToolCall(
                     toolCall,
                     preflight: preflight
@@ -191,7 +191,7 @@ extension ToolLoopExecutor {
                         kind: .tool_approved,
                         iteration: checkpoint.state.iteration,
                         toolCallID: toolCall.id,
-                        toolName: toolCall.name,
+                        toolName: toolCall.tool.rawValue,
                         summary: "approved"
                     ),
                     to: &checkpoint
@@ -259,7 +259,7 @@ extension ToolLoopExecutor {
                         kind: .tool_denied,
                         iteration: checkpoint.state.iteration,
                         toolCallID: toolCall.id,
-                        toolName: toolCall.name,
+                        toolName: toolCall.tool.rawValue,
                         summary: "denied by execution policy"
                     ),
                     to: &checkpoint
@@ -295,7 +295,7 @@ extension ToolLoopExecutor {
                             kind: .tool_approved,
                             iteration: checkpoint.state.iteration,
                             toolCallID: toolCall.id,
-                            toolName: toolCall.name,
+                            toolName: toolCall.tool.rawValue,
                             summary: "approved"
                         ),
                         to: &checkpoint
@@ -363,7 +363,7 @@ extension ToolLoopExecutor {
                             kind: .tool_denied,
                             iteration: checkpoint.state.iteration,
                             toolCallID: toolCall.id,
-                            toolName: toolCall.name,
+                            toolName: toolCall.tool.rawValue,
                             summary: "denied after review"
                         ),
                         to: &checkpoint
@@ -404,7 +404,7 @@ extension ToolLoopExecutor {
                             kind: .tool_skipped,
                             iteration: checkpoint.state.iteration,
                             toolCallID: toolCall.id,
-                            toolName: toolCall.name,
+                            toolName: toolCall.tool.rawValue,
                             summary: "skipped after review"
                         ),
                         to: &checkpoint
@@ -440,7 +440,7 @@ extension ToolLoopExecutor {
                             kind: .pending_approval,
                             iteration: checkpoint.state.iteration,
                             toolCallID: toolCall.id,
-                            toolName: toolCall.name,
+                            toolName: toolCall.tool.rawValue,
                             summary: preflight.summary
                         ),
                         to: &checkpoint

@@ -2,14 +2,14 @@ import Agentic
 
 public struct AgentPartialResponse: Sendable, Codable, Hashable {
     public var messageID: String
-    public var blocks: [AgentContentBlock]
-    public var toolCalls: [AgentToolCall]
+    public var blocks: [MessageContentBlock]
+    public var toolCalls: [ToolCall]
     public var metadata: [String: String]
 
     public init(
         messageID: String,
-        blocks: [AgentContentBlock] = [],
-        toolCalls: [AgentToolCall] = [],
+        blocks: [MessageContentBlock] = [],
+        toolCalls: [ToolCall] = [],
         metadata: [String: String] = [:]
     ) {
         self.messageID = messageID
@@ -20,7 +20,7 @@ public struct AgentPartialResponse: Sendable, Codable, Hashable {
 }
 
 public extension AgentPartialResponse {
-    var message: AgentMessage {
+    var message: Message {
         .init(
             id: messageID,
             role: .assistant,

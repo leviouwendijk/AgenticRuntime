@@ -20,7 +20,7 @@ public struct CompactionTrigger: Sendable, Codable, Hashable {
 
 public extension CompactionTrigger {
     func shouldCompact(
-        messages: [AgentMessage]
+        messages: [Message]
     ) -> Bool {
         if let maxMessageCount,
            messages.count > maxMessageCount {
@@ -38,7 +38,7 @@ public extension CompactionTrigger {
     }
 
     func approximateCharacterCount(
-        in messages: [AgentMessage]
+        in messages: [Message]
     ) -> Int {
         messages.reduce(into: 0) { partial, message in
             partial += approximateCharacterCount(
@@ -48,7 +48,7 @@ public extension CompactionTrigger {
     }
 
     func approximateCharacterCount(
-        in message: AgentMessage
+        in message: Message
     ) -> Int {
         message.content.blocks.reduce(into: 0) { partial, block in
             switch block {
@@ -63,10 +63,10 @@ public extension CompactionTrigger {
                 partial += value.metadata.filename?.count ?? 0
 
             case .tool_call(let value):
-                partial += 64 + value.name.count
+                partial += 64 + value.tool.rawValue.count
 
             case .tool_result(let value):
-                partial += 96 + (value.name?.count ?? 0)
+                partial += 96 + (value.tool?.rawValue.count ?? 0)
             }
         }
     }

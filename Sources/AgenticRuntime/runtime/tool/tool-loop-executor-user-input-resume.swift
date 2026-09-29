@@ -1,5 +1,6 @@
 import Agentic
-import AgenticTools
+import AgenticExecution
+import AgenticStandard
 
 extension ToolLoopExecutor {
     func resumeWithUserInput(
@@ -50,7 +51,7 @@ extension ToolLoopExecutor {
         }
 
         let toolName = suspension.metadata["toolName"]
-            ?? ClarifyWithUserTool.identifier.rawValue
+            ?? Standard.Tools.ClarifyWithUser.identifier.rawValue
 
         let response = try UserInputResponse(
             reply,
@@ -71,9 +72,9 @@ extension ToolLoopExecutor {
             new
         }
 
-        let result = AgentToolResult(
+        let result = ToolResult(
             toolCallID: toolCallID,
-            name: toolName,
+            tool: ToolIdentifier(toolName),
             output: try JSONToolBridge.encode(
                 UserInputResumePayload(
                     kind: response.isSkipped
@@ -87,9 +88,9 @@ extension ToolLoopExecutor {
             isError: false
         )
 
-        let toolCall = AgentToolCall(
+        let toolCall = ToolCall(
             id: toolCallID,
-            name: toolName,
+            tool: ToolIdentifier(toolName),
             input: .object([:])
         )
 

@@ -1,14 +1,15 @@
 import Agentic
 import AgenticExecution
-import AgenticTools
-import AgenticWorkspace
+import AgenticIO
+import AgenticStandard
+import Workspace
 import Foundation
 import Primitives
 
 extension ToolLoopExecutor {
     func requestWithCurrentState(
         from request: AgentRequest,
-        messages: [AgentMessage]
+        messages: [Message]
     ) async throws -> AgentRequest {
         let definitions = try await toolDefinitions(
             fallback: request.tools
@@ -25,8 +26,8 @@ extension ToolLoopExecutor {
     }
 
     func toolDefinitions(
-        fallback: [AgentToolDefinition]
-    ) async throws -> [AgentToolDefinition] {
+        fallback: [ToolDescriptor]
+    ) async throws -> [ToolDescriptor] {
         guard !tooling.registry.isEmpty else {
             return fallback
         }
@@ -37,8 +38,8 @@ extension ToolLoopExecutor {
     }
 
     func toolCalls(
-        in message: AgentMessage
-    ) -> [AgentToolCall] {
+        in message: Message
+    ) -> [ToolCall] {
         message.content.blocks.compactMap { block in
             guard case .tool_call(let value) = block else {
                 return nil
@@ -49,12 +50,12 @@ extension ToolLoopExecutor {
     }
 
     func appendToolResultBlock(
-        _ block: AgentContentBlock,
+        _ block: MessageContentBlock,
         to state: inout AgentLoopState
     ) {
         if configuration.appendToolResultsAsMessages {
             state.messages.append(
-                AgentMessage(
+                Message(
                     role: .tool,
                     content: .init(
                         blocks: [block]
@@ -78,7 +79,7 @@ extension ToolLoopExecutor {
         }
 
         state.messages.append(
-            AgentMessage(
+            Message(
                 role: .tool,
                 content: .init(
                     blocks: [block]
@@ -102,75 +103,120 @@ extension ToolLoopExecutor {
     }
 
     func executeApprovedToolCall(
-        _ toolCall: AgentToolCall,
+        _ toolCall: ToolCall,
         preflight: ToolPreflight
-    ) async throws -> AgentToolExecutionResult {
-        try await ToolInvoker(
-            registry: tooling.registry,
-            policy: configuration.toolExecutionPolicy,
-            recovery: configuration.recovery
-        ).executeApproved(
-            toolCall,
-            preflight: preflight,
-            context: AgentToolExecutionContext(
-                workspace: tooling.workspace
+    ) async throws -> ToolExecutionResult {
+        try await executeApprovedToolReview(
+            ToolInvocation.Review(
+                call: toolCall,
+                preflight: preflight,
+                requirement: configuration
+                    .toolExecutionPolicy
+                    .evaluate(preflight)
             )
         )
     }
+
+    func executeApprovedToolCall(
+        _ pendingApproval: PendingApproval
+    ) async throws -> ToolExecutionResult {
+        let invoker = ToolInvoker(
+            registry: tooling.registry,
+            policy: configuration.toolExecutionPolicy,
+            recovery: configuration.recovery
+        )
+        let freshReview = try await invoker.review(
+            pendingApproval.toolCall,
+            workspace: tooling.workspace
+        )
+
+        guard freshReview.preflight == pendingApproval.preflight,
+              freshReview.requirement == pendingApproval.requirement
+        else {
+            throw RuntimeApprovedToolInvocationError.stale_preflight
+        }
+
+        return try await executeApprovedToolReview(
+            freshReview
+        )
+    }
+
+    func executeApprovedToolReview(
+        _ review: ToolInvocation.Review
+    ) async throws -> ToolExecutionResult {
+        let invoker = ToolInvoker(
+            registry: tooling.registry,
+            policy: configuration.toolExecutionPolicy,
+            recovery: configuration.recovery
+        )
+        let invocation = try await invoker.invoke(
+            review,
+            workspace: tooling.workspace,
+            approvalHandler: RuntimeResolvedToolApprovalHandler(
+                decision: .approved
+            )
+        )
+
+        guard case .executed(let execution) = invocation.outcome else {
+            throw RuntimeApprovedToolInvocationError.not_executed
+        }
+
+        return execution
+    }
     func makeDeniedToolResult(
-        for toolCall: AgentToolCall,
+        for toolCall: ToolCall,
         preflight: ToolPreflight,
         requirement: ApprovalRequirement
-    ) throws -> AgentToolResult {
+    ) throws -> ToolResult {
         let payload = ToolDenialPayload(
             kind: "tool_denied",
             toolCallID: toolCall.id,
-            toolName: toolCall.name,
+            toolName: toolCall.tool.rawValue,
             requirement: requirement.rawValue,
             summary: preflight.summary
         )
 
-        return AgentToolResult(
+        return ToolResult(
             toolCallID: toolCall.id,
-            name: toolCall.name,
+            tool: toolCall.tool,
             output: try JSONToolBridge.encode(payload),
             isError: true
         )
     }
 
     func makeSkippedToolResult(
-        for toolCall: AgentToolCall,
+        for toolCall: ToolCall,
         summary: String = "Skipped explicitly by the operator."
-    ) throws -> AgentToolResult {
+    ) throws -> ToolResult {
         let payload = ToolSkipPayload(
             kind: "tool_skipped",
             toolCallID: toolCall.id,
-            toolName: toolCall.name,
+            toolName: toolCall.tool.rawValue,
             summary: summary
         )
 
-        return AgentToolResult(
+        return ToolResult(
             toolCallID: toolCall.id,
-            name: toolCall.name,
+            tool: toolCall.tool,
             output: try JSONToolBridge.encode(payload),
             isError: false
         )
     }
 
     func makeToolErrorResult(
-        for toolCall: AgentToolCall,
+        for toolCall: ToolCall,
         error: Error
-    ) throws -> AgentToolResult {
+    ) throws -> ToolResult {
         let payload = ToolErrorPayload(
             kind: "tool_error",
             toolCallID: toolCall.id,
-            toolName: toolCall.name,
+            toolName: toolCall.tool.rawValue,
             message: localizedDescription(for: error)
         )
 
-        return AgentToolResult(
+        return ToolResult(
             toolCallID: toolCall.id,
-            name: toolCall.name,
+            tool: toolCall.tool,
             output: try JSONToolBridge.encode(payload),
             isError: true
         )
@@ -203,11 +249,11 @@ extension ToolLoopExecutor {
     }
 
     func suspendForUserInput(
-        _ toolCall: AgentToolCall,
+        _ toolCall: ToolCall,
         checkpoint: inout AgentHistoryCheckpoint
     ) async throws -> ToolProcessingOutcome {
         let input = try JSONToolBridge.decode(
-            ClarifyWithUserToolInput.self,
+            Standard.Tools.ClarifyWithUser.Input.self,
             from: toolCall.input
         )
         let request = try input.request()
@@ -215,7 +261,7 @@ extension ToolLoopExecutor {
             request,
             metadata: [
                 "toolCallID": toolCall.id,
-                "toolName": toolCall.name
+                "toolName": toolCall.tool.rawValue
             ]
         )
 
@@ -228,7 +274,7 @@ extension ToolLoopExecutor {
                 kind: .pending_user_input,
                 iteration: checkpoint.state.iteration,
                 toolCallID: toolCall.id,
-                toolName: toolCall.name,
+                toolName: toolCall.tool.rawValue,
                 summary: request.prompt
             ),
             to: &checkpoint
@@ -247,14 +293,14 @@ extension ToolLoopExecutor {
 
     func suspendForWorkspaceAccess(
         _ request: WorkspaceAccessRequest,
-        toolCall: AgentToolCall,
+        toolCall: ToolCall,
         checkpoint: inout AgentHistoryCheckpoint
     ) async throws -> ToolProcessingOutcome {
         let suspension = AgentSuspension.workspace_access(
             request,
             metadata: [
                 "toolCallID": toolCall.id,
-                "toolName": toolCall.name
+                "toolName": toolCall.tool.rawValue
             ]
         )
 
@@ -267,7 +313,7 @@ extension ToolLoopExecutor {
                 kind: .pending_workspace_access,
                 iteration: checkpoint.state.iteration,
                 toolCallID: toolCall.id,
-                toolName: toolCall.name,
+                toolName: toolCall.tool.rawValue,
                 summary: "workspace access resolution required"
             ),
             to: &checkpoint
@@ -393,7 +439,7 @@ extension ToolLoopExecutor {
     }
 
     func recordMessage(
-        _ message: AgentMessage
+        _ message: Message
     ) async throws {
         for sink in recording.eventSinks {
             try await sink.recordMessage(
@@ -403,7 +449,7 @@ extension ToolLoopExecutor {
     }
 
     func recordMessages(
-        _ messages: [AgentMessage]
+        _ messages: [Message]
     ) async throws {
         for message in messages {
             try await recordMessage(
@@ -413,7 +459,7 @@ extension ToolLoopExecutor {
     }
 
     func recordToolCall(
-        _ toolCall: AgentToolCall
+        _ toolCall: ToolCall
     ) async throws {
         for sink in recording.eventSinks {
             try await sink.recordToolCall(
@@ -423,7 +469,7 @@ extension ToolLoopExecutor {
     }
 
     func recordToolResult(
-        _ result: AgentToolResult
+        _ result: ToolResult
     ) async throws {
         for sink in recording.eventSinks {
             try await sink.recordToolResult(
@@ -440,5 +486,24 @@ extension ToolLoopExecutor {
                 event
             )
         }
+    }
+}
+
+private enum RuntimeApprovedToolInvocationError: Error, Sendable {
+    case stale_preflight
+    case not_executed
+}
+
+private struct RuntimeResolvedToolApprovalHandler:
+    ToolApprovalHandler,
+    Sendable
+{
+    let decision: ApprovalDecision
+
+    func decide(
+        on _: ToolPreflight,
+        requirement _: ApprovalRequirement
+    ) async throws -> ApprovalDecision {
+        decision
     }
 }

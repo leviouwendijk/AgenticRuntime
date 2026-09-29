@@ -1,11 +1,11 @@
 import Agentic
 import AgenticExecution
-import AgenticPrograms
 import AgenticRuntime
 import Primitives
 import Schema
 import Macros
 import TestFlows
+import Workspace
 
 private actor GovernedProgramToolProbe {
     private var executionCount = 0
@@ -28,16 +28,16 @@ private struct GovernedProgramToolInput:
     let value: String
 }
 
+@JSONSchema
 private struct GovernedProgramToolOutput:
     Sendable,
     Codable,
     Hashable
 {
     let value: String
-    let sessionID: String?
-    let source: String?
 }
 
+@JSONSchema
 private struct GovernedProgramInput:
     Sendable,
     Codable,
@@ -47,23 +47,23 @@ private struct GovernedProgramInput:
 }
 
 private struct GovernedProgram:
-    AgentProgram
+    Program
 {
     typealias Input = GovernedProgramInput
     typealias Output = GovernedProgramToolOutput
 
-    static let descriptor = AgentProgramDescriptor(
+    static let definition = ProgramDefinition(
         identifier: "fixture.governed_program",
-        title: "Governed Program fixture",
-        summary: "Proves Program tool requests traverse AgenticExecution governance."
+        purpose: "Proves Program tool requests traverse AgenticExecution governance.",
+        title: "Governed Program fixture"
     )
 
     func run(
         _ input: Input,
-        in context: AgentProgramContext
+        in context: ProgramContext
     ) async throws -> Output {
         try await context.invoke(
-            AgentToolIdentifier(
+            ToolIdentifier(
                 "fixture.governed_program_tool"
             ),
             input: GovernedProgramToolInput(
@@ -74,43 +74,54 @@ private struct GovernedProgram:
     }
 }
 
-private struct GovernedProgramTool:
-    AgentTool
+private struct GovernedObserveProgramTool:
+    Tool
 {
     typealias Input = GovernedProgramToolInput
     typealias Output = GovernedProgramToolOutput
 
-    let identifier: AgentToolIdentifier =
-        "fixture.governed_program_tool"
-    let description =
-        "Records execution only after the canonical ToolInvoker governance path permits it."
-    let risk: ActionRisk
+    static let definition = ToolDefinition(
+        identifier: "fixture.governed_program_tool",
+        purpose: "Records execution only after the canonical ToolInvoker governance path permits it.",
+        risk: .observe
+    )
+
     let probe: GovernedProgramToolProbe
-
-    func preflight(
-        _ input: Input,
-        context: AgentToolExecutionContext
-    ) async throws -> ToolPreflight {
-        _ = input
-
-        return ToolPreflight(
-            toolName: identifier.rawValue,
-            risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
-            summary: description
-        )
-    }
 
     func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace _: WorkspaceContext?
     ) async throws -> Output {
         await probe.record()
 
-        return GovernedProgramToolOutput(
-            value: "executed:\(input.value)",
-            sessionID: context.sessionID,
-            source: context.metadata["source"]
+        return .init(
+            value: "executed:\(input.value)"
+        )
+    }
+}
+
+private struct GovernedMutationProgramTool:
+    Tool
+{
+    typealias Input = GovernedProgramToolInput
+    typealias Output = GovernedProgramToolOutput
+
+    static let definition = ToolDefinition(
+        identifier: "fixture.governed_program_tool",
+        purpose: "Records execution only after the canonical ToolInvoker governance path permits it.",
+        risk: .boundedmutate
+    )
+
+    let probe: GovernedProgramToolProbe
+
+    func call(
+        _ input: Input,
+        workspace _: WorkspaceContext?
+    ) async throws -> Output {
+        await probe.record()
+
+        return .init(
+            value: "executed:\(input.value)"
         )
     }
 }
@@ -131,28 +142,21 @@ private struct GovernedProgramApprovalHandler:
 extension AgenticProgramRuntimeFlowTesting {
     static func runProgramGovernedToolExecution()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let observeProbe = GovernedProgramToolProbe()
         let observeRegistry = try ToolRegistry {
-            GovernedProgramTool(
-                risk: .observe,
+            GovernedObserveProgramTool(
                 probe: observeProbe
             )
         }
-        let observeRunner = AgentProgramRunner(
+        let observeRunner = ProgramRunner(
             services: .init(
                 program: .init(
-                    tools: GovernedAgentProgramToolExecutor(
+                    tools: GovernedProgramToolExecutor(
                         registry: observeRegistry,
                         policy: .init(
                             autonomyMode: .auto_observe
-                        ),
-                        context: .init(
-                            sessionID: "program-governance-observe",
-                            metadata: [
-                                "source": "agent_program",
-                            ]
                         )
                     )
                 )
@@ -177,16 +181,6 @@ extension AgenticProgramRuntimeFlowTesting {
             "observe Program receives governed semantic tool output"
         )
         try Expect.equal(
-            observeExecution.output?.sessionID,
-            "program-governance-observe",
-            "Program tool execution preserves Runtime execution context"
-        )
-        try Expect.equal(
-            observeExecution.output?.source,
-            "agent_program",
-            "Program tool execution preserves Program provenance metadata"
-        )
-        try Expect.equal(
             observeCount,
             1,
             "observe Program tool executes exactly once"
@@ -204,15 +198,14 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let reviewProbe = GovernedProgramToolProbe()
         let reviewRegistry = try ToolRegistry {
-            GovernedProgramTool(
-                risk: .boundedmutate,
+            GovernedMutationProgramTool(
                 probe: reviewProbe
             )
         }
-        let reviewRunner = AgentProgramRunner(
+        let reviewRunner = ProgramRunner(
             services: .init(
                 program: .init(
-                    tools: GovernedAgentProgramToolExecutor(
+                    tools: GovernedProgramToolExecutor(
                         registry: reviewRegistry,
                         policy: .init(
                             autonomyMode: .auto_observe
@@ -278,15 +271,14 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let approvedProbe = GovernedProgramToolProbe()
         let approvedRegistry = try ToolRegistry {
-            GovernedProgramTool(
-                risk: .boundedmutate,
+            GovernedMutationProgramTool(
                 probe: approvedProbe
             )
         }
-        let approvedRunner = AgentProgramRunner(
+        let approvedRunner = ProgramRunner(
             services: .init(
                 program: .init(
-                    tools: GovernedAgentProgramToolExecutor(
+                    tools: GovernedProgramToolExecutor(
                         registry: approvedRegistry,
                         policy: .init(
                             autonomyMode: .auto_observe
@@ -329,15 +321,14 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let deniedProbe = GovernedProgramToolProbe()
         let deniedRegistry = try ToolRegistry {
-            GovernedProgramTool(
-                risk: .boundedmutate,
+            GovernedMutationProgramTool(
                 probe: deniedProbe
             )
         }
-        let deniedRunner = AgentProgramRunner(
+        let deniedRunner = ProgramRunner(
             services: .init(
                 program: .init(
-                    tools: GovernedAgentProgramToolExecutor(
+                    tools: GovernedProgramToolExecutor(
                         registry: deniedRegistry,
                         policy: .init(
                             autonomyMode: .auto_observe
@@ -377,15 +368,14 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let skippedProbe = GovernedProgramToolProbe()
         let skippedRegistry = try ToolRegistry {
-            GovernedProgramTool(
-                risk: .boundedmutate,
+            GovernedMutationProgramTool(
                 probe: skippedProbe
             )
         }
-        let skippedRunner = AgentProgramRunner(
+        let skippedRunner = ProgramRunner(
             services: .init(
                 program: .init(
-                    tools: GovernedAgentProgramToolExecutor(
+                    tools: GovernedProgramToolExecutor(
                         registry: skippedRegistry,
                         policy: .init(
                             autonomyMode: .auto_observe
@@ -425,25 +415,24 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let resumedProbe = GovernedProgramToolProbe()
         let resumedRegistry = try ToolRegistry {
-            GovernedProgramTool(
-                risk: .boundedmutate,
+            GovernedMutationProgramTool(
                 probe: resumedProbe
             )
         }
-        let resumedExecutor = GovernedAgentProgramToolExecutor(
+        let resumedExecutor = GovernedProgramToolExecutor(
             registry: resumedRegistry,
             policy: .init(
                 autonomyMode: .auto_observe
             )
         )
-        let resumedInput = try JSONToolBridge.encode(
+        let resumedInput = try JSONValue.encoding(
             GovernedProgramToolInput(
                 value: "resumed"
             )
         )
-        let resumedCall = AgentToolCall(
+        let resumedCall = ToolCall(
             id: "fixture-governed-program-resume",
-            name: "fixture.governed_program_tool",
+            tool: "fixture.governed_program_tool",
             input: resumedInput
         )
         let resumedReview = try await resumedExecutor.invoker.review(
@@ -458,9 +447,8 @@ extension AgenticProgramRuntimeFlowTesting {
             pendingApproval: pendingApproval,
             decision: .approved
         )
-        let resumedOutput = try JSONToolBridge.decode(
-            GovernedProgramToolOutput.self,
-            from: resumedExecution.result.output
+        let resumedOutput = try resumedExecution.result.output.decode(
+            GovernedProgramToolOutput.self
         )
         let resumedCount = await resumedProbe.count()
 

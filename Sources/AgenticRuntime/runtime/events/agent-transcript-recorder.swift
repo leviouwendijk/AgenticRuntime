@@ -1,16 +1,16 @@
 import Agentic
 
 public actor AgentTranscriptRecorder: AgentRunEventSink {
-    public let store: any AgentTranscriptStore
+    public let store: any TranscriptStore
 
     public init(
-        store: any AgentTranscriptStore
+        store: any TranscriptStore
     ) {
         self.store = store
     }
 
     public func recordMessage(
-        _ message: AgentMessage
+        _ message: Message
     ) async throws {
         try await store.append(
             .message(message)
@@ -18,7 +18,7 @@ public actor AgentTranscriptRecorder: AgentRunEventSink {
     }
 
     public func recordToolCall(
-        _ toolCall: AgentToolCall
+        _ toolCall: ToolCall
     ) async throws {
         try await store.append(
             .tool_call(toolCall)
@@ -26,7 +26,7 @@ public actor AgentTranscriptRecorder: AgentRunEventSink {
     }
 
     public func recordToolResult(
-        _ result: AgentToolResult
+        _ result: ToolResult
     ) async throws {
         try await store.append(
             .tool_result(result)
@@ -53,7 +53,7 @@ public actor AgentTranscriptRecorder: AgentRunEventSink {
     }
 
     public func recordSessionBranch(
-        _ event: AgentSessionBranchEvent
+        _ event: SessionBranchEvent
     ) async throws {
         try await store.append(
             .session_branch(event)

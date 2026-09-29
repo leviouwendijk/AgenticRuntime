@@ -1,13 +1,12 @@
 import Agentic
 import AgenticExecution
-import AgenticPrograms
 
 public enum AgenticApplicationComponent:
     Sendable
 {
     case tools([AgentToolRegistration])
     case skills([AgentSkillRegistration])
-    case programs([AgentRuntimeProgramRegistration])
+    case programs([ProgramRegistration])
     case gateways([AgentModelGatewayFactory])
     case modelProviders([any AgentModelProvider])
 }
@@ -114,84 +113,84 @@ public enum AgenticApplicationBuilder {
 @resultBuilder
 public enum AgenticApplicationProgramBuilder {
     public static func buildBlock(
-        _ registrations: [AgentRuntimeProgramRegistration]...
-    ) -> [AgentRuntimeProgramRegistration] {
+        _ registrations: [ProgramRegistration]...
+    ) -> [ProgramRegistration] {
         registrations.flatMap {
             $0
         }
     }
 
-    public static func buildExpression<Program: AgentProgram>(
-        _ program: Program
-    ) -> [AgentRuntimeProgramRegistration] {
+    public static func buildExpression<ProgramType: Program>(
+        _ program: ProgramType
+    ) -> [ProgramRegistration] {
         [
-            AgentRuntimeProgramRegistration(
+            ProgramRegistration(
                 program
             ),
         ]
     }
 
     public static func buildExpression(
-        _ registration: AgentRuntimeProgramRegistration
-    ) -> [AgentRuntimeProgramRegistration] {
+        _ registration: ProgramRegistration
+    ) -> [ProgramRegistration] {
         [
             registration,
         ]
     }
 
     public static func buildExpression(
-        _ registrations: [AgentRuntimeProgramRegistration]
-    ) -> [AgentRuntimeProgramRegistration] {
+        _ registrations: [ProgramRegistration]
+    ) -> [ProgramRegistration] {
         registrations
     }
 
     public static func buildOptional(
-        _ registrations: [AgentRuntimeProgramRegistration]?
-    ) -> [AgentRuntimeProgramRegistration] {
+        _ registrations: [ProgramRegistration]?
+    ) -> [ProgramRegistration] {
         registrations ?? []
     }
 
     public static func buildEither(
-        first registrations: [AgentRuntimeProgramRegistration]
-    ) -> [AgentRuntimeProgramRegistration] {
+        first registrations: [ProgramRegistration]
+    ) -> [ProgramRegistration] {
         registrations
     }
 
     public static func buildEither(
-        second registrations: [AgentRuntimeProgramRegistration]
-    ) -> [AgentRuntimeProgramRegistration] {
+        second registrations: [ProgramRegistration]
+    ) -> [ProgramRegistration] {
         registrations
     }
 
     public static func buildArray(
-        _ registrations: [[AgentRuntimeProgramRegistration]]
-    ) -> [AgentRuntimeProgramRegistration] {
+        _ registrations: [[ProgramRegistration]]
+    ) -> [ProgramRegistration] {
         registrations.flatMap {
             $0
         }
     }
 
     public static func buildLimitedAvailability(
-        _ registrations: [AgentRuntimeProgramRegistration]
-    ) -> [AgentRuntimeProgramRegistration] {
+        _ registrations: [ProgramRegistration]
+    ) -> [ProgramRegistration] {
         registrations
     }
 }
 
 public func programs(
     @AgenticApplicationProgramBuilder
-    _ content: () -> [AgentRuntimeProgramRegistration]
+    _ content: () -> [ProgramRegistration]
 ) -> AgenticApplicationComponent {
     .programs(
         content()
     )
 }
 
-public func program<Program: AgentProgram>(
-    _ program: Program,
-    realization: AgentProgramRealization<Program>? = nil
-) -> AgentRuntimeProgramRegistration {
-    AgentRuntimeProgramRegistration(
+public func program<ProgramType: Program>(
+    _ program: ProgramType,
+    realization: ProgramRealization<ProgramType>? = nil
+) -> ProgramRegistration {
+    ProgramRegistration(
         program,
         defaultRealization: realization
     )

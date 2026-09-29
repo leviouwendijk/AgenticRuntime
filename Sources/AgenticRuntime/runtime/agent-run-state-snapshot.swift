@@ -22,7 +22,7 @@ public struct AgentRunStateSnapshot:
     public let pendingUserInput: UserInputRequest?
     public let failure: AgentRunFailure?
     public let costRecord: AgentCostRecord?
-    public let exposedToolIdentifiers: [AgentToolIdentifier]
+    public let exposedToolIdentifiers: [ToolIdentifier]
 
     init(
         checkpoint: AgentHistoryCheckpoint

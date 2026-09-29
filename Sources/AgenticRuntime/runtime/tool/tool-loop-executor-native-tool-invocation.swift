@@ -13,9 +13,9 @@ extension ToolLoopExecutor {
 
             let call = invocation.review.call
             let response = AgentResponse(
-                message: AgentMessage(
+                message: Message(
                     role: .assistant,
-                    content: AgentContent(
+                    content: MessageContent(
                         blocks: [
                             .tool_call(
                                 call
@@ -66,7 +66,7 @@ extension ToolLoopExecutor {
                     kind: .tool_preflight,
                     iteration: checkpoint.state.iteration,
                     toolCallID: call.id,
-                    toolName: call.name,
+                    toolName: call.tool.rawValue,
                     summary: invocation.review.preflight.summary
                 ),
                 to: &checkpoint
@@ -89,7 +89,7 @@ extension ToolLoopExecutor {
                         kind: .tool_approved,
                         iteration: checkpoint.state.iteration,
                         toolCallID: call.id,
-                        toolName: call.name,
+                        toolName: call.tool.rawValue,
                         summary: "approved"
                     ),
                     to: &checkpoint
@@ -104,7 +104,7 @@ extension ToolLoopExecutor {
                         kind: .tool_denied,
                         iteration: checkpoint.state.iteration,
                         toolCallID: call.id,
-                        toolName: call.name,
+                        toolName: call.tool.rawValue,
                         summary: summary
                     ),
                     to: &checkpoint
@@ -119,7 +119,7 @@ extension ToolLoopExecutor {
                         kind: .tool_skipped,
                         iteration: checkpoint.state.iteration,
                         toolCallID: call.id,
-                        toolName: call.name,
+                        toolName: call.tool.rawValue,
                         summary: summary
                     ),
                     to: &checkpoint
@@ -156,9 +156,9 @@ extension ToolLoopExecutor {
         )
 
         let response = AgentResponse(
-            message: AgentMessage(
+            message: Message(
                 role: .assistant,
-                content: AgentContent(
+                content: MessageContent(
                     blocks: [
                         .tool_call(
                             review.call
@@ -227,7 +227,7 @@ extension ToolLoopExecutor {
                 kind: .tool_preflight,
                 iteration: checkpoint.state.iteration,
                 toolCallID: review.call.id,
-                toolName: review.call.name,
+                toolName: review.call.tool.rawValue,
                 summary: review.preflight.summary
             ),
             to: &checkpoint
@@ -238,7 +238,7 @@ extension ToolLoopExecutor {
                 kind: .pending_approval,
                 iteration: checkpoint.state.iteration,
                 toolCallID: review.call.id,
-                toolName: review.call.name,
+                toolName: review.call.tool.rawValue,
                 summary: review.preflight.summary
             ),
             to: &checkpoint

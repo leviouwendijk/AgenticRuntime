@@ -71,7 +71,7 @@ public struct AgentCompactor: Sendable {
 
 private extension AgentCompactor {
     func leadingSystemPreservationCount(
-        in messages: [AgentMessage]
+        in messages: [Message]
     ) -> Int {
         guard strategy.retention.preserveLeadingSystemMessages else {
             return 0
@@ -97,9 +97,9 @@ private extension AgentCompactor {
     }
 
     func makeSummaryMessage(
-        compacting messages: [AgentMessage],
+        compacting messages: [Message],
         iteration: Int
-    ) -> AgentMessage {
+    ) -> Message {
         let id = "agentic.compaction.\(UUID().uuidString)"
 
         var lines: [String] = [
@@ -138,15 +138,15 @@ private extension AgentCompactor {
     }
 
     func roleBreakdown(
-        in messages: [AgentMessage]
+        in messages: [Message]
     ) -> String {
-        var counts: [AgentRole: Int] = [:]
+        var counts: [MessageRole: Int] = [:]
 
         for message in messages {
             counts[message.role, default: 0] += 1
         }
 
-        let orderedRoles: [AgentRole] = [
+        let orderedRoles: [MessageRole] = [
             .system,
             .user,
             .assistant,
@@ -163,7 +163,7 @@ private extension AgentCompactor {
     }
 
     func excerpts(
-        from messages: [AgentMessage]
+        from messages: [Message]
     ) -> [String] {
         if messages.count <= strategy.maxExcerptCount {
             return messages.map(
@@ -207,7 +207,7 @@ private extension AgentCompactor {
     }
 
     func excerpt(
-        for message: AgentMessage
+        for message: Message
     ) -> String {
         if isCompactionMessage(
             message
@@ -240,10 +240,10 @@ private extension AgentCompactor {
                 return "resource \(value.modality.rawValue)"
 
             case .tool_call(let value):
-                return "tool call \(value.name)"
+                return "tool call \(value.tool.rawValue)"
 
             case .tool_result(let value):
-                if let name = value.name {
+                if let name = value.tool?.rawValue {
                     return value.isError
                         ? "tool result \(name) error"
                         : "tool result \(name)"
@@ -285,7 +285,7 @@ private extension AgentCompactor {
     }
 
     func isCompactionMessage(
-        _ message: AgentMessage
+        _ message: Message
     ) -> Bool {
         if message.id.hasPrefix(
             "agentic.compaction."

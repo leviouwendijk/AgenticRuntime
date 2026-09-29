@@ -67,11 +67,11 @@ public struct ModeRuntimeApplication: Sendable {
         )
     }
 
-    public var modeID: AgenticModeIdentifier {
+    public var modeID: ModeIdentifier {
         selection.modeID
     }
 
-    public var toolDefinitions: [AgentToolDefinition] {
+    public var toolDefinitions: [ToolDescriptor] {
         let modelFacing = toolRegistry.modelFacingDefinitions
 
         switch configuration.toolExposure {

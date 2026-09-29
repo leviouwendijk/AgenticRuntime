@@ -1,15 +1,16 @@
 import Agentic
 import AgenticExecution
-import AgenticInference
-import AgenticPrograms
 import AgenticRuntime
+import Foundation
 import Primitives
+import Schema
+import Macros
 import TestFlows
 
 extension AgenticProgramRuntimeFlowTesting {
     static func runRuntimeServicesComposition()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let services = AgentRuntimeServices(
             model: .init(
@@ -23,7 +24,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 "fixture_services": "shared",
             ]
         )
-        let runner = AgentProgramRunner(
+        let runner = ProgramRunner(
             services: services
         )
         let execution = try await runner.execute(
@@ -75,9 +76,9 @@ extension AgenticProgramRuntimeFlowTesting {
 
     static func runProgramExecutionRecord()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
-        let runner = AgentProgramRunner(
+        let runner = ProgramRunner(
             services: .init(
                 program: .init(
                     tools: FixtureProgramToolExecutor()
@@ -106,7 +107,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.equal(
             execution.record.programIdentifier,
-            FixtureProgram.descriptor.identifier,
+            FixtureProgram.definition.identifier,
             "execution record preserves program identity"
         )
         try Expect.equal(
@@ -116,7 +117,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
 
         let step = execution.record.steps[0]
-        let toolIdentifier: AgentToolIdentifier?
+        let toolIdentifier: ToolIdentifier?
         if case .tool(let identifier) = step.kind {
             toolIdentifier = identifier
         } else {
@@ -125,7 +126,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
         try Expect.equal(
             toolIdentifier,
-            AgentToolIdentifier(
+            ToolIdentifier(
                 "fixture.echo"
             ),
             "step preserves tool identity"
@@ -136,13 +137,11 @@ extension AgenticProgramRuntimeFlowTesting {
             "successful step has no failure"
         )
 
-        let stepInput = try JSONToolBridge.decode(
-            FixtureToolInput.self,
-            from: step.input
+        let stepInput = try step.input.decode(
+            FixtureToolInput.self
         )
-        let stepOutput = try JSONToolBridge.decode(
-            FixtureOutput.self,
-            from: step.output ?? .null
+        let stepOutput = try (step.output ?? .null).decode(
+            FixtureOutput.self
         )
 
         try Expect.equal(
@@ -178,9 +177,9 @@ extension AgenticProgramRuntimeFlowTesting {
 
     static func runProgramExecutionFailureRecord()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
-        let runner = AgentProgramRunner(
+        let runner = ProgramRunner(
             services: .init(
                 program: .init(
                     tools: FixtureProgramToolExecutor()
@@ -244,27 +243,17 @@ extension AgenticProgramRuntimeFlowTesting {
 
     static func runProgramInferenceExecutionRecord()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
-        let inferenceRealization = AgentInferenceRealization(
-            strategy: "fixture.direct",
-            modelSelection: .executor,
-            instructions: "Produce the fixture inference output.",
-            budget: .singleAttempt
-        )
-        let programRealization = AgentProgramRealization<FixtureInferenceProgram>(
-            id: "fixture.inference-program-realization",
-            inferences: try AgentProgramInferenceBindings(
-                [
-                    .init(
-                        site: "fixture.inference-site",
-                        inference: FixtureInference.definition.identifier,
-                        realization: inferenceRealization
-                    ),
-                ]
-            )
-        )
-        let runner = AgentProgramRunner(
+        let inferenceRealization =
+            FixtureInferenceRealization.definition.configuration
+        let programRealization =
+            FixtureInferenceProgram.realization {
+                FixtureInferenceProgram.site.use(
+                    FixtureInferenceRealization.self
+                )
+            }
+        let runner = ProgramRunner(
             services: .init(
                 program: .init(
                     inference: FixtureProgramInferenceExecutor()
@@ -290,9 +279,9 @@ extension AgenticProgramRuntimeFlowTesting {
             "inference-backed program succeeds"
         )
         try Expect.equal(
-            execution.record.realizationIdentifier,
-            programRealization.id,
-            "root execution preserves realization identity"
+            programRealization.bindings.count,
+            1,
+            "typed Program realization preserves its authored inference binding"
         )
         try Expect.equal(
             execution.record.steps.count,
@@ -301,8 +290,8 @@ extension AgenticProgramRuntimeFlowTesting {
         )
 
         let step = execution.record.steps[0]
-        let inferenceSite: AgentInferenceSiteIdentifier?
-        let inferenceIdentifier: AgentInferenceIdentifier?
+        let inferenceSite: InferenceSiteIdentifier?
+        let inferenceIdentifier: InferenceIdentifier?
 
         if case .inference(
             let site,
@@ -317,7 +306,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
         try Expect.equal(
             inferenceSite,
-            AgentInferenceSiteIdentifier(
+            InferenceSiteIdentifier(
                 "fixture.inference-site"
             ),
             "inference step preserves stable site identity"
@@ -382,9 +371,9 @@ extension AgenticProgramRuntimeFlowTesting {
             input: .init(
                 value: "missing"
             ),
-            realization: AgentProgramRealization<FixtureInferenceProgram>(
-                id: "fixture.inference-program-missing-binding"
-            )
+            realization: try ProgramRealization<
+                FixtureInferenceProgram
+            >()
         )
         let missingBindingFailure = try Expect.notNil(
             missingBindingExecution.record.failure,
@@ -407,16 +396,16 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             missingBindingFailure.type,
             String(
-                reflecting: AgentProgramInferenceInvocationError.self
+                reflecting: ProgramInferenceInvocationError.self
             ),
-            "Runtime propagates the canonical AgenticPrograms binding error"
+            "Runtime propagates the canonical Agentic binding error"
         )
         try Expect.equal(
             missingBindingStepFailure.type,
             String(
-                reflecting: AgentProgramInferenceInvocationError.self
+                reflecting: ProgramInferenceInvocationError.self
             ),
-            "Runtime step recording preserves the canonical AgenticPrograms binding error"
+            "Runtime step recording preserves the canonical Agentic binding error"
         )
         try Expect.equal(
             missingBindingStep.inference.realization == nil,
@@ -481,6 +470,7 @@ private struct FixtureRuntimeServicesModelInvoker:
     }
 }
 
+@JSONSchema
 private struct FixtureInput:
     Sendable,
     Codable,
@@ -490,6 +480,7 @@ private struct FixtureInput:
     let shouldFail: Bool
 }
 
+@JSONSchema
 private struct FixtureToolInput:
     Sendable,
     Codable,
@@ -498,6 +489,7 @@ private struct FixtureToolInput:
     let value: String
 }
 
+@JSONSchema
 private struct FixtureOutput:
     Sendable,
     Codable,
@@ -506,20 +498,19 @@ private struct FixtureOutput:
     let value: String
 }
 
-private struct FixtureProgram: AgentProgram {
+private struct FixtureProgram: Program {
     typealias Input = FixtureInput
     typealias Output = FixtureOutput
 
-    static let descriptor = AgentProgramDescriptor(
+    static let definition = ProgramDefinition(
         identifier: "fixture.runtime",
-        title: "Runtime fixture",
-        summary: "Exercises Runtime-owned program execution recording.",
-        version: "1"
+        purpose: "Exercises Runtime-owned program execution recording.",
+        title: "Runtime fixture"
     )
 
     func run(
         _ input: FixtureInput,
-        in context: AgentProgramContext
+        in context: ProgramContext
     ) async throws -> FixtureOutput {
         try await context.invoke(
             input.shouldFail
@@ -541,26 +532,25 @@ private enum FixtureProgramToolError:
 }
 
 private struct FixtureProgramToolExecutor:
-    AgentProgramToolExecuting
+    ProgramToolExecuting
 {
     func invoke(
-        _ identifier: AgentToolIdentifier,
+        _ identifier: ToolIdentifier,
         input: JSONValue
-    ) async throws -> AgentToolExecutionResult {
+    ) async throws -> ToolExecutionResult {
         if identifier.rawValue == "fixture.fail" {
             throw FixtureProgramToolError.requestedFailure
         }
 
-        let decoded = try JSONToolBridge.decode(
-            FixtureToolInput.self,
-            from: input
+        let decoded = try input.decode(
+            FixtureToolInput.self
         )
 
-        return AgentToolExecutionResult(
-            result: AgentToolResult(
+        return ToolExecutionResult(
+            result: ToolResult(
                 toolCallID: "fixture-\(identifier.rawValue)",
-                name: identifier.rawValue,
-                output: try JSONToolBridge.encode(
+                tool: identifier,
+                output: try JSONValue.encoding(
                     FixtureOutput(
                         value: "tool:\(decoded.value)"
                     )
@@ -571,6 +561,7 @@ private struct FixtureProgramToolExecutor:
     }
 }
 
+@JSONSchema
 private struct FixtureInferenceInput:
     Sendable,
     Codable,
@@ -579,60 +570,80 @@ private struct FixtureInferenceInput:
     let value: String
 }
 
-private enum FixtureInference: AgentInference {
+private enum FixtureInference: Inference {
     typealias Input = FixtureInferenceInput
     typealias Output = JSONValue
 
-    static let definition = AgentInferenceDefinition(
+    static let definition = InferenceDefinition(
         identifier: "fixture.inference",
         purpose: "Produce deterministic fixture inference output."
     )
 }
 
-private struct FixtureInferenceProgram: AgentProgram {
+private enum FixtureInferenceRealization:
+    InferenceRealization
+{
+    typealias InferenceType = FixtureInference
+
+    static let strategy: InferenceStrategyIdentifier =
+        "fixture.direct"
+    static let instructions =
+        "Produce the fixture inference output."
+    static let budget: InferenceBudget = .singleAttempt
+
+    static let definition =
+        InferenceRealizationDefinition<InferenceType>(
+            identifier: "fixture.inference_realization",
+            configuration: .init(
+                strategy: strategy,
+                instructions: instructions,
+                budget: budget
+            )
+        )
+}
+
+private struct FixtureInferenceProgram: Program {
     typealias Input = FixtureInferenceInput
     typealias Output = JSONValue
 
-    static let descriptor = AgentProgramDescriptor(
+    static let site = InferenceSite<
+        FixtureInferenceProgram,
+        FixtureInference
+    >(
+        identifier: "fixture.inference-site"
+    )
+
+    static let definition = ProgramDefinition(
         identifier: "fixture.inference-program",
-        title: "Inference runtime fixture",
-        summary: "Exercises realized inference execution recording.",
-        version: "1"
+        purpose: "Exercises realized inference execution recording.",
+        title: "Inference runtime fixture"
     )
 
     func run(
         _ input: FixtureInferenceInput,
-        in context: AgentProgramContext
+        in context: ProgramContext
     ) async throws -> JSONValue {
         try await context.infer(
-            FixtureInference.self,
-            at: "fixture.inference-site",
+            Self.site,
             input: input
         )
     }
 }
 
 private struct FixtureProgramInferenceExecutor:
-    AgentInferenceExecuting
+    InferenceExecuting
 {
-    func execute<Inference: AgentInference>(
-        _ inference: Inference.Type,
-        input: Inference.Input,
-        realization: AgentInferenceRealization
-    ) async throws -> AgentInferenceExecutionResult<Inference.Output> {
-        let encodedInput = try JSONToolBridge.encode(
-            input
-        )
-        let fixtureInput = try JSONToolBridge.decode(
+    func execute(
+        _ invocation: InferenceInvocation
+    ) async throws -> InferenceInvocationResult {
+        let fixtureInput = try JSONDecoder().decode(
             FixtureInferenceInput.self,
-            from: encodedInput
+            from: invocation.input
         )
-        let encodedOutput = JSONValue.string(
-            "inferred:\(fixtureInput.value)"
-        )
-        let output = try JSONToolBridge.decode(
-            Inference.Output.self,
-            from: encodedOutput
+        let output = try JSONEncoder().encode(
+            JSONValue.string(
+                "inferred:\(fixtureInput.value)"
+            )
         )
 
         let usage = AgentUsage(
@@ -640,7 +651,7 @@ private struct FixtureProgramInferenceExecutor:
             outputTokens: 2,
             totalTokens: 5
         )
-        let selection = realization.modelSelection
+        let selection = invocation.context.modelSelection
         let profile = AgentModelProfile(
             identifier: "fixture.inference.profile",
             gatewayIdentifier: "fixture.inference.gateway",
@@ -662,9 +673,9 @@ private struct FixtureProgramInferenceExecutor:
             responseMetadata: [:],
             usage: usage
         )
-        let attempt = AgentInferenceAttemptRecord(
+        let attempt = InferenceAttemptRecord(
             index: 0,
-            adapter: AgentInferenceAdapterIdentifier(
+            adapter: InferenceAdapterIdentifier(
                 rawValue: "fixture.inference.adapter"
             ),
             selection: selection,
@@ -677,16 +688,16 @@ private struct FixtureProgramInferenceExecutor:
 
         return .init(
             output: output,
-            record: AgentInferenceExecutionRecord(
-                inference: Inference.definition.identifier,
-                strategy: realization.strategy,
+            record: InferenceExecutionRecord(
+                inference: invocation.definition.identifier,
+                strategy: invocation.realization.strategy,
                 attempts: [
                     attempt,
                 ],
-                budget: realization.budget,
+                budget: invocation.realization.budget,
                 metadata: [
                     "fixture_executor": "recorded",
-                    "strategy": realization.strategy.rawValue,
+                    "strategy": invocation.realization.strategy.rawValue,
                 ]
             )
         )

@@ -1,6 +1,6 @@
 import Agentic
 import AgenticExecution
-import AgenticTools
+import AgenticStandard
 
 public enum AgentToolExposureBase:
     Sendable,
@@ -8,7 +8,7 @@ public enum AgentToolExposureBase:
 {
     case catalogDefaults
     case none
-    case selected([AgentToolIdentifier])
+    case selected([ToolIdentifier])
     case all
 }
 
@@ -63,7 +63,7 @@ public enum AgentToolExposureResolver {
     }
 
     public static func resolve(
-        selectedIdentifiers: [AgentToolIdentifier],
+        selectedIdentifiers: [ToolIdentifier],
         skills: [AgentSkill] = [],
         dynamicDiscovery: Bool
     ) -> AgentToolExposurePolicy {
@@ -78,10 +78,10 @@ public enum AgentToolExposureResolver {
 
 private extension AgentToolExposureResolver {
     static func resolve(
-        selectedIdentifiers: [AgentToolIdentifier],
+        selectedIdentifiers: [ToolIdentifier],
         skills: [AgentSkill],
         dynamicDiscovery: Bool,
-        eligibleIdentifiers: Set<AgentToolIdentifier>?
+        eligibleIdentifiers: Set<ToolIdentifier>?
     ) -> AgentToolExposurePolicy {
         let requiredSkillIdentifiers = skills.flatMap { skill in
             skill.metadata.tools.required.map(
@@ -95,13 +95,13 @@ private extension AgentToolExposureResolver {
         )
         let discoveryIsEligible =
             eligibleIdentifiers?.contains(
-                FindToolsTool.identifier
+                Standard.Tools.FindTools.identifier
             ) ?? true
 
         if dynamicDiscovery,
            discoveryIsEligible {
             identifiers.append(
-                FindToolsTool.identifier
+                Standard.Tools.FindTools.identifier
             )
 
             return .discoverable(
@@ -115,14 +115,14 @@ private extension AgentToolExposureResolver {
     }
 
     static func normalized(
-        _ identifiers: [AgentToolIdentifier],
-        eligibleIdentifiers: Set<AgentToolIdentifier>?
-    ) -> [AgentToolIdentifier] {
-        var seen: Set<AgentToolIdentifier> = []
-        var normalized: [AgentToolIdentifier] = []
+        _ identifiers: [ToolIdentifier],
+        eligibleIdentifiers: Set<ToolIdentifier>?
+    ) -> [ToolIdentifier] {
+        var seen: Set<ToolIdentifier> = []
+        var normalized: [ToolIdentifier] = []
 
         for identifier in identifiers {
-            guard identifier != FindToolsTool.identifier else {
+            guard identifier != Standard.Tools.FindTools.identifier else {
                 continue
             }
 

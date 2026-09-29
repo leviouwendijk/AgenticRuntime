@@ -1,6 +1,5 @@
 import Agentic
 import AgenticExecution
-import AgenticPrograms
 import AgenticRuntime
 import Primitives
 import TestFlows
@@ -18,22 +17,22 @@ private actor ProgramCaughtToolFailureProbe {
 }
 
 private struct ProgramCaughtToolFailureExecutor:
-    AgentProgramToolExecuting
+    ProgramToolExecuting
 {
     let probe: ProgramCaughtToolFailureProbe
 
     func invoke(
-        _ identifier: AgentToolIdentifier,
+        _ identifier: ToolIdentifier,
         input: JSONValue
-    ) async throws -> AgentToolExecutionResult {
+    ) async throws -> ToolExecutionResult {
         _ = input
         await probe.recordCall()
 
-        throw AgentProgramToolFailure(
+        throw ProgramToolFailure(
             tool: identifier,
-            result: AgentToolResult(
+            result: ToolResult(
                 toolCallID: "fixture-caught-tool-failure",
-                name: identifier.rawValue,
+                tool: identifier,
                 output: .null,
                 isError: true
             )
@@ -42,23 +41,23 @@ private struct ProgramCaughtToolFailureExecutor:
 }
 
 private struct ProgramCaughtToolFailureResumeFixture:
-    AgentProgram
+    Program
 {
     typealias Input = String
     typealias Output = String
 
     static let toolIdentifier:
-        AgentToolIdentifier = "fixture.caught_tool_failure"
+        ToolIdentifier = "fixture.caught_tool_failure"
 
-    static let descriptor = AgentProgramDescriptor(
+    static let definition = ProgramDefinition(
         identifier: "fixture.program_caught_tool_failure_resume",
-        title: "Program Caught Tool Failure Resume",
-        summary: "Proves a Program-authored caught tool failure replays deterministically across a later user-input suspension."
+        purpose: "Proves a Program-authored caught tool failure replays deterministically across a later user-input suspension.",
+        title: "Program Caught Tool Failure Resume"
     )
 
     func run(
         _ input: String,
-        in context: AgentProgramContext
+        in context: ProgramContext
     ) async throws -> String {
         try await context.invoke(
             Self.toolIdentifier,
@@ -66,8 +65,8 @@ private struct ProgramCaughtToolFailureResumeFixture:
             as: String.self
         ) { failure -> String in
             guard failure.tool == Self.toolIdentifier,
-                  failure.result.name
-                    == Self.toolIdentifier.rawValue,
+                  failure.result.tool
+                    == Self.toolIdentifier,
                   failure.result.isError
             else {
                 throw failure
@@ -100,13 +99,13 @@ private struct ProgramCaughtToolFailureResumeFixture:
 extension AgenticProgramRuntimeFlowTesting {
     static func runProgramCaughtToolFailureResume()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let probe = ProgramCaughtToolFailureProbe()
         let executor = ProgramCaughtToolFailureExecutor(
             probe: probe
         )
-        let runner = AgentProgramRunner(
+        let runner = ProgramRunner(
             services: .init(
                 program: .init(
                     tools: executor
@@ -144,7 +143,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let failedStep = checkpoint.completedSteps[0]
         let failedResult = try Expect.notNil(
             failedStep.toolResult,
-            "caught tool failure retains its canonical AgentToolResult"
+            "caught tool failure retains its canonical ToolResult"
         )
 
         try Expect.equal(
@@ -157,13 +156,13 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.equal(
             failedStep.failure?.type,
-            String(reflecting: AgentProgramToolFailure.self),
-            "caught failure remains typed as AgentProgramToolFailure"
+            String(reflecting: ProgramToolFailure.self),
+            "caught failure remains typed as ProgramToolFailure"
         )
         try Expect.equal(
-            failedResult.name,
+            failedResult.tool,
             ProgramCaughtToolFailureResumeFixture
-                .toolIdentifier.rawValue,
+                .toolIdentifier,
             "durable failed result retains exact tool identity"
         )
         try Expect.equal(
@@ -187,11 +186,10 @@ extension AgenticProgramRuntimeFlowTesting {
             "initial execution invokes the failed tool exactly once"
         )
 
-        let durableCheckpoint = try JSONToolBridge.decode(
-            AgentProgramCheckpoint.self,
-            from: try JSONToolBridge.encode(
-                checkpoint
-            )
+        let durableCheckpoint = try JSONValue.encoding(
+            checkpoint
+        ).decode(
+            ProgramCheckpoint.self
         )
 
         let resumed = try await runner.resume(

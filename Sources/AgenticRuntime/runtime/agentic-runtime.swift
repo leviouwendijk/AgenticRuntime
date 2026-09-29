@@ -1,7 +1,6 @@
 import Agentic
 import AgenticExecution
 import AgenticModels
-import AgenticPrograms
 import Primitives
 
 public struct AgenticRuntime:
@@ -12,11 +11,11 @@ public struct AgenticRuntime:
     public let toolCatalog: AgentToolCatalog
     public let skills: SkillRegistry
     public let programs: ProgramRegistry
-    public let gateways: AgentModelGatewayCatalog
-    public let profiles: AgentModelProfileCatalog
+    public let gateways: GatewayCatalog
+    public let profiles: ProfileCatalog
 
     private let programExecutions:
-        [AgentProgramIdentifier: AgentRuntimeProgramRegistration]
+        [ProgramIdentifier: ProgramRegistration]
 
     public init(
         application: AgenticApplication
@@ -35,7 +34,7 @@ public struct AgenticRuntime:
 
         var programs = ProgramRegistry()
         var programExecutions:
-            [AgentProgramIdentifier: AgentRuntimeProgramRegistration] = [:]
+            [ProgramIdentifier: ProgramRegistration] = [:]
 
         programExecutions.reserveCapacity(
             application.programRegistrations.count
@@ -50,7 +49,7 @@ public struct AgenticRuntime:
             ] = registration
         }
 
-        let modelCatalogs = try await AgentModelCatalogs(
+        let modelCatalogs = try await ModelCatalogs(
             modelProviders: application.modelProviders,
             gatewayFactories: application.gatewayFactories
         )
@@ -66,16 +65,16 @@ public struct AgenticRuntime:
     }
 
     public func executeProgram(
-        identifiedBy identifier: AgentProgramIdentifier,
+        identifiedBy identifier: ProgramIdentifier,
         input: JSONValue,
         realization: JSONValue? = nil,
         services: AgentRuntimeServices = .init(),
         metadata: [String: String] = [:]
-    ) async throws -> AgentProgramExecutionRecord {
+    ) async throws -> ProgramExecutionRecord {
         guard let registration = programExecutions[
             identifier
         ] else {
-            throw AgentRuntimeProgramExecutionError
+            throw ProgramExecutionError
                 .registrationUnavailable(
                     identifier
                 )
@@ -90,16 +89,16 @@ public struct AgenticRuntime:
     }
 
     public func resumeProgram(
-        from checkpoint: AgentProgramCheckpoint,
+        from checkpoint: ProgramCheckpoint,
         interaction response: AgentInteraction.Response,
         services: AgentRuntimeServices = .init()
-    ) async throws -> AgentProgramExecutionRecord {
+    ) async throws -> ProgramExecutionRecord {
         let identifier = checkpoint.programIdentifier
 
         guard let registration = programExecutions[
             identifier
         ] else {
-            throw AgentRuntimeProgramExecutionError
+            throw ProgramExecutionError
                 .registrationUnavailable(
                     identifier
                 )

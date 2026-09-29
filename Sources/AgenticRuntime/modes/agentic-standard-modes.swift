@@ -1,7 +1,7 @@
 import Agentic
 import AgenticIO
 
-public extension AgenticMode {
+public extension Mode {
     static let planning = Self(
         id: .planning,
         title: "Planning",
@@ -37,8 +37,8 @@ public extension AgenticMode {
         ),
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [
-            ReadFileTool.identifier,
-            ScanPathsTool.identifier
+            SystemIO.Tools.ReadFile.identifier,
+            SystemIO.Tools.ScanPaths.identifier
         ],
         loadedSkillIdentifiers: [
             "context-packing",
@@ -65,9 +65,9 @@ public extension AgenticMode {
         ),
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [
-            ReadFileTool.identifier,
-            ScanPathsTool.identifier,
-            MutateFilesTool.identifier
+            SystemIO.Tools.ReadFile.identifier,
+            SystemIO.Tools.ScanPaths.identifier,
+            SystemIO.Tools.MutateFiles.identifier
         ],
         loadedSkillIdentifiers: [
             "safe-file-editing",
@@ -94,8 +94,8 @@ public extension AgenticMode {
         ),
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [
-            ReadFileTool.identifier,
-            ScanPathsTool.identifier
+            SystemIO.Tools.ReadFile.identifier,
+            SystemIO.Tools.ScanPaths.identifier
         ],
         loadedSkillIdentifiers: [
             "evidence-citation",
@@ -122,9 +122,9 @@ public extension AgenticMode {
         ),
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [
-            ReadFileTool.identifier,
-            ScanPathsTool.identifier,
-            MutateFilesTool.identifier
+            SystemIO.Tools.ReadFile.identifier,
+            SystemIO.Tools.ScanPaths.identifier,
+            SystemIO.Tools.MutateFiles.identifier
         ],
         loadedSkillIdentifiers: [
             "debugging-loop",
@@ -174,8 +174,8 @@ public extension AgenticMode {
         ),
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [
-            ReadFileTool.identifier,
-            ScanPathsTool.identifier
+            SystemIO.Tools.ReadFile.identifier,
+            SystemIO.Tools.ScanPaths.identifier
         ],
         loadedSkillIdentifiers: [
             "privacy-discipline",

@@ -1,15 +1,15 @@
 import Agentic
 import AgenticExecution
 
-enum RuntimeAgentToolCallBoundary:
+enum RuntimeToolCallBoundary:
     Error,
     Sendable
 {
     case exposure_changed
 }
 
-struct RuntimeAgentToolCallResolver:
-    AgentToolCallResolver,
+struct RuntimeToolCallResolver:
+    ToolCallResolver,
     Sendable
 {
     let resolver: GovernedAgentToolCallResolver
@@ -17,8 +17,8 @@ struct RuntimeAgentToolCallResolver:
     let exposure: AgentToolExposure
 
     func resolve(
-        _ call: AgentToolCall
-    ) async throws -> AgentToolResult {
+        _ call: ToolCall
+    ) async throws -> ToolResult {
         let before = Set(
             try await exposure.identifiers(
                 in: registry
@@ -36,7 +36,7 @@ struct RuntimeAgentToolCallResolver:
         )
 
         guard before == after else {
-            throw RuntimeAgentToolCallBoundary
+            throw RuntimeToolCallBoundary
                 .exposure_changed
         }
 

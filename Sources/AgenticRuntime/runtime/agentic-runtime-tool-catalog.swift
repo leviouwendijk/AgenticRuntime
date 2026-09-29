@@ -1,6 +1,6 @@
 import Agentic
 import AgenticExecution
-import AgenticTools
+import AgenticStandard
 
 enum AgenticRuntimeToolCatalog {
     static func materialize(
@@ -31,10 +31,10 @@ private extension AgenticRuntimeToolCatalog {
 
         let runtimeIntrinsics = [
             AgentToolCatalogEntry(
-                identifier: FindToolsTool.identifier,
-                title: FindToolsTool.identifier.rawValue,
-                description: FindToolsTool.description,
-                risk: FindToolsTool.risk,
+                identifier: Standard.Tools.FindTools.identifier,
+                title: Standard.Tools.FindTools.identifier.rawValue,
+                description: Standard.Tools.FindTools.purpose,
+                risk: Standard.Tools.FindTools.risk,
                 isModelFacing: true,
                 workingLocation: .fixed,
                 origin: .intrinsic,

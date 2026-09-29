@@ -1,11 +1,12 @@
 import Agentic
-import AgenticWorkspace
 import Foundation
+import Path
+import Workspace
 
 public enum AgenticRuntimeWorkspace {
     public static func resolve(
         _ rawPath: String
-    ) throws -> AgentWorkspace {
+    ) throws -> Workspace {
         try resolve(
             .init(
                 path: rawPath
@@ -14,9 +15,8 @@ public enum AgenticRuntimeWorkspace {
     }
 
     public static func resolve(
-        _ configuration:
-            AgenticRuntimeWorkspaceConfiguration
-    ) throws -> AgentWorkspace {
+        _ configuration: AgenticRuntimeWorkspaceConfiguration
+    ) throws -> Workspace {
         let normalized = configuration.path
             .trimmingCharacters(
                 in: .whitespacesAndNewlines
@@ -31,8 +31,7 @@ public enum AgenticRuntimeWorkspace {
         ).expandingTildeInPath
 
         let currentDirectory = URL(
-            fileURLWithPath:
-                FileManager.default.currentDirectoryPath,
+            fileURLWithPath: FileManager.default.currentDirectoryPath,
             isDirectory: true
         )
 
@@ -51,26 +50,46 @@ public enum AgenticRuntimeWorkspace {
             )
         }
 
-        let root = candidate
+        let rootURL = candidate
             .standardizedFileURL
             .resolvingSymlinksInPath()
 
         var isDirectory: ObjCBool = false
 
         guard FileManager.default.fileExists(
-            atPath: root.path,
+            atPath: rootURL.path,
             isDirectory: &isDirectory
         ),
         isDirectory.boolValue
         else {
             throw AgenticRuntimeError.invalidWorkspace(
-                root.path
+                rootURL.path
             )
         }
 
-        return try AgentWorkspace(
+        let rootIdentifier = PathAccessRootIdentifier(
+            rawValue: "project"
+        )
+        let root = PathAccessRoot(
+            id: rootIdentifier,
+            label: "Project",
+            scope: try PathAccessScope(
+                root: rootURL,
+                policy: .defaults.workspace
+            ),
+            isDefault: true
+        )
+        let grant = try WorkspaceGrant(
+            id: WorkspaceGrantIdentifier(
+                "project-runtime"
+            ),
+            rootIdentifier: rootIdentifier,
+            capabilities: Set(WorkspaceCapability.allCases)
+        )
+
+        return try Workspace(
             root: root,
-            selection: configuration.selection
+            grants: [grant]
         )
     }
 }

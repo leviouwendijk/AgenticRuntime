@@ -1,6 +1,6 @@
 import Agentic
 import AgenticExecution
-import AgenticWorkspace
+import Workspace
 import Primitives
 import Schema
 import Macros
@@ -22,6 +22,7 @@ public struct ListAgentSessionsToolInput: Sendable, Codable, Hashable {
     }
 }
 
+@JSONSchema
 public struct ListAgentSessionsToolOutput: Sendable, Codable, Hashable {
     public let sessions: [AgentSessionSummary]
     public let count: Int
@@ -34,15 +35,21 @@ public struct ListAgentSessionsToolOutput: Sendable, Codable, Hashable {
     }
 }
 
-public struct ListAgentSessionsTool: AgentTool {
+public struct ListAgentSessionsTool: Tool {
     public typealias Input = ListAgentSessionsToolInput
     public typealias Output = ListAgentSessionsToolOutput
 
-    public static let identifier: AgentToolIdentifier = "list_agent_sessions"
+    public static let identifier: ToolIdentifier = "list_agent_sessions"
     public static let description = "List durable Agentic sessions and branches."
     public static let risk: ActionRisk = .observe
 
-    public var identifier: AgentToolIdentifier {
+    public static let definition: ToolDefinition = .init(
+        identifier: Self.identifier,
+        purpose: Self.description,
+        risk: Self.risk
+    )
+
+    public var identifier: ToolIdentifier {
         Self.identifier
     }
 
@@ -64,13 +71,12 @@ public struct ListAgentSessionsTool: AgentTool {
 
     public func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
 
         return .init(
-            toolName: name,
-            risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
+            tool: Self.definition.identifier,
+            risk: Self.definition.risk,
             summary: input.parentSessionID == nil
                 ? "List Agentic sessions."
                 : "List Agentic child branches for session \(input.parentSessionID ?? "").",
@@ -80,7 +86,7 @@ public struct ListAgentSessionsTool: AgentTool {
 
     public func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> Output {
 
         let sessions: [AgentSessionSummary]

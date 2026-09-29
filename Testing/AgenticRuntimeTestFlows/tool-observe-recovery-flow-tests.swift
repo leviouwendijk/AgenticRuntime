@@ -1,10 +1,10 @@
 import Agentic
 import AgenticExecution
-import AgenticRecovery
 import AgenticRuntime
 import Primitives
 import Schema
 import TestFlows
+import Workspace
 
 private enum ObserveRecoveryFixtureError: Error {
     case transient
@@ -33,20 +33,26 @@ private struct ObserveRecoveryFixtureInput:
     }
 }
 
-private struct ObserveRecoveryFixtureTool: AgentTool {
+private struct ObserveRecoveryFixtureTool: Tool {
     typealias Input = ObserveRecoveryFixtureInput
     typealias Output = JSONValue
 
-    let identifier: AgentToolIdentifier =
+    let identifier: ToolIdentifier =
         "fixture.observe_recovery"
     let description =
         "Observe-only fixture that fails transiently once before succeeding."
     let risk: ActionRisk = .observe
+
+    static let definition = ToolDefinition(
+        identifier: "fixture.observe_recovery",
+        purpose: "Observe-only fixture that fails transiently once before succeeding.",
+        risk: .observe
+    )
     let probe: ObserveRecoveryProbe
 
     func call(
         _ input: Input,
-        context _: AgentToolExecutionContext
+        workspace _: WorkspaceContext?
     ) async throws -> Output {
         _ = input
 
@@ -63,9 +69,8 @@ private struct ObserveRecoveryFixtureTool: AgentTool {
 
     func classify(
         _ error: any Error,
-        phase: AgentToolCallPhase,
-        input _: Input?,
-        context: AgentToolExecutionContext
+        phase: ToolCall.Phase,
+        input _: Input?
     ) -> Recovery.Incident? {
         guard
             phase == .call,
@@ -81,9 +86,7 @@ private struct ObserveRecoveryFixtureTool: AgentTool {
             retrySafety: .safe,
             scope: .init(
                 kind: .tool,
-                identifier:
-                    context.toolCallID
-                    ?? identifier.rawValue
+                identifier: identifier.rawValue
             ),
             message: "fixture observe operation failed before applying effects"
         )
@@ -110,7 +113,7 @@ private actor ObserveRecoveryModelState {
 
 private struct ObserveRecoveryModelInvoker: AgentModelInvoking {
     let state: ObserveRecoveryModelState
-    let toolCall: AgentToolCall
+    let toolCall: ToolCall
 
     func buffered(
         _ invocation: AgentModelInvocation
@@ -122,9 +125,9 @@ private struct ObserveRecoveryModelInvoker: AgentModelInvoking {
 
         if index == 0 {
             response = AgentResponse(
-                message: AgentMessage(
+                message: Message(
                     role: .assistant,
-                    content: AgentContent(
+                    content: MessageContent(
                         blocks: [
                             .tool_call(toolCall),
                         ]
@@ -134,7 +137,7 @@ private struct ObserveRecoveryModelInvoker: AgentModelInvoking {
             )
         } else {
             response = AgentResponse(
-                message: AgentMessage(
+                message: Message(
                     role: .assistant,
                     text: "observe recovery complete"
                 ),
@@ -202,14 +205,14 @@ private struct ObserveRecoveryModelInvoker: AgentModelInvoking {
 extension AgenticProgramRuntimeFlowTesting {
     static func runObserveToolRecovery()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let probe = ObserveRecoveryProbe()
         let state = ObserveRecoveryModelState()
-        let toolCall = AgentToolCall(
+        let toolCall = ToolCall(
             id: "fixture-observe-recovery-call",
-            name: "fixture.observe_recovery",
-            input: try JSONToolBridge.encode(
+            tool: "fixture.observe_recovery",
+            input: try JSONValue.encoding(
                 ObserveRecoveryFixtureInput()
             )
         )
@@ -258,7 +261,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let result = try await runner.run(
             AgentRequest(
                 messages: [
-                    AgentMessage(
+                    Message(
                         role: .user,
                         text: "Exercise safe observe recovery."
                     ),
@@ -340,7 +343,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let terminalResults = invocations[1].request.messages
             .flatMap(\.content.blocks)
-            .compactMap { block -> AgentToolResult? in
+            .compactMap { block -> ToolResult? in
                 guard case .tool_result(let result) = block else {
                     return nil
                 }

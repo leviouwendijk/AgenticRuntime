@@ -1,6 +1,6 @@
 import Agentic
 import AgenticExecution
-import AgenticWorkspace
+import Workspace
 import Primitives
 import Schema
 import Macros
@@ -19,6 +19,7 @@ public struct ReadAgentSessionToolInput: Sendable, Codable, Hashable {
     }
 }
 
+@JSONSchema
 public struct ReadAgentSessionToolOutput: Sendable, Codable, Hashable {
     public let summary: AgentSessionSummary
     public let inspection: AgentSessionInspection?
@@ -32,15 +33,21 @@ public struct ReadAgentSessionToolOutput: Sendable, Codable, Hashable {
     }
 }
 
-public struct ReadAgentSessionTool: AgentTool {
+public struct ReadAgentSessionTool: Tool {
     public typealias Input = ReadAgentSessionToolInput
     public typealias Output = ReadAgentSessionToolOutput
 
-    public static let identifier: AgentToolIdentifier = "read_agent_session"
+    public static let identifier: ToolIdentifier = "read_agent_session"
     public static let description = "Read Agentic session metadata and lightweight inspection counts."
     public static let risk: ActionRisk = .observe
 
-    public var identifier: AgentToolIdentifier {
+    public static let definition: ToolDefinition = .init(
+        identifier: Self.identifier,
+        purpose: Self.description,
+        risk: Self.risk
+    )
+
+    public var identifier: ToolIdentifier {
         Self.identifier
     }
 
@@ -62,13 +69,12 @@ public struct ReadAgentSessionTool: AgentTool {
 
     public func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
 
         return .init(
-            toolName: name,
-            risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
+            tool: Self.definition.identifier,
+            risk: Self.definition.risk,
             summary: "Read Agentic session \(input.sessionID).",
             sideEffects: []
         )
@@ -76,7 +82,7 @@ public struct ReadAgentSessionTool: AgentTool {
 
     public func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> Output {
 
         let summary = try catalog.loadSession(

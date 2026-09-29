@@ -1,6 +1,6 @@
 import Agentic
 import AgenticExecution
-import AgenticWorkspace
+import Workspace
 import Primitives
 import Schema
 import Macros
@@ -22,6 +22,7 @@ public struct ReadAgentApprovalsToolInput: Sendable, Codable, Hashable {
     }
 }
 
+@JSONSchema
 public struct ReadAgentApprovalsToolOutput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let totalEventCount: Int
@@ -40,15 +41,21 @@ public struct ReadAgentApprovalsToolOutput: Sendable, Codable, Hashable {
     }
 }
 
-public struct ReadAgentApprovalsTool: AgentTool {
+public struct ReadAgentApprovalsTool: Tool {
     public typealias Input = ReadAgentApprovalsToolInput
     public typealias Output = ReadAgentApprovalsToolOutput
 
-    public static let identifier: AgentToolIdentifier = "read_agent_approvals"
+    public static let identifier: ToolIdentifier = "read_agent_approvals"
     public static let description = "Read approval/audit events for a durable Agentic session."
     public static let risk: ActionRisk = .observe
 
-    public var identifier: AgentToolIdentifier {
+    public static let definition: ToolDefinition = .init(
+        identifier: Self.identifier,
+        purpose: Self.description,
+        risk: Self.risk
+    )
+
+    public var identifier: ToolIdentifier {
         Self.identifier
     }
 
@@ -70,13 +77,12 @@ public struct ReadAgentApprovalsTool: AgentTool {
 
     public func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
 
         return .init(
-            toolName: name,
-            risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
+            tool: Self.definition.identifier,
+            risk: Self.definition.risk,
             summary: "Read approval events for session \(input.sessionID).",
             sideEffects: []
         )
@@ -84,7 +90,7 @@ public struct ReadAgentApprovalsTool: AgentTool {
 
     public func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> Output {
 
         var events = try await catalog.loadApprovals(

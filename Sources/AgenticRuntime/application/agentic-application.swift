@@ -24,7 +24,7 @@ public struct AgenticApplication:
 
     public let toolRegistrations: [AgentToolRegistration]
     public let skillRegistrations: [AgentSkillRegistration]
-    public let programRegistrations: [AgentRuntimeProgramRegistration]
+    public let programRegistrations: [ProgramRegistration]
     public let gatewayFactories: [AgentModelGatewayFactory]
     public let modelProviders: [any AgentModelProvider]
 
@@ -36,7 +36,7 @@ public struct AgenticApplication:
     ) {
         var toolRegistrations: [AgentToolRegistration] = []
         var skillRegistrations: [AgentSkillRegistration] = []
-        var programRegistrations: [AgentRuntimeProgramRegistration] = []
+        var programRegistrations: [ProgramRegistration] = []
         var gatewayFactories: [AgentModelGatewayFactory] = []
         var modelProviders: [any AgentModelProvider] = []
 

@@ -1,6 +1,6 @@
 import Agentic
 import AgenticExecution
-import AgenticWorkspace
+import Workspace
 import Primitives
 import Schema
 import Macros
@@ -25,6 +25,7 @@ public struct ReviewPreparedIntentToolInput: Sendable, Codable, Hashable {
     }
 }
 
+@JSONSchema
 public struct ReviewPreparedIntentToolOutput: Sendable, Codable, Hashable {
     public let intent: PreparedIntent
 
@@ -35,15 +36,21 @@ public struct ReviewPreparedIntentToolOutput: Sendable, Codable, Hashable {
     }
 }
 
-public struct ReviewPreparedIntentTool: AgentTool {
+public struct ReviewPreparedIntentTool: Tool {
     public typealias Input = ReviewPreparedIntentToolInput
     public typealias Output = ReviewPreparedIntentToolOutput
 
-    public static let identifier: AgentToolIdentifier = "review_prepared_intent"
+    public static let identifier: ToolIdentifier = "review_prepared_intent"
     public static let description = "Approve, deny, cancel, or expire a prepared intent. This does not execute it."
     public static let risk: ActionRisk = .boundedmutate
 
-    public var identifier: AgentToolIdentifier { Self.identifier }
+    public static let definition: ToolDefinition = .init(
+        identifier: Self.identifier,
+        purpose: Self.description,
+        risk: Self.risk
+    )
+
+    public var identifier: ToolIdentifier { Self.identifier }
     public var description: String { Self.description }
     public var risk: ActionRisk { Self.risk }
 
@@ -57,15 +64,18 @@ public struct ReviewPreparedIntentTool: AgentTool {
 
     public func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
 
         return .init(
-            toolName: name,
-            risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
+            tool: Self.definition.identifier,
+            risk: Self.definition.risk,
             summary: "Mark prepared intent \(input.id.rawValue) as \(input.decision.resolvedStatus.rawValue).",
-            estimatedWriteCount: 1,
+            estimates: .init(
+                write: .init(
+                    count: 1
+                )
+            ),
             sideEffects: [
                 "updates prepared intent review status"
             ]
@@ -74,7 +84,7 @@ public struct ReviewPreparedIntentTool: AgentTool {
 
     public func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> Output {
 
         let intent = try await manager.review(

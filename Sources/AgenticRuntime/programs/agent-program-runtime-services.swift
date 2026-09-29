@@ -1,35 +1,31 @@
 import Agentic
 import AgenticExecution
-import AgenticPrograms
 import Primitives
 
 
-/// Runtime-side governed tool boundary used by AgentProgramRunner.
+/// Runtime-side governed tool boundary used by ProgramRunner.
 ///
 /// Implementations may own approval, suspension, and resume semantics, while
 /// successful tool execution returns AgenticExecution's canonical mechanical result.
-public protocol AgentProgramToolExecuting: Sendable {
+public protocol ProgramToolExecuting: Sendable {
     func invoke(
-        _ identifier: AgentToolIdentifier,
+        _ identifier: ToolIdentifier,
         input: JSONValue
-    ) async throws -> AgentToolExecutionResult
+    ) async throws -> ToolExecutionResult
 
     func resume(
         pendingApproval: PendingApproval,
         decision: ApprovalDecision
-    ) async throws -> AgentToolExecutionResult
+    ) async throws -> ToolExecutionResult
 }
 
-public extension AgentProgramToolExecuting {
+public extension ProgramToolExecuting {
     func resume(
         pendingApproval: PendingApproval,
         decision _: ApprovalDecision
-    ) async throws -> AgentToolExecutionResult {
-        throw AgentProgramReplayError.tool_resume_unsupported(
-            AgentToolIdentifier(
-                pendingApproval.toolCall.name
-            )
+    ) async throws -> ToolExecutionResult {
+        throw ProgramReplayError.tool_resume_unsupported(
+            pendingApproval.toolCall.tool
         )
     }
 }
-

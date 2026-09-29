@@ -27,7 +27,7 @@ public extension Agentic {
         }
 
         public func selection(
-            _ id: AgenticModeIdentifier,
+            _ id: ModeIdentifier,
             overlay: ModeOverlay = .init()
         ) throws -> ModeSelection {
             try catalog().selection(

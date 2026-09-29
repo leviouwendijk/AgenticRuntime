@@ -1,21 +1,21 @@
 import Agentic
-import AgenticPrograms
 import AgenticRuntime
+import Primitives
 import TestFlows
 
-private struct ProgramUserInputResumeFixture: AgentProgram {
+private struct ProgramUserInputResumeFixture: Program {
     typealias Input = String
     typealias Output = String
 
-    static let descriptor = AgentProgramDescriptor(
+    static let definition = ProgramDefinition(
         identifier: "fixture.program_user_input_resume",
-        title: "Program User Input Resume",
-        summary: "Proves Program-native required and optional user input across durable Runtime suspension and deterministic replay."
+        purpose: "Proves Program-native required and optional user input across durable Runtime suspension and deterministic replay.",
+        title: "Program User Input Resume"
     )
 
     func run(
         _ input: String,
-        in context: AgentProgramContext
+        in context: ProgramContext
     ) async throws -> String {
         let required = try await context.ask(
             UserInputRequest(
@@ -53,9 +53,9 @@ private struct ProgramUserInputResumeFixture: AgentProgram {
 extension AgenticProgramRuntimeFlowTesting {
     static func runProgramUserInputResume()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
-        let runner = AgentProgramRunner()
+        let runner = ProgramRunner()
 
         let initial = try await runner.execute(
             ProgramUserInputResumeFixture(),
@@ -108,11 +108,10 @@ extension AgenticProgramRuntimeFlowTesting {
             "first suspended Program step is user input"
         )
 
-        let durableFirstCheckpoint = try JSONToolBridge.decode(
-            AgentProgramCheckpoint.self,
-            from: try JSONToolBridge.encode(
-                firstCheckpoint
-            )
+        let durableFirstCheckpoint = try JSONValue.encoding(
+            firstCheckpoint
+        ).decode(
+            ProgramCheckpoint.self
         )
 
         var requiredSkipRejected = false
@@ -201,12 +200,11 @@ extension AgenticProgramRuntimeFlowTesting {
             "second suspended Program step is user input"
         )
 
-        let firstRecordedReply = try JSONToolBridge.decode(
-            UserInputReply.self,
-            from: try Expect.notNil(
-                secondCheckpoint.completedSteps[0].output,
-                "completed required step stores its reply"
-            )
+        let firstRecordedReply = try Expect.notNil(
+            secondCheckpoint.completedSteps[0].output,
+            "completed required step stores its reply"
+        ).decode(
+            UserInputReply.self
         )
 
         try Expect.equal(
@@ -217,11 +215,10 @@ extension AgenticProgramRuntimeFlowTesting {
             "required answer is durably recorded before the second suspension"
         )
 
-        let durableSecondCheckpoint = try JSONToolBridge.decode(
-            AgentProgramCheckpoint.self,
-            from: try JSONToolBridge.encode(
-                secondCheckpoint
-            )
+        let durableSecondCheckpoint = try JSONValue.encoding(
+            secondCheckpoint
+        ).decode(
+            ProgramCheckpoint.self
         )
 
         let optionalAnswerResult = try await runner.resume(
@@ -279,19 +276,17 @@ extension AgenticProgramRuntimeFlowTesting {
             "resumed second step retains user-input identity"
         )
 
-        let replayedRequiredReply = try JSONToolBridge.decode(
-            UserInputReply.self,
-            from: try Expect.notNil(
-                optionalAnswerResult.record.steps[0].output,
-                "optional-answer branch retains replayed required reply"
-            )
+        let replayedRequiredReply = try Expect.notNil(
+            optionalAnswerResult.record.steps[0].output,
+            "optional-answer branch retains replayed required reply"
+        ).decode(
+            UserInputReply.self
         )
-        let recordedOptionalAnswer = try JSONToolBridge.decode(
-            UserInputReply.self,
-            from: try Expect.notNil(
-                optionalAnswerResult.record.steps[1].output,
-                "optional-answer branch records second reply"
-            )
+        let recordedOptionalAnswer = try Expect.notNil(
+            optionalAnswerResult.record.steps[1].output,
+            "optional-answer branch records second reply"
+        ).decode(
+            UserInputReply.self
         )
 
         try Expect.equal(
@@ -352,19 +347,17 @@ extension AgenticProgramRuntimeFlowTesting {
             "optional-skip branch resolves optional step one"
         )
 
-        let skipBranchRequiredReply = try JSONToolBridge.decode(
-            UserInputReply.self,
-            from: try Expect.notNil(
-                optionalSkipResult.record.steps[0].output,
-                "optional-skip branch retains replayed required reply"
-            )
+        let skipBranchRequiredReply = try Expect.notNil(
+            optionalSkipResult.record.steps[0].output,
+            "optional-skip branch retains replayed required reply"
+        ).decode(
+            UserInputReply.self
         )
-        let recordedOptionalSkip = try JSONToolBridge.decode(
-            UserInputReply.self,
-            from: try Expect.notNil(
-                optionalSkipResult.record.steps[1].output,
-                "optional-skip branch records second reply"
-            )
+        let recordedOptionalSkip = try Expect.notNil(
+            optionalSkipResult.record.steps[1].output,
+            "optional-skip branch records second reply"
+        ).decode(
+            UserInputReply.self
         )
 
         try Expect.equal(

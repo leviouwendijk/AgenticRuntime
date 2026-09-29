@@ -1,10 +1,9 @@
 import Agentic
 import AgenticExecution
-import AgenticWorkspace
+import Workspace
 import Primitives
 import Schema
 import Macros
-import AgenticTools
 
 @JSONSchema
 public struct ListAgentArtifactsToolInput: Sendable, Codable, Hashable {
@@ -37,6 +36,7 @@ public struct ListAgentArtifactsToolInput: Sendable, Codable, Hashable {
     }
 }
 
+@JSONSchema
 public struct ListAgentArtifactsToolOutput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let totalArtifactCount: Int
@@ -55,15 +55,21 @@ public struct ListAgentArtifactsToolOutput: Sendable, Codable, Hashable {
     }
 }
 
-public struct ListAgentArtifactsTool: AgentTool {
+public struct ListAgentArtifactsTool: Tool {
     public typealias Input = ListAgentArtifactsToolInput
     public typealias Output = ListAgentArtifactsToolOutput
 
-    public static let identifier: AgentToolIdentifier = "list_agent_artifacts"
+    public static let identifier: ToolIdentifier = "list_agent_artifacts"
     public static let description = "List artifacts emitted for a durable Agentic session."
     public static let risk: ActionRisk = .observe
 
-    public var identifier: AgentToolIdentifier {
+    public static let definition: ToolDefinition = .init(
+        identifier: Self.identifier,
+        purpose: Self.description,
+        risk: Self.risk
+    )
+
+    public var identifier: ToolIdentifier {
         Self.identifier
     }
 
@@ -85,13 +91,12 @@ public struct ListAgentArtifactsTool: AgentTool {
 
     public func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
 
         return .init(
-            toolName: name,
-            risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
+            tool: Self.definition.identifier,
+            risk: Self.definition.risk,
             summary: "List artifacts for session \(input.sessionID).",
             sideEffects: []
         )
@@ -99,7 +104,7 @@ public struct ListAgentArtifactsTool: AgentTool {
 
     public func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> Output {
 
         let artifacts = try await catalog.listArtifacts(

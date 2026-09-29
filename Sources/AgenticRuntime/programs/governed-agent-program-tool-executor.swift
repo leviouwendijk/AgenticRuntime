@@ -1,19 +1,18 @@
 import Agentic
 import AgenticExecution
-import AgenticPrograms
-import AgenticRecovery
 import Foundation
 import Primitives
+import Workspace
 
-public enum AgentProgramToolGovernanceError:
+public enum ProgramToolGovernanceError:
     Error,
     Sendable,
     LocalizedError
 {
-    case needs_human_review(AgentToolIdentifier)
-    case denied(AgentToolIdentifier)
-    case skipped(AgentToolIdentifier)
-    case stale_approval(AgentToolIdentifier)
+    case needs_human_review(ToolIdentifier)
+    case denied(ToolIdentifier)
+    case skipped(ToolIdentifier)
+    case stale_approval(ToolIdentifier)
 
     public var errorDescription: String? {
         switch self {
@@ -32,26 +31,26 @@ public enum AgentProgramToolGovernanceError:
     }
 }
 
-/// Bridges an authored AgentProgram tool request into AgenticExecution's
+/// Bridges an authored Program tool request into AgenticExecution's
 /// canonical governed invocation path.
 ///
 /// The Program identifies the semantic operation it needs. It does not receive
 /// authority to execute that operation directly. Runtime owns Program approval,
 /// suspension, and resume semantics while ToolInvoker owns review and canonical
 /// mechanical execution.
-public struct GovernedAgentProgramToolExecutor:
-    AgentProgramToolExecuting,
+public struct GovernedProgramToolExecutor:
+    ProgramToolExecuting,
     Sendable
 {
     public let invoker: ToolInvoker
-    public let context: AgentToolExecutionContext
+    public let workspace: WorkspaceContext?
     public let approvalHandler: (any ToolApprovalHandler)?
 
     public init(
         registry: ToolRegistry,
         policy: ToolExecutionPolicy,
         recovery: Recovery.Policy? = nil,
-        context: AgentToolExecutionContext = .init(),
+        workspace: WorkspaceContext? = nil,
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
         self.init(
@@ -60,119 +59,62 @@ public struct GovernedAgentProgramToolExecutor:
                 policy: policy,
                 recovery: recovery
             ),
-            context: context,
+            workspace: workspace,
             approvalHandler: approvalHandler
         )
     }
 
     public init(
         invoker: ToolInvoker,
-        context: AgentToolExecutionContext = .init(),
+        workspace: WorkspaceContext? = nil,
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
         self.invoker = invoker
-        self.context = context
+        self.workspace = workspace
         self.approvalHandler = approvalHandler
     }
 
     public func invoke(
-        _ identifier: AgentToolIdentifier,
+        _ identifier: ToolIdentifier,
         input: JSONValue
-    ) async throws -> AgentToolExecutionResult {
-        let call = AgentToolCall(
+    ) async throws -> ToolExecutionResult {
+        let call = ToolCall(
             id: "program-\(UUID().uuidString)",
-            name: identifier.rawValue,
+            tool: identifier,
             input: input
         )
-        let review = try await invoker.review(
+        let invocation = try await invoker.invoke(
             call,
-            context: context
+            workspace: workspace,
+            approvalHandler: approvalHandler
         )
-        let decision: ApprovalDecision
 
-        switch review.requirement {
-        case .no_approval_needed:
-            decision = .approved
-
-        case .needs_human_review:
-            if let approvalHandler {
-                decision = try await approvalHandler.decide(
-                    on: review
-                )
-            } else {
-                decision = .needshuman
-            }
-
-        case .denied_forbidden:
-            decision = .denied
-        }
-
-        switch decision {
-        case .approved:
-            let execution = try await invoker.executeApproved(
-                call,
-                preflight: review.preflight,
-                context: context
-            )
-            guard !execution.result.isError else {
-                throw AgentProgramToolFailure(
-                    tool: identifier,
-                    result: execution.result,
-                    recovery: execution.recovery
-                )
-            }
-
-            return execution
-
-        case .needshuman:
-            throw AgentProgramSuspensionSignal(
-                suspension: .approval(
-                    PendingApproval(
-                        toolCall: call,
-                        preflight: review.preflight,
-                        requirement: review.requirement
-                    ),
-                    metadata: [
-                        "source": "agent_program",
-                    ]
-                )
-            )
-
-        case .denied:
-            throw AgentProgramToolGovernanceError
-                .denied(
-                    identifier
-                )
-
-        case .skipped:
-            throw AgentProgramToolGovernanceError
-                .skipped(
-                    identifier
-                )
-        }
+        return try resolve(
+            invocation,
+            identifier: identifier,
+            source: "agent_program"
+        )
     }
 
     public func resume(
         pendingApproval: PendingApproval,
         decision: ApprovalDecision
-    ) async throws -> AgentToolExecutionResult {
-        let identifier = AgentToolIdentifier(
-            pendingApproval.toolCall.name
-        )
+    ) async throws -> ToolExecutionResult {
+        let identifier = pendingApproval.toolCall.tool
 
         switch decision {
         case .denied:
-            throw AgentProgramToolGovernanceError.denied(
+            throw ProgramToolGovernanceError.denied(
                 identifier
             )
 
         case .skipped:
-            throw AgentProgramToolGovernanceError.skipped(
+            throw ProgramToolGovernanceError.skipped(
                 identifier
             )
 
         case .needshuman:
-            throw AgentProgramSuspensionSignal(
+            throw ProgramSuspensionSignal(
                 suspension: .approval(
                     pendingApproval,
                     metadata: [
@@ -184,24 +126,42 @@ public struct GovernedAgentProgramToolExecutor:
         case .approved:
             let freshReview = try await invoker.review(
                 pendingApproval.toolCall,
-                context: context
+                workspace: workspace
             )
 
             guard freshReview.preflight == pendingApproval.preflight,
                   freshReview.requirement == pendingApproval.requirement
             else {
-                throw AgentProgramToolGovernanceError.stale_approval(
+                throw ProgramToolGovernanceError.stale_approval(
                     identifier
                 )
             }
 
-            let execution = try await invoker.executeApproved(
-                pendingApproval.toolCall,
-                preflight: freshReview.preflight,
-                context: context
+            let invocation = try await invoker.invoke(
+                freshReview,
+                workspace: workspace,
+                approvalHandler: ProgramResolvedApprovalHandler(
+                    decision: .approved
+                )
             )
+
+            return try resolve(
+                invocation,
+                identifier: identifier,
+                source: "agent_program"
+            )
+        }
+    }
+
+    private func resolve(
+        _ invocation: ToolInvocation.Result,
+        identifier: ToolIdentifier,
+        source: String
+    ) throws -> ToolExecutionResult {
+        switch invocation.outcome {
+        case .executed(let execution):
             guard !execution.result.isError else {
-                throw AgentProgramToolFailure(
+                throw ProgramToolFailure(
                     tool: identifier,
                     result: execution.result,
                     recovery: execution.recovery
@@ -209,6 +169,44 @@ public struct GovernedAgentProgramToolExecutor:
             }
 
             return execution
+
+        case .interrupted(.human_review):
+            throw ProgramSuspensionSignal(
+                suspension: .approval(
+                    PendingApproval(
+                        toolCall: invocation.review.call,
+                        preflight: invocation.review.preflight,
+                        requirement: invocation.review.requirement
+                    ),
+                    metadata: [
+                        "source": source,
+                    ]
+                )
+            )
+
+        case .denied:
+            throw ProgramToolGovernanceError.denied(
+                identifier
+            )
+
+        case .skipped:
+            throw ProgramToolGovernanceError.skipped(
+                identifier
+            )
         }
+    }
+}
+
+private struct ProgramResolvedApprovalHandler:
+    ToolApprovalHandler,
+    Sendable
+{
+    let decision: ApprovalDecision
+
+    func decide(
+        on _: ToolPreflight,
+        requirement _: ApprovalRequirement
+    ) async throws -> ApprovalDecision {
+        decision
     }
 }

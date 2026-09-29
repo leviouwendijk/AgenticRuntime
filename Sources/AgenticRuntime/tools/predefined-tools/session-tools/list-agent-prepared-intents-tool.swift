@@ -1,6 +1,6 @@
 import Agentic
 import AgenticExecution
-import AgenticWorkspace
+import Workspace
 import Primitives
 import Schema
 import Macros
@@ -39,6 +39,7 @@ public struct ListAgentPreparedIntentsToolInput: Sendable, Codable, Hashable {
     }
 }
 
+@JSONSchema
 public struct ListAgentPreparedIntentsToolOutput: Sendable, Codable, Hashable {
     public let sessionID: String
     public let totalIntentCount: Int
@@ -57,15 +58,21 @@ public struct ListAgentPreparedIntentsToolOutput: Sendable, Codable, Hashable {
     }
 }
 
-public struct ListAgentPreparedIntentsTool: AgentTool {
+public struct ListAgentPreparedIntentsTool: Tool {
     public typealias Input = ListAgentPreparedIntentsToolInput
     public typealias Output = ListAgentPreparedIntentsToolOutput
 
-    public static let identifier: AgentToolIdentifier = "list_agent_prepared_intents"
+    public static let identifier: ToolIdentifier = "list_agent_prepared_intents"
     public static let description = "List prepared intents associated with a durable Agentic session."
     public static let risk: ActionRisk = .observe
 
-    public var identifier: AgentToolIdentifier {
+    public static let definition: ToolDefinition = .init(
+        identifier: Self.identifier,
+        purpose: Self.description,
+        risk: Self.risk
+    )
+
+    public var identifier: ToolIdentifier {
         Self.identifier
     }
 
@@ -87,13 +94,12 @@ public struct ListAgentPreparedIntentsTool: AgentTool {
 
     public func preflight(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> ToolPreflight {
 
         return .init(
-            toolName: name,
-            risk: risk,
-            workspaceRoot: context.workspace?.rootURL.path,
+            tool: Self.definition.identifier,
+            risk: Self.definition.risk,
             summary: "List prepared intents for session \(input.sessionID).",
             sideEffects: []
         )
@@ -101,7 +107,7 @@ public struct ListAgentPreparedIntentsTool: AgentTool {
 
     public func call(
         _ input: Input,
-        context: AgentToolExecutionContext
+        workspace: WorkspaceContext?
     ) async throws -> Output {
 
         let intents = try await catalog.listPreparedIntents(

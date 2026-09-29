@@ -1,12 +1,11 @@
 import Agentic
 import AgenticExecution
-import AgenticRecovery
 
 public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
     public var maximumIterations: Int
     public var appendToolResultsAsMessages: Bool
     public var autonomyMode: AutonomyMode
-    public var executionLimits: ExecutionLimits
+    public var executionLimits: AgenticExecution.ExecutionLimits
     public var recovery: Recovery.Policy?
     public var historyPersistenceMode: HistoryPersistenceMode
     public var compactionStrategy: CompactionStrategy?
@@ -18,7 +17,7 @@ public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
         maximumIterations: Int = 12,
         appendToolResultsAsMessages: Bool = true,
         autonomyMode: AutonomyMode = .auto_observe,
-        executionLimits: ExecutionLimits = .unlimited,
+        executionLimits: AgenticExecution.ExecutionLimits = .unlimited,
         recovery: Recovery.Policy? = nil,
         historyPersistenceMode: HistoryPersistenceMode = .disabled,
         compactionStrategy: CompactionStrategy? = nil,

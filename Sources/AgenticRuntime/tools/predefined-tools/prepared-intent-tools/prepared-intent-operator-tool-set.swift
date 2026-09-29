@@ -1,6 +1,6 @@
 import AgenticExecution
 
-public struct PreparedIntentOperatorToolSet: AgentToolSet {
+public struct PreparedIntentOperatorToolSet: AgentToolProvider {
     public let manager: PreparedIntentManager
     public let executor: PreparedIntentExecutor?
 
@@ -12,7 +12,7 @@ public struct PreparedIntentOperatorToolSet: AgentToolSet {
         self.executor = executor
     }
 
-    public func register(
+    public func registerTools(
         into registry: inout ToolRegistry
     ) throws {
         try registry.register {

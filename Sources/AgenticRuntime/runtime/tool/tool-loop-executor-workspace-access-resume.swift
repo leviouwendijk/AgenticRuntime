@@ -1,4 +1,5 @@
 import Agentic
+import AgenticExecution
 import AgenticIO
 
 extension ToolLoopExecutor {
@@ -32,7 +33,7 @@ extension ToolLoopExecutor {
         }
 
         let toolName = suspension.metadata["toolName"]
-            ?? RequestPathGrantTool.identifier.rawValue
+            ?? SystemIO.Tools.RequestPathGrant.identifier.rawValue
         var payloadMetadata = suspension.metadata
 
         payloadMetadata.merge(
@@ -41,9 +42,9 @@ extension ToolLoopExecutor {
             new
         }
 
-        let result = AgentToolResult(
+        let result = ToolResult(
             toolCallID: toolCallID,
-            name: toolName,
+            tool: ToolIdentifier(toolName),
             output: try JSONToolBridge.encode(
                 WorkspaceAccessResumePayload(
                     kind: resolution == .deny
@@ -55,9 +56,9 @@ extension ToolLoopExecutor {
             ),
             isError: false
         )
-        let toolCall = AgentToolCall(
+        let toolCall = ToolCall(
             id: toolCallID,
-            name: toolName,
+            tool: ToolIdentifier(toolName),
             input: .object([:])
         )
 

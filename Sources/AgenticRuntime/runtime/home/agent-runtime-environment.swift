@@ -1,11 +1,11 @@
 import Agentic
-import AgenticWorkspace
+import Workspace
 import Foundation
 import Path
 
 public struct AgentRuntimeEnvironment: Sendable {
     public let home: AgentHome
-    public let workspace: AgentWorkspace?
+    public let workspace: Workspace?
     public let projectDiscovery: AgentProjectDiscovery?
     public let projectConfiguration: AgentProjectConfiguration?
     public let projectLocalConfiguration: AgentProjectLocalConfiguration?
@@ -13,7 +13,7 @@ public struct AgentRuntimeEnvironment: Sendable {
 
     public init(
         home: AgentHome,
-        workspace: AgentWorkspace? = nil,
+        workspace: Workspace? = nil,
         projectDiscovery: AgentProjectDiscovery? = nil,
         projectConfiguration: AgentProjectConfiguration? = nil,
         projectLocalConfiguration: AgentProjectLocalConfiguration? = nil,
@@ -32,7 +32,7 @@ public extension AgentRuntimeEnvironment {
     static func resolve(
         explicitHome: AgentHome? = nil,
         explicitHomeRootURL: URL? = nil,
-        explicitWorkspace: AgentWorkspace? = nil,
+        explicitWorkspace: Workspace? = nil,
         currentdir: URL = URL(
             fileURLWithPath: FileManager.default.currentDirectoryPath,
             isDirectory: true
@@ -91,7 +91,7 @@ private extension AgentRuntimeEnvironment {
         projectDiscovery: AgentProjectDiscovery?,
         projectConfiguration: AgentProjectConfiguration?,
         attachWorkspaceIfProjectDiscovered: Bool
-    ) throws -> AgentWorkspace? {
+    ) throws -> Workspace? {
         guard attachWorkspaceIfProjectDiscovered,
               let projectDiscovery else {
             return nil
@@ -102,14 +102,29 @@ private extension AgentRuntimeEnvironment {
             rawWorkspaceRoot: projectConfiguration?.workspaceRoot
         )
 
-        let root = StandardPath(
-            fileURL: workspaceRootURL,
-            terminalHint: .directory,
-            inferFileType: false
+        let rootIdentifier = PathAccessRootIdentifier(
+            rawValue: "project"
+        )
+        let root = PathAccessRoot(
+            id: rootIdentifier,
+            label: "Project",
+            scope: try PathAccessScope(
+                root: workspaceRootURL,
+                policy: .defaults.workspace
+            ),
+            isDefault: true
+        )
+        let grant = try WorkspaceGrant(
+            id: WorkspaceGrantIdentifier(
+                "project-runtime"
+            ),
+            rootIdentifier: rootIdentifier,
+            capabilities: Set(WorkspaceCapability.allCases)
         )
 
-        return try AgentWorkspace(
-            root: root
+        return try Workspace(
+            root: root,
+            grants: [grant]
         )
     }
 

@@ -1,5 +1,6 @@
+import AgenticIO
 import AgenticRuntime
-import AgenticWorkspace
+import Workspace
 import Foundation
 import Path
 import TestFlows
@@ -7,7 +8,7 @@ import TestFlows
 extension AgenticProgramRuntimeFlowTesting {
     static func runWorkspaceAccessLeaseActivation()
         async throws
-        -> [TestFlowDiagnostic]
+        -> [TestDiagnostic]
     {
         let fixtureRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent(
@@ -55,8 +56,30 @@ extension AgenticProgramRuntimeFlowTesting {
             )
         }
 
-        let baseWorkspace = try AgentWorkspace(
-            root: projectRoot
+        let projectRootID = PathAccessRootIdentifier(
+            rawValue: "project"
+        )
+        let baseWorkspace = try Workspace(
+            root: PathAccessRoot(
+                id: projectRootID,
+                label: "Project",
+                scope: try PathAccessScope(
+                    root: projectRoot,
+                    policy: .defaults.workspace
+                ),
+                isDefault: true
+            ),
+            grants: [
+                try WorkspaceGrant(
+                    id: WorkspaceGrantIdentifier(
+                        "fixture-project-grant"
+                    ),
+                    rootIdentifier: projectRootID,
+                    capabilities: Set(
+                        WorkspaceCapability.allCases
+                    )
+                ),
+            ]
         )
         let currentTurnID = "fixture-turn-current"
         let otherTurnID = "fixture-turn-other"
@@ -67,22 +90,24 @@ extension AgenticProgramRuntimeFlowTesting {
             rawValue: "fixture_turn"
         )
         let turnRequest = WorkspaceAccessRequest(
-            overlay: try fixtureWorkspaceAccessOverlay(
-                rootID: turnRootID,
-                label: "Fixture Turn",
-                rootURL: turnRoot,
-                grantID: "fixture-turn-grant"
-            ),
+            rootID: turnRootID.rawValue,
+            rootPath: turnRoot.path,
+            label: "Fixture Turn",
+            capabilities: [
+                .list,
+                .read,
+            ],
+            reason: "Exercise turn-scoped Runtime workspace access.",
+            policyProfile: "workspace",
             durationSeconds: 60
         )
-        let turnLease = try AgentWorkspaceAccessLease(
-            overlay: turnRequest.overlay,
+        let turnLease = try WorkspaceAccessLease(
+            request: turnRequest,
             lifetime: .turn,
-            durationSeconds: turnRequest.durationSeconds,
             activatedAt: activatedAt,
             sourceTurnID: currentTurnID
         )
-        var leases = try AgentWorkspaceAccessLeases()
+        var leases = try WorkspaceAccessLeases()
             .activating(
                 turnLease,
                 baseWorkspace: baseWorkspace,
@@ -111,33 +136,30 @@ extension AgenticProgramRuntimeFlowTesting {
                 .workspace_missing
         }
 
-        let authorizedTurnFile = try turnEffective
-            .accessController
-            .authorize(
-                rootID: turnRootID,
-                path: "turn.txt",
-                capability: .read,
-                toolName: "read_file",
-                type: .file
-            )
+        let authorizedTurnFile = try turnEffective.authorize(
+            "turn.txt",
+            rootIdentifier: turnRootID,
+            capability: .read
+        )
 
         try Expect.equal(
-            baseWorkspace.accessController.rootIdentifiers.count,
+            baseWorkspace.rootIdentifiers.count,
             1,
             "base workspace remains unchanged after temporary grant activation"
         )
         try Expect.equal(
-            turnEffective.accessController.rootIdentifiers.count,
+            turnEffective.rootIdentifiers.count,
             2,
-            "activating turn sees base workspace plus its turn overlay"
+            "activating turn sees base workspace plus its turn authority"
         )
         try Expect.equal(
-            otherTurnBeforeSession.accessController.rootIdentifiers.count,
+            otherTurnBeforeSession.rootIdentifiers.count,
             1,
             "another turn does not inherit turn-scoped authority"
         )
         try Expect.equal(
-            authorizedTurnFile.absoluteURL.standardizedFileURL.path,
+            authorizedTurnFile.authorizedPath.absoluteURL
+                .standardizedFileURL.path,
             turnFile.standardizedFileURL.path,
             "turn-scoped effective workspace authorizes the exact approved external path"
         )
@@ -146,15 +168,19 @@ extension AgenticProgramRuntimeFlowTesting {
             rawValue: "fixture_session"
         )
         let sessionRequest = WorkspaceAccessRequest(
-            overlay: try fixtureWorkspaceAccessOverlay(
-                rootID: sessionRootID,
-                label: "Fixture Session",
-                rootURL: sessionRoot,
-                grantID: "fixture-session-grant"
-            )
+            rootID: sessionRootID.rawValue,
+            rootPath: sessionRoot.path,
+            label: "Fixture Session",
+            capabilities: [
+                .list,
+                .read,
+            ],
+            reason: "Exercise session-scoped Runtime workspace access.",
+            policyProfile: "workspace",
+            durationSeconds: nil
         )
-        let sessionLease = try AgentWorkspaceAccessLease(
-            overlay: sessionRequest.overlay,
+        let sessionLease = try WorkspaceAccessLease(
+            request: sessionRequest,
             lifetime: .session,
             sourceTurnID: currentTurnID
         )
@@ -182,24 +208,24 @@ extension AgenticProgramRuntimeFlowTesting {
         }
 
         try Expect.equal(
-            currentWithSession.accessController.rootIdentifiers.count,
+            currentWithSession.rootIdentifiers.count,
             3,
             "current turn composes base, turn, and session authority"
         )
         try Expect.equal(
-            otherWithSession.accessController.rootIdentifiers.count,
+            otherWithSession.rootIdentifiers.count,
             2,
             "other turns inherit session authority but not another turn's authority"
         )
         try Expect.equal(
-            otherWithSession.accessController.rootIdentifiers.contains(
+            otherWithSession.rootIdentifiers.contains(
                 sessionRootID
             ),
             true,
             "session-scoped root is visible to another turn"
         )
         try Expect.equal(
-            otherWithSession.accessController.rootIdentifiers.contains(
+            otherWithSession.rootIdentifiers.contains(
                 turnRootID
             ),
             false,
@@ -210,7 +236,7 @@ extension AgenticProgramRuntimeFlowTesting {
             leases
         )
         let decodedLeases = try JSONDecoder().decode(
-            AgentWorkspaceAccessLeases.self,
+            WorkspaceAccessLeases.self,
             from: encodedLeases
         )
 
@@ -271,10 +297,9 @@ extension AgenticProgramRuntimeFlowTesting {
             "denial installs no workspace authority lifetime"
         )
 
-        let afterTurn = leases
-            .endingTurn(
-                currentTurnID
-            )
+        let afterTurn = leases.endingTurn(
+            currentTurnID
+        )
         guard let afterTurnWorkspace = try afterTurn.effectiveWorkspace(
             base: baseWorkspace,
             turnID: currentTurnID,
@@ -285,19 +310,19 @@ extension AgenticProgramRuntimeFlowTesting {
         }
 
         try Expect.equal(
-            afterTurnWorkspace.accessController.rootIdentifiers.count,
+            afterTurnWorkspace.rootIdentifiers.count,
             2,
             "ending a turn removes turn-scoped authority while preserving session authority"
         )
         try Expect.equal(
-            afterTurnWorkspace.accessController.rootIdentifiers.contains(
+            afterTurnWorkspace.rootIdentifiers.contains(
                 turnRootID
             ),
             false,
             "ended turn no longer has its temporary turn root"
         )
         try Expect.equal(
-            afterTurnWorkspace.accessController.rootIdentifiers.contains(
+            afterTurnWorkspace.rootIdentifiers.contains(
                 sessionRootID
             ),
             true,
@@ -308,25 +333,25 @@ extension AgenticProgramRuntimeFlowTesting {
             .field(
                 "base_roots",
                 String(
-                    baseWorkspace.accessController.rootIdentifiers.count
+                    baseWorkspace.rootIdentifiers.count
                 )
             ),
             .field(
                 "current_turn_roots",
                 String(
-                    currentWithSession.accessController.rootIdentifiers.count
+                    currentWithSession.rootIdentifiers.count
                 )
             ),
             .field(
                 "other_turn_roots",
                 String(
-                    otherWithSession.accessController.rootIdentifiers.count
+                    otherWithSession.rootIdentifiers.count
                 )
             ),
             .field(
                 "after_turn_roots",
                 String(
-                    afterTurnWorkspace.accessController.rootIdentifiers.count
+                    afterTurnWorkspace.rootIdentifiers.count
                 )
             ),
             .field(
@@ -339,41 +364,4 @@ extension AgenticProgramRuntimeFlowTesting {
 
 private enum WorkspaceAccessLeaseActivationFixtureError: Error {
     case workspace_missing
-}
-
-private func fixtureWorkspaceAccessOverlay(
-    rootID: PathAccessRootIdentifier,
-    label: String,
-    rootURL: URL,
-    grantID: String
-) throws -> WorkspaceAccessOverlay {
-    try WorkspaceAccessOverlay(
-        roots: [
-            .init(
-                root: .init(
-                    id: rootID,
-                    label: label,
-                    scope: try PathAccessScope(
-                        root: rootURL,
-                        policy: .defaults.workspace
-                    ),
-                    details: "Runtime workspace-access lease fixture.",
-                    isDefault: false
-                ),
-                grant: .init(
-                    id: grantID,
-                    rootID: rootID,
-                    mode: .read_only,
-                    capabilities: [
-                        .list,
-                        .read,
-                    ],
-                    allowedTools: [
-                        "read_file",
-                    ],
-                    reason: "Exercise scoped Runtime workspace-access lease activation."
-                )
-            ),
-        ]
-    )
 }

@@ -1,5 +1,6 @@
 import Agentic
-import AgenticWorkspace
+import AgenticIO
+import Workspace
 import Foundation
 
 public enum AgentSuspensionReason: Sendable, Codable, Hashable {

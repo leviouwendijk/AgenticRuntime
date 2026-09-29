@@ -2,15 +2,15 @@ import Agentic
 
 public protocol AgentRunEventSink: Sendable {
     func recordMessage(
-        _ message: AgentMessage
+        _ message: Message
     ) async throws
 
     func recordToolCall(
-        _ toolCall: AgentToolCall
+        _ toolCall: ToolCall
     ) async throws
 
     func recordToolResult(
-        _ result: AgentToolResult
+        _ result: ToolResult
     ) async throws
 
     func recordRunEvent(
@@ -18,23 +18,23 @@ public protocol AgentRunEventSink: Sendable {
     ) async throws
 
     func recordSessionBranch(
-        _ event: AgentSessionBranchEvent
+        _ event: SessionBranchEvent
     ) async throws
 }
 
 public extension AgentRunEventSink {
     func recordMessage(
-        _ message: AgentMessage
+        _ message: Message
     ) async throws {
     }
 
     func recordToolCall(
-        _ toolCall: AgentToolCall
+        _ toolCall: ToolCall
     ) async throws {
     }
 
     func recordToolResult(
-        _ result: AgentToolResult
+        _ result: ToolResult
     ) async throws {
     }
 
@@ -44,7 +44,7 @@ public extension AgentRunEventSink {
     }
 
     func recordSessionBranch(
-        _ event: AgentSessionBranchEvent
+        _ event: SessionBranchEvent
     ) async throws {
     }
 }
