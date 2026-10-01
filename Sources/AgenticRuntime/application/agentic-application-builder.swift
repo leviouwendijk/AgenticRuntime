@@ -7,6 +7,7 @@ public enum AgenticApplicationComponent:
     case tools([AgentToolRegistration])
     case skills([AgentSkillRegistration])
     case programs([ProgramRegistration])
+    case agents([AgentDefinition])
     case gateways([AgentModelGatewayFactory])
     case modelProviders([any AgentModelProvider])
 }
@@ -33,6 +34,12 @@ public enum AgenticApplicationBuilder {
         _ expression: [AgenticApplicationComponent]
     ) -> [AgenticApplicationComponent] {
         expression
+    }
+
+    public static func buildExpression(
+        _ expression: Installation
+    ) -> [AgenticApplicationComponent] {
+        expression.components
     }
 
     public static func buildExpression(
