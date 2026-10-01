@@ -13,6 +13,9 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
     static let title = "Agentic program runtime flow tests"
 
     static let flows: [TestFlow] = [
+        TestFlow("tool-observation-history", tags: ["runtime", "observations", "persistence"]) {
+            try AgenticProgramRuntimeFlowTesting.runToolObservationHistory()
+        },
         TestFlow(
             "program-execution-record",
             tags: [

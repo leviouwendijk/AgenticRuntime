@@ -42,6 +42,7 @@ extension ToolLoopExecutor {
         for toolCall: ToolCall,
         disposition: AgentToolUseDisposition,
         recovery: Recovery.Record? = nil,
+        observations: [ToolResultObservation] = [],
         to checkpoint: inout AgentHistoryCheckpoint,
         summary: String
     ) async throws {
@@ -50,7 +51,8 @@ extension ToolLoopExecutor {
                 toolCallID: toolCall.id,
                 disposition: disposition,
                 result: result,
-                recovery: recovery
+                recovery: recovery,
+                observations: observations
             )
             batch.completeIfTerminal()
             checkpoint.toolBatch = batch

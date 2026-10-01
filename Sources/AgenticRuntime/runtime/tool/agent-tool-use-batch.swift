@@ -31,6 +31,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
     public var preflight: ToolPreflight?
     public var result: ToolResult?
     public var recovery: Recovery.Record?
+    public var observations: [ToolResultObservation]
     public var updatedAt: Date
 
     public init(
@@ -39,6 +40,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
         preflight: ToolPreflight? = nil,
         result: ToolResult? = nil,
         recovery: Recovery.Record? = nil,
+        observations: [ToolResultObservation] = [],
         updatedAt: Date = Date()
     ) {
         self.toolCall = toolCall
@@ -46,7 +48,25 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
         self.preflight = preflight
         self.result = result
         self.recovery = recovery
+        self.observations = observations
         self.updatedAt = updatedAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case toolCall, disposition, preflight, result, recovery, observations, updatedAt
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            toolCall: try values.decode(ToolCall.self, forKey: .toolCall),
+            disposition: try values.decode(AgentToolUseDisposition.self, forKey: .disposition),
+            preflight: try values.decodeIfPresent(ToolPreflight.self, forKey: .preflight),
+            result: try values.decodeIfPresent(ToolResult.self, forKey: .result),
+            recovery: try values.decodeIfPresent(Recovery.Record.self, forKey: .recovery),
+            observations: try values.decodeIfPresent([ToolResultObservation].self, forKey: .observations) ?? [],
+            updatedAt: try values.decode(Date.self, forKey: .updatedAt)
+        )
     }
 
     public var id: String {
@@ -184,6 +204,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
         preflight: ToolPreflight? = nil,
         result: ToolResult? = nil,
         recovery: Recovery.Record? = nil,
+        observations: [ToolResultObservation] = [],
         now: Date = Date()
     ) {
         guard let index = records.firstIndex(where: { record in
@@ -200,6 +221,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
 
         if let result {
             records[index].result = result
+            records[index].observations = observations
         }
 
         if let recovery {

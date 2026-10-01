@@ -147,6 +147,7 @@ extension ToolLoopExecutor {
                         for: toolCall,
                         disposition: .failed_execution,
                         recovery: execution.recovery,
+                        observations: execution.observations,
                         to: &checkpoint,
                         summary: "workspace access request failed"
                     )
@@ -208,6 +209,7 @@ extension ToolLoopExecutor {
                     for: toolCall,
                     disposition: result.isError ? .failed_execution : .executed,
                     recovery: execution.recovery,
+                    observations: execution.observations,
                     to: &checkpoint,
                     summary: result.isError
                         ? "tool execution failed"
@@ -312,6 +314,7 @@ extension ToolLoopExecutor {
                         for: toolCall,
                         disposition: result.isError ? .failed_execution : .executed,
                         recovery: execution.recovery,
+                        observations: execution.observations,
                         to: &checkpoint,
                         summary: result.isError
                             ? "tool execution failed"
