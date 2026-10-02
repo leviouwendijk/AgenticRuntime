@@ -3,12 +3,12 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-10-02T19:43:25Z",
-  "passed" : 24,
+  "generated_at" : "2026-10-02T21:33:07Z",
+  "passed" : 25,
   "results" : [
     {
       "display_name" : "tool-observation-history",
-      "duration_seconds" : 0.0046939849853515625,
+      "duration_seconds" : 0.004908919334411621,
       "name" : "tool-observation-history",
       "status" : "passed",
       "tags" : [
@@ -18,8 +18,22 @@
       ]
     },
     {
+      "display_name" : "agent-capability-state",
+      "duration_seconds" : 0.004783034324645996,
+      "name" : "agent-capability-state",
+      "status" : "passed",
+      "tags" : [
+        "agent",
+        "agentic-runtime",
+        "availability",
+        "capabilities",
+        "discovery",
+        "visibility"
+      ]
+    },
+    {
       "display_name" : "program-execution-record",
-      "duration_seconds" : 0.002285003662109375,
+      "duration_seconds" : 0.0017229318618774414,
       "name" : "program-execution-record",
       "status" : "passed",
       "tags" : [
@@ -31,7 +45,7 @@
     },
     {
       "display_name" : "program-execution-failure-record",
-      "duration_seconds" : 0.0013229846954345703,
+      "duration_seconds" : 0.0011600255966186523,
       "name" : "program-execution-failure-record",
       "status" : "passed",
       "tags" : [
@@ -43,7 +57,7 @@
     },
     {
       "display_name" : "program-inference-execution-record",
-      "duration_seconds" : 0.0024499893188476562,
+      "duration_seconds" : 0.0019669532775878906,
       "name" : "program-inference-execution-record",
       "status" : "passed",
       "tags" : [
@@ -56,7 +70,7 @@
     },
     {
       "display_name" : "program-inference-failure-recovery-evidence",
-      "duration_seconds" : 0.0018690824508666992,
+      "duration_seconds" : 0.0017830133438110352,
       "name" : "program-inference-failure-recovery-evidence",
       "status" : "passed",
       "tags" : [
@@ -71,7 +85,7 @@
     },
     {
       "display_name" : "model-invocation-transport",
-      "duration_seconds" : 0.0010750293731689453,
+      "duration_seconds" : 0.0008029937744140625,
       "name" : "model-invocation-transport",
       "status" : "passed",
       "tags" : [
@@ -84,7 +98,7 @@
     },
     {
       "display_name" : "model-invocation-streaming-completion",
-      "duration_seconds" : 0.0002300739288330078,
+      "duration_seconds" : 0.0002338886260986328,
       "name" : "model-invocation-streaming-completion",
       "status" : "passed",
       "tags" : [
@@ -97,7 +111,7 @@
     },
     {
       "display_name" : "runtime-services-composition",
-      "duration_seconds" : 0.00011301040649414062,
+      "duration_seconds" : 0.00010192394256591797,
       "name" : "runtime-services-composition",
       "status" : "passed",
       "tags" : [
@@ -109,7 +123,7 @@
     },
     {
       "display_name" : "mode-model-selection-propagation",
-      "duration_seconds" : 0.0001729726791381836,
+      "duration_seconds" : 0.0001291036605834961,
       "name" : "mode-model-selection-propagation",
       "status" : "passed",
       "tags" : [
@@ -121,7 +135,7 @@
     },
     {
       "display_name" : "runtime-services-recording-propagation",
-      "duration_seconds" : 5.793571472167969e-05,
+      "duration_seconds" : 5.3048133850097656e-05,
       "name" : "runtime-services-recording-propagation",
       "status" : "passed",
       "tags" : [
@@ -133,7 +147,7 @@
     },
     {
       "display_name" : "application-program-installation",
-      "duration_seconds" : 0.0012520551681518555,
+      "duration_seconds" : 0.0011060237884521484,
       "name" : "application-program-installation",
       "status" : "passed",
       "tags" : [
@@ -147,7 +161,7 @@
     },
     {
       "display_name" : "application-installation-composition",
-      "duration_seconds" : 0.0008790493011474609,
+      "duration_seconds" : 0.0005680322647094727,
       "name" : "application-installation-composition",
       "status" : "passed",
       "tags" : [
@@ -162,7 +176,7 @@
     },
     {
       "display_name" : "application-catalog-installation",
-      "duration_seconds" : 0.0020859241485595703,
+      "duration_seconds" : 0.0018709897994995117,
       "name" : "application-catalog-installation",
       "status" : "passed",
       "tags" : [
@@ -176,7 +190,7 @@
     },
     {
       "display_name" : "application-gateway-availability",
-      "duration_seconds" : 5.900859832763672e-05,
+      "duration_seconds" : 5.805492401123047e-05,
       "name" : "application-gateway-availability",
       "status" : "passed",
       "tags" : [
@@ -189,7 +203,7 @@
     },
     {
       "display_name" : "program-governed-tool-execution",
-      "duration_seconds" : 0.0015000104904174805,
+      "duration_seconds" : 0.0014389753341674805,
       "name" : "program-governed-tool-execution",
       "status" : "passed",
       "tags" : [
@@ -204,7 +218,7 @@
     },
     {
       "display_name" : "program-user-input-resume",
-      "duration_seconds" : 0.0037490129470825195,
+      "duration_seconds" : 0.0034819841384887695,
       "name" : "program-user-input-resume",
       "status" : "passed",
       "tags" : [
@@ -219,7 +233,7 @@
     },
     {
       "display_name" : "program-approval-resume-replay",
-      "duration_seconds" : 0.004314064979553223,
+      "duration_seconds" : 0.004150986671447754,
       "name" : "program-approval-resume-replay",
       "status" : "passed",
       "tags" : [
@@ -234,7 +248,7 @@
     },
     {
       "display_name" : "tool-observe-recovery",
-      "duration_seconds" : 0.009797096252441406,
+      "duration_seconds" : 0.005825042724609375,
       "name" : "tool-observe-recovery",
       "status" : "passed",
       "tags" : [
@@ -247,7 +261,7 @@
     },
     {
       "display_name" : "tool-mutation-recovery",
-      "duration_seconds" : 0.0013109445571899414,
+      "duration_seconds" : 0.001320958137512207,
       "name" : "tool-mutation-recovery",
       "status" : "passed",
       "tags" : [
@@ -260,7 +274,7 @@
     },
     {
       "display_name" : "tool-classification-propagation",
-      "duration_seconds" : 0.001168966293334961,
+      "duration_seconds" : 0.0010889768600463867,
       "name" : "tool-classification-propagation",
       "status" : "passed",
       "tags" : [
@@ -274,7 +288,7 @@
     },
     {
       "display_name" : "prepared-intent-runtime-execution",
-      "duration_seconds" : 0.0030859708786010742,
+      "duration_seconds" : 0.003137946128845215,
       "name" : "prepared-intent-runtime-execution",
       "status" : "passed",
       "tags" : [
@@ -287,7 +301,7 @@
     },
     {
       "display_name" : "workspace-access-lease-activation",
-      "duration_seconds" : 0.004734992980957031,
+      "duration_seconds" : 0.00504302978515625,
       "name" : "workspace-access-lease-activation",
       "status" : "passed",
       "tags" : [
@@ -302,7 +316,7 @@
     },
     {
       "display_name" : "program-caught-tool-failure-resume",
-      "duration_seconds" : 0.0009169578552246094,
+      "duration_seconds" : 0.0009639263153076172,
       "name" : "program-caught-tool-failure-resume",
       "status" : "passed",
       "tags" : [
@@ -317,7 +331,7 @@
     },
     {
       "display_name" : "program-governed-tool-recovery",
-      "duration_seconds" : 0.0012819766998291016,
+      "duration_seconds" : 0.0013380050659179688,
       "name" : "program-governed-tool-recovery",
       "status" : "passed",
       "tags" : [
@@ -332,5 +346,5 @@
   ],
   "skipped" : 0,
   "title" : "Agentic program runtime flow tests",
-  "total" : 24
+  "total" : 25
 }

@@ -175,26 +175,56 @@ extension AgentRunner {
     func makeToolLoopExecutor(
         restoring checkpoint: AgentHistoryCheckpoint? = nil
     ) async throws -> ToolLoopExecutor {
-        let exposure = AgentToolExposure(
-            policy: configuration.toolExposure
-        )
         var registry = tooling.registry
+        let findToolsIdentifier =
+            Standard.Tools.FindTools.identifier
+        let explicitlyAvailableFindTools =
+            configuration.availableCapabilities?
+                .tools
+                .contains(
+                    findToolsIdentifier
+                )
+            == true
+        let shouldBindFindTools =
+            configuration.toolExposure.usesDiscovery
+            || explicitlyAvailableFindTools
+        var installedDefinitions =
+            registry.modelFacingDefinitions
 
-        if configuration.toolExposure.usesDiscovery,
+        if shouldBindFindTools,
+           registry.modelFacingDefinition(
+               identifiedBy: findToolsIdentifier
+           ) == nil {
+            installedDefinitions.append(
+                .init(
+                    identifier: Standard.Tools.FindTools.definition.identifier,
+                    description: Standard.Tools.FindTools.definition.purpose,
+                    risk: Standard.Tools.FindTools.definition.risk
+                )
+            )
+        }
+
+        let capabilities = AgentCapabilityState(
+            installedDefinitions: installedDefinitions,
+            availableCapabilities: configuration.availableCapabilities,
+            visibleToolPolicy: configuration.toolExposure
+        )
+
+        if shouldBindFindTools,
            registry.registeredTool(
-               identifiedBy: Standard.Tools.FindTools.identifier
+               identifiedBy: findToolsIdentifier
            ) == nil {
             try registry.register(
                 Standard.Tools.FindTools(
-                    availability: registry,
-                    exposure: exposure
+                    availability: capabilities.availableTools,
+                    exposure: capabilities
                 )
             )
         }
 
         if configuration.toolExposure.usesDiscovery,
            let identifiers = checkpoint?.exposedToolIdentifiers {
-            _ = try await exposure.activate(
+            _ = try await capabilities.restoreVisibleToolIdentifiers(
                 identifiers,
                 in: registry
             )
@@ -206,7 +236,7 @@ extension AgentRunner {
             tooling: tooling.using(
                 registry: registry
             ),
-            toolExposure: exposure,
+            toolExposure: capabilities.visibleTools,
             extensions: extensions,
             recording: recording
         )

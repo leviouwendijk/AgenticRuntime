@@ -17,6 +17,20 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try AgenticProgramRuntimeFlowTesting.runToolObservationHistory()
         },
         TestFlow(
+            "agent-capability-state",
+            tags: [
+                "agentic-runtime",
+                "agent",
+                "capabilities",
+                "availability",
+                "visibility",
+                "discovery",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runAgentCapabilityState()
+        },
+        TestFlow(
             "program-execution-record",
             tags: [
                 "agentic-runtime",

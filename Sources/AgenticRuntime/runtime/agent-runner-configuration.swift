@@ -8,6 +8,13 @@ public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
     public var recovery: Recovery.Policy?
     public var historyPersistenceMode: HistoryPersistenceMode
     public var compactionStrategy: CompactionStrategy?
+    /// Concrete capabilities available to this agent invocation.
+    /// `nil` preserves the legacy/ad-hoc posture of making every installed
+    /// capability available. Runtime still intersects explicit selections
+    /// with the installed executable universe.
+    public var availableCapabilities: AgentCapabilitySet?
+    /// Transitional initial visibility preset. This no longer defines
+    /// capability availability.
     public var toolExposure: AgentToolExposurePolicy
     public var responseDelivery: AgentModelResponseDelivery
     public var streamCheckpointPolicy: AgentStreamCheckpointPolicy
@@ -20,6 +27,7 @@ public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
         recovery: Recovery.Policy? = nil,
         historyPersistenceMode: HistoryPersistenceMode = .disabled,
         compactionStrategy: CompactionStrategy? = nil,
+        availableCapabilities: AgentCapabilitySet? = nil,
         toolExposure: AgentToolExposurePolicy = .all,
         responseDelivery: AgentModelResponseDelivery = .buffered,
         streamCheckpointPolicy: AgentStreamCheckpointPolicy = .default
@@ -31,6 +39,7 @@ public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
         self.recovery = recovery
         self.historyPersistenceMode = historyPersistenceMode
         self.compactionStrategy = compactionStrategy
+        self.availableCapabilities = availableCapabilities
         self.toolExposure = toolExposure
         self.responseDelivery = responseDelivery
         self.streamCheckpointPolicy = streamCheckpointPolicy
