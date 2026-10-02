@@ -1,5 +1,63 @@
 import Agentic
 
+private final class DomainSink:
+    DomainInstallation.Sink
+{
+    var installation = Installation.none
+
+    func install<T: Tool>(
+        _ tool: T,
+        modelContract: AgentToolModelContract?,
+        execution: AgentToolExecutionContract
+    ) {
+        installation = installation + .init(
+            components: [
+                .tools(
+                    [
+                        .tool(
+                            tool,
+                            modelContract: modelContract,
+                            execution: execution
+                        ),
+                    ]
+                ),
+            ]
+        )
+    }
+
+    func install<P: Program>(
+        _ program: P,
+        realization: ProgramRealization<P>?
+    ) {
+        installation = installation + .init(
+            components: [
+                .programs(
+                    [
+                        ProgramRegistration(
+                            program,
+                            defaultRealization: realization
+                        ),
+                    ]
+                ),
+            ]
+        )
+    }
+
+    func install(
+        _ agent: AgentDefinition
+    ) {
+        installation = installation + .init(
+            components: [
+                .agents(
+                    [
+                        agent,
+                    ]
+                ),
+            ]
+        )
+    }
+}
+
 public struct Installation:
     Sendable
 {
@@ -45,6 +103,20 @@ public func install(
             ),
         ]
     )
+}
+
+public func install<DomainType: Domain>(
+    _ domain: DomainType.Type
+) -> Installation {
+    let sink = DomainSink()
+
+    domain.installation.install(
+        into: sink
+    )
+
+    return install(
+        domain.catalog
+    ) + sink.installation
 }
 
 public func install<ToolType: Tool>(

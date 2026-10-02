@@ -10,7 +10,10 @@ enum InstallationCatalogDomainFixture {}
 
 extension InstallationCatalogDomainFixture.Tools {
     @Tool("fixture.installation_catalog_bound")
-    struct Bound: Tool {
+    struct Bound:
+        Tool,
+        DomainInstallable
+    {
         @JSONSchema
         struct Input: HashableSource {
             init() {}
@@ -33,6 +36,14 @@ extension InstallationCatalogDomainFixture.Tools {
         static let risk: ActionRisk = .observe
 
         init() {}
+
+        static func install(
+            into sink: any DomainInstallation.Sink
+        ) {
+            sink.install(
+                Self()
+            )
+        }
 
         func call(
             _ input: Input,
@@ -279,6 +290,63 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let runtime = try await AgenticRuntime(
             application: application
+        )
+
+        let domainApplication = Agentic.application(
+            "fixture.domain_installation"
+        ) {
+            install(
+                InstallationCatalogDomainFixture.self
+            )
+            install(
+                InstallationCatalogUnscopedToolFixture()
+            )
+        }
+
+        try Expect.equal(
+            domainApplication.catalog,
+            catalog,
+            "install(Domain.self) installs the complete derived semantic catalog"
+        )
+        try Expect.equal(
+            domainApplication.agentDefinitions.contains(
+                where: { definition in
+                    definition.identifier == agentIdentifier
+                }
+            ),
+            true,
+            "install(Domain.self) realizes linker-derived Agent installation"
+        )
+        try Expect.equal(
+            domainApplication.toolRegistrations.count,
+            2,
+            "Domain installation realizes the bound Domain Tool while preserving an explicitly installed unscoped Tool"
+        )
+
+        let domainRuntime = try await AgenticRuntime(
+            application: domainApplication
+        )
+
+        try Expect.equal(
+            domainRuntime.tools.inspect(
+                identifiedBy: boundIdentifier
+            ) != nil,
+            true,
+            "install(Domain.self) realizes an explicitly installable Domain Tool"
+        )
+        try Expect.equal(
+            domainRuntime.tools.inspect(
+                identifiedBy: semanticOnlyIdentifier
+            ) == nil,
+            true,
+            "install(Domain.self) preserves semantic-only declarations without fabricating executability"
+        )
+        try Expect.equal(
+            domainRuntime.tools.inspect(
+                identifiedBy: unscopedIdentifier
+            ) != nil,
+            true,
+            "Domain installation does not interfere with explicit unscoped installation"
         )
 
         try Expect.equal(
