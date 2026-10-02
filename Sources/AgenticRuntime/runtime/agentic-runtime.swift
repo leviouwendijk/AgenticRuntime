@@ -1,5 +1,4 @@
 import Agentic
-import AgenticExecution
 import AgenticModels
 import Primitives
 
@@ -9,7 +8,7 @@ public struct AgenticRuntime:
     public let application: AgenticApplication
     public let catalog: Catalog
     public let tools: ToolRegistry
-    public let toolCatalog: AgentToolCatalog
+    public let toolInventory: ToolInventory
     public let skills: SkillRegistry
     public let programs: ProgramRegistry
     public let gateways: GatewayCatalog
@@ -24,7 +23,7 @@ public struct AgenticRuntime:
         let tools = try Agentic.tool.registry {
             application.toolRegistrations
         }
-        let toolCatalog = try AgenticRuntimeToolCatalog.materialize(
+        let toolInventory = try ToolInventory.materialize(
             registrations: application.toolRegistrations,
             registry: tools
         )
@@ -58,7 +57,7 @@ public struct AgenticRuntime:
         self.application = application
         self.catalog = application.catalog
         self.tools = tools
-        self.toolCatalog = toolCatalog
+        self.toolInventory = toolInventory
         self.skills = skills
         self.programs = programs
         self.gateways = modelCatalogs.gateways

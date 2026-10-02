@@ -1,5 +1,4 @@
 import Agentic
-import AgenticExecution
 
 public struct PendingApproval: Sendable, Codable, Hashable {
     public let toolCall: ToolCall

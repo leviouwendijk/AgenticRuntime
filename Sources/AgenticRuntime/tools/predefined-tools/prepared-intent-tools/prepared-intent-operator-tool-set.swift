@@ -1,4 +1,4 @@
-import AgenticExecution
+import Agentic
 
 public struct PreparedIntentOperatorToolSet: AgentToolProvider {
     public let manager: PreparedIntentManager

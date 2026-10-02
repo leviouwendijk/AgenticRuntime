@@ -1,67 +1,7 @@
 import Agentic
-import AgenticExecution
 import AgenticStandard
 
-public enum AgentToolExposureBase:
-    Sendable,
-    Hashable
-{
-    case catalogDefaults
-    case none
-    case selected([ToolIdentifier])
-    case all
-}
-
 public enum AgentToolExposureResolver {
-    public static func resolve(
-        base: AgentToolExposureBase,
-        skills: [AgentSkill] = [],
-        dynamicDiscovery: Bool,
-        catalog: AgentToolCatalog
-    ) -> AgentToolExposurePolicy {
-        switch base {
-        case .all:
-            return .all
-
-        case .catalogDefaults:
-            return resolve(
-                selectedIdentifiers:
-                    catalog.defaultExposedIdentifiers,
-                skills: skills,
-                dynamicDiscovery: dynamicDiscovery,
-                eligibleIdentifiers: Set(
-                    catalog.modelFacingEntries.map(
-                        \.identifier
-                    )
-                )
-            )
-
-        case .none:
-            return resolve(
-                selectedIdentifiers: [],
-                skills: skills,
-                dynamicDiscovery: dynamicDiscovery,
-                eligibleIdentifiers: Set(
-                    catalog.modelFacingEntries.map(
-                        \.identifier
-                    )
-                )
-            )
-
-        case .selected(let identifiers):
-            return resolve(
-                selectedIdentifiers: identifiers,
-                skills: skills,
-                dynamicDiscovery: dynamicDiscovery,
-                eligibleIdentifiers: Set(
-                    catalog.modelFacingEntries.map(
-                        \.identifier
-                    )
-                )
-            )
-        }
-    }
-
     public static func resolve(
         selectedIdentifiers: [ToolIdentifier],
         skills: [AgentSkill] = [],

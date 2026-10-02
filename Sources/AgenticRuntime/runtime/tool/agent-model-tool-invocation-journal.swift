@@ -1,4 +1,4 @@
-import AgenticExecution
+import Agentic
 
 actor AgentModelToolInvocationJournal {
     private var invocations: [ToolInvocation.Result] = []

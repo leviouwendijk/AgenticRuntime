@@ -1,5 +1,4 @@
 import Agentic
-import AgenticExecution
 
 public extension AgentToolExposurePolicy {
     static var discoveryOnly: Self {

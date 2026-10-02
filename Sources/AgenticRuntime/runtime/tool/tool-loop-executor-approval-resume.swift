@@ -1,4 +1,4 @@
-import AgenticExecution
+import Agentic
 
 public extension ToolLoopExecutor {
     func resume(

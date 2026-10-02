@@ -1,5 +1,4 @@
 import Agentic
-import AgenticExecution
 
 extension ToolLoopExecutor {
     func applyNativeToolInvocations(
