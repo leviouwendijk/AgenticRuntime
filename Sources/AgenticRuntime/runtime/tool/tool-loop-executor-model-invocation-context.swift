@@ -7,7 +7,7 @@ extension ToolLoopExecutor {
     ) -> AgentModelInvocationContext {
         let governed = GovernedAgentToolCallResolver(
             registry: tooling.registry,
-            exposure: toolExposure,
+            exposure: visibility,
             policy: configuration.toolExecutionPolicy,
             recovery: configuration.recovery,
             workspace: tooling.workspace,
@@ -23,7 +23,7 @@ extension ToolLoopExecutor {
             toolCallResolver: RuntimeToolCallResolver(
                 resolver: governed,
                 registry: tooling.registry,
-                exposure: toolExposure
+                exposure: visibility
             )
         )
     }

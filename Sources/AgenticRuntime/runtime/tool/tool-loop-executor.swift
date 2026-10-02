@@ -7,7 +7,7 @@ public struct ToolLoopExecutor: Sendable {
     public let model: AgentRuntimeServices.Model
     public let configuration: AgentRunnerConfiguration
     public let tooling: AgentRuntimeServices.Tooling
-    public let toolExposure: AgentToolExposure
+    public let visibility: AgentToolExposure
     public let extensions: [any AgentHarnessExtension]
     public let recording: AgentRuntimeServices.Recording
 
@@ -15,14 +15,14 @@ public struct ToolLoopExecutor: Sendable {
         model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
         tooling: AgentRuntimeServices.Tooling = .init(),
-        toolExposure: AgentToolExposure = .init(),
+        visibility: AgentToolExposure = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: AgentRuntimeServices.Recording = .init()
     ) {
         self.model = model
         self.configuration = configuration
         self.tooling = tooling
-        self.toolExposure = toolExposure
+        self.visibility = visibility
         self.extensions = extensions
         self.recording = recording
     }

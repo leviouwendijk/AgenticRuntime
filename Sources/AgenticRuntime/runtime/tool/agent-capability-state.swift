@@ -64,59 +64,57 @@ public struct AgentCapabilityState:
         }
     }
 
-    public let installedTools: [ToolDescriptor]
-    public let availableTools: AgentToolAvailability
-    public let visibleTools: AgentToolExposure
+    public let installed: [ToolDescriptor]
+    public let available: AgentToolAvailability
+    public let visible: AgentToolExposure
 
     public init(
-        installedDefinitions: [ToolDescriptor],
-        availableCapabilities: AgentCapabilitySet? = nil,
-        visibleToolPolicy: AgentToolExposurePolicy = .all
+        installed: [ToolDescriptor],
+        capabilities: AgentCapabilitySet? = nil,
+        visibility: AgentToolExposurePolicy = .all
     ) {
         var seen: Set<ToolIdentifier> = []
-        let installedTools = installedDefinitions.filter { definition in
+        let installed = installed.filter { definition in
             seen.insert(
                 definition.identifier
             ).inserted
         }
-        let installedIdentifiers = Set(
-            installedTools.map(\.identifier)
+        let installedIDs = Set(
+            installed.map(\.identifier)
         )
-        let requestedAvailableIdentifiers =
-            availableCapabilities.map { capabilities in
+        let requested =
+            capabilities.map { capabilities in
                 Set(
                     capabilities.tools
                 )
             }
-            ?? installedIdentifiers
-        let availableIdentifiers =
-            requestedAvailableIdentifiers
-                .intersection(
-                    installedIdentifiers
-                )
-        let availableTools = AgentToolAvailability(
-            definitions: installedTools.filter { definition in
-                availableIdentifiers.contains(
+            ?? installedIDs
+        let availableIDs = requested.intersection(
+            installedIDs
+        )
+        let available = AgentToolAvailability(
+            definitions: installed.filter { definition in
+                availableIDs.contains(
                     definition.identifier
                 )
             }
         )
-        let constrainedVisibility = Self.constrainedVisibility(
-            visibleToolPolicy,
+        let visibility = Self.constrainedVisibility(
+            visibility,
             availableIdentifiers: Set(
-                availableTools.identifiers
+                available.identifiers
             )
         )
 
-        self.installedTools = installedTools
-        self.availableTools = availableTools
-        self.visibleTools = AgentToolExposure(
-            policy: constrainedVisibility
+        self.installed = installed
+        self.available = available
+        self.visible = AgentToolExposure(
+            policy: visibility
         )
     }
 
     public var installedToolIdentifiers: [ToolIdentifier] {
-        installedTools.map(
+        installed.map(
             \.identifier
         )
     }
@@ -125,9 +123,9 @@ public struct AgentCapabilityState:
     public func activate(
         _ identifiers: [ToolIdentifier]
     ) async throws -> [ToolIdentifier] {
-        try await visibleTools.activate(
+        try await visible.activate(
             identifiers.filter(
-                availableTools.contains
+                available.contains
             )
         )
     }
@@ -137,9 +135,9 @@ public struct AgentCapabilityState:
         _ identifiers: [ToolIdentifier],
         in registry: ToolRegistry
     ) async throws -> [ToolIdentifier] {
-        try await visibleTools.activate(
+        try await visible.activate(
             identifiers.filter(
-                availableTools.contains
+                available.contains
             ),
             in: registry
         )
@@ -150,8 +148,8 @@ public struct AgentCapabilityState:
     ) async throws -> Snapshot {
         .init(
             installed: installedToolIdentifiers,
-            available: availableTools.identifiers,
-            visible: try await visibleTools.identifiers(
+            available: available.identifiers,
+            visible: try await visible.identifiers(
                 in: registry
             )
         )

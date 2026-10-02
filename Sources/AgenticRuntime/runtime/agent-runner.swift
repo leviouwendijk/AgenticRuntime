@@ -179,14 +179,14 @@ extension AgentRunner {
         let findToolsIdentifier =
             Standard.Tools.FindTools.identifier
         let explicitlyAvailableFindTools =
-            configuration.availableCapabilities?
+            configuration.capabilities?
                 .tools
                 .contains(
                     findToolsIdentifier
                 )
             == true
         let shouldBindFindTools =
-            configuration.toolExposure.usesDiscovery
+            configuration.visibility.usesDiscovery
             || explicitlyAvailableFindTools
         var installedDefinitions =
             registry.modelFacingDefinitions
@@ -205,9 +205,9 @@ extension AgentRunner {
         }
 
         let capabilities = AgentCapabilityState(
-            installedDefinitions: installedDefinitions,
-            availableCapabilities: configuration.availableCapabilities,
-            visibleToolPolicy: configuration.toolExposure
+            installed: installedDefinitions,
+            capabilities: configuration.capabilities,
+            visibility: configuration.visibility
         )
 
         if shouldBindFindTools,
@@ -216,13 +216,13 @@ extension AgentRunner {
            ) == nil {
             try registry.register(
                 Standard.Tools.FindTools(
-                    availability: capabilities.availableTools,
+                    availability: capabilities.available,
                     exposure: capabilities
                 )
             )
         }
 
-        if configuration.toolExposure.usesDiscovery,
+        if configuration.visibility.usesDiscovery,
            let identifiers = checkpoint?.exposedToolIdentifiers {
             _ = try await capabilities.restoreVisibleToolIdentifiers(
                 identifiers,
@@ -236,7 +236,7 @@ extension AgentRunner {
             tooling: tooling.using(
                 registry: registry
             ),
-            toolExposure: capabilities.visibleTools,
+            visibility: capabilities.visible,
             extensions: extensions,
             recording: recording
         )

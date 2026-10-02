@@ -31,7 +31,7 @@ extension ToolLoopExecutor {
             return fallback
         }
 
-        return try await toolExposure.definitions(
+        return try await visibility.definitions(
             in: tooling.registry
         )
     }
@@ -384,7 +384,7 @@ extension ToolLoopExecutor {
     func saveCheckpoint(
         _ checkpoint: inout AgentHistoryCheckpoint
     ) async throws {
-        checkpoint.exposedToolIdentifiers = try await toolExposure.identifiers(
+        checkpoint.exposedToolIdentifiers = try await visibility.identifiers(
             in: tooling.registry
         )
         checkpoint.touch()

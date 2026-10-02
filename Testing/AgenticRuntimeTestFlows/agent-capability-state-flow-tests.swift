@@ -97,16 +97,16 @@ extension AgenticProgramRuntimeFlowTesting {
             )
         )
 
-        let availableCapabilities = AgentCapabilitySet(
+        let capabilities = AgentCapabilitySet(
             tools: [
                 CapabilityStateAvailableTool.definition.identifier,
                 Standard.Tools.FindTools.identifier,
             ]
         )
-        let capabilities = AgentCapabilityState(
-            installedDefinitions: installedDefinitions,
-            availableCapabilities: availableCapabilities,
-            visibleToolPolicy: .discoverable(
+        let state = AgentCapabilityState(
+            installed: installedDefinitions,
+            capabilities: capabilities,
+            visibility: .discoverable(
                 [
                     Standard.Tools.FindTools.identifier,
                 ]
@@ -115,12 +115,12 @@ extension AgenticProgramRuntimeFlowTesting {
 
         try registry.register(
             Standard.Tools.FindTools(
-                availability: capabilities.availableTools,
-                exposure: capabilities
+                availability: state.available,
+                exposure: state
             )
         )
 
-        let initial = try await capabilities.snapshot(
+        let initial = try await state.snapshot(
             in: registry
         )
 
@@ -154,8 +154,8 @@ extension AgenticProgramRuntimeFlowTesting {
         )
 
         let findTools = Standard.Tools.FindTools(
-            availability: capabilities.availableTools,
-            exposure: capabilities
+            availability: state.available,
+            exposure: state
         )
         let availableResult = try await findTools.call(
             .init(
@@ -205,7 +205,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "find_tools never promotes an unavailable tool into visibility"
         )
 
-        let final = try await capabilities.snapshot(
+        let final = try await state.snapshot(
             in: registry
         )
 

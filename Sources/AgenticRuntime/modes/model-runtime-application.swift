@@ -45,7 +45,7 @@ public struct ModeRuntimeApplication: Sendable {
         )
         var effectiveConfiguration = configuration
         effectiveConfiguration.autonomyMode = selection.mode.autonomyMode
-        effectiveConfiguration.toolExposure = .explicit(
+        effectiveConfiguration.visibility = .explicit(
             selection.exposedToolIdentifiers
         )
         let metadata = selection.metadata.merging(
@@ -73,7 +73,7 @@ public struct ModeRuntimeApplication: Sendable {
     public var toolDefinitions: [ToolDescriptor] {
         let modelFacing = toolRegistry.modelFacingDefinitions
 
-        switch configuration.toolExposure {
+        switch configuration.visibility {
         case .all:
             return modelFacing
 

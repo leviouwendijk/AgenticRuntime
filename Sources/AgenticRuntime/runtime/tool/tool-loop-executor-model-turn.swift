@@ -44,7 +44,7 @@ extension ToolLoopExecutor {
             )
 
             do {
-                _ = try await toolExposure.parseModelCall(
+                _ = try await visibility.parseModelCall(
                     toolCall,
                     registry: tooling.registry
                 )
