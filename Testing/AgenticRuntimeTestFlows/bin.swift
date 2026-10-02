@@ -160,6 +160,20 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runApplicationInstallationComposition()
         },
         TestFlow(
+            "application-catalog-installation",
+            tags: [
+                "agentic-runtime",
+                "application",
+                "installation",
+                "catalog",
+                "domain",
+                "linker",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runApplicationCatalogInstallation()
+        },
+        TestFlow(
             "application-gateway-availability",
             tags: [
                 "agentic-runtime",

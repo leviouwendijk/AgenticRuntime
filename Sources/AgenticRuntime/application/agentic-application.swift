@@ -22,6 +22,7 @@ public struct AgenticApplication:
     public let title: String
     public let metadata: [String: String]
 
+    public let catalog: Catalog
     public let toolRegistrations: [AgentToolRegistration]
     public let skillRegistrations: [AgentSkillRegistration]
     public let programRegistrations: [ProgramRegistration]
@@ -35,6 +36,7 @@ public struct AgenticApplication:
         metadata: [String: String] = [:],
         components: [AgenticApplicationComponent] = []
     ) {
+        var catalog = Catalog.none
         var toolRegistrations: [AgentToolRegistration] = []
         var skillRegistrations: [AgentSkillRegistration] = []
         var programRegistrations: [ProgramRegistration] = []
@@ -44,6 +46,9 @@ public struct AgenticApplication:
 
         for component in components {
             switch component {
+            case .catalog(let contribution):
+                catalog = catalog + contribution
+
             case .tools(let registrations):
                 toolRegistrations.append(
                     contentsOf: registrations
@@ -79,6 +84,7 @@ public struct AgenticApplication:
         self.identifier = identifier
         self.title = title ?? identifier.rawValue
         self.metadata = metadata
+        self.catalog = catalog
         self.toolRegistrations = toolRegistrations
         self.skillRegistrations = skillRegistrations
         self.programRegistrations = programRegistrations

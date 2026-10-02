@@ -36,6 +36,18 @@ public func install(
     installation
 }
 
+public func install(
+    _ catalog: Catalog
+) -> Installation {
+    .init(
+        components: [
+            .catalog(
+                catalog
+            ),
+        ]
+    )
+}
+
 public func install<ToolType: Tool>(
     _ tool: ToolType,
     modelContract: AgentToolModelContract? = nil,

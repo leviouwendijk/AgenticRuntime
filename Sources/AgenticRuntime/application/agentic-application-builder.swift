@@ -4,6 +4,7 @@ import AgenticExecution
 public enum AgenticApplicationComponent:
     Sendable
 {
+    case catalog(Catalog)
     case tools([AgentToolRegistration])
     case skills([AgentSkillRegistration])
     case programs([ProgramRegistration])

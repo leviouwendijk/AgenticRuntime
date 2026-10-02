@@ -7,6 +7,7 @@ public struct AgenticRuntime:
     Sendable
 {
     public let application: AgenticApplication
+    public let catalog: Catalog
     public let tools: ToolRegistry
     public let toolCatalog: AgentToolCatalog
     public let skills: SkillRegistry
@@ -55,6 +56,7 @@ public struct AgenticRuntime:
         )
 
         self.application = application
+        self.catalog = application.catalog
         self.tools = tools
         self.toolCatalog = toolCatalog
         self.skills = skills
