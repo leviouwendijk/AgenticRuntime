@@ -10,10 +10,7 @@ enum InstallationCatalogDomainFixture {}
 
 extension InstallationCatalogDomainFixture.Tools {
     @Tool("fixture.installation_catalog_bound")
-    struct Bound:
-        Tool,
-        DomainInstallable
-    {
+    struct Bound: Tool {
         @JSONSchema
         struct Input: HashableSource {
             init() {}
@@ -31,19 +28,11 @@ extension InstallationCatalogDomainFixture.Tools {
         }
 
         static let purpose =
-            "Proves a Domain catalog declaration can bind to a separately installed executable Tool."
+            "Proves a default-constructible Domain Tool is realized automatically by install(Domain.self)."
 
         static let risk: ActionRisk = .observe
 
         init() {}
-
-        static func install(
-            into sink: any DomainInstallation.Sink
-        ) {
-            sink.install(
-                Self()
-            )
-        }
 
         func call(
             _ input: Input,
@@ -76,11 +65,17 @@ extension InstallationCatalogDomainFixture.Tools {
         }
 
         static let purpose =
-            "Proves semantic catalog presence does not fabricate executable Tool availability."
+            "Proves a non-default-constructible Domain Tool remains semantic-only without an explicit or resolved realization."
 
         static let risk: ActionRisk = .observe
 
-        init() {}
+        private let value: String
+
+        init(
+            value: String
+        ) {
+            self.value = value
+        }
 
         func call(
             _ input: Input,
@@ -89,7 +84,7 @@ extension InstallationCatalogDomainFixture.Tools {
             _ = input
 
             return Output(
-                value: "semantic-only"
+                value: value
             )
         }
     }
@@ -332,7 +327,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 identifiedBy: boundIdentifier
             ) != nil,
             true,
-            "install(Domain.self) realizes an explicitly installable Domain Tool"
+            "install(Domain.self) automatically realizes a default-constructible Domain Tool"
         )
         try Expect.equal(
             domainRuntime.tools.inspect(
