@@ -249,7 +249,9 @@ extension AgenticProgramRuntimeFlowTesting {
                 )
             ),
             configuration: .init(
-                maximumIterations: 2,
+                runLimits: .init(
+                    iterations: 2
+                ),
                 recovery: policy
             ),
             tooling: .init(

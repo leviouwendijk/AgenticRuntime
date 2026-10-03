@@ -12,6 +12,7 @@ public struct AgentRunStateSnapshot:
     public let updatedAt: Date
     public let phase: AgentHistoryPhase
     public let state: AgentLoopState
+    public let runLimits: AgentRunLimits
     public let events: [AgentRunEvent]
     public let lastResponse: AgentResponse?
     public let partialResponse: AgentPartialResponse?
@@ -20,6 +21,7 @@ public struct AgentRunStateSnapshot:
     public let suspension: AgentSuspension?
     public let pendingApproval: PendingApproval?
     public let pendingUserInput: UserInputRequest?
+    public let pendingRunLimit: AgentRunLimitExhaustion?
     public let failure: AgentRunFailure?
     public let costRecord: AgentCostRecord?
     public let exposedToolIdentifiers: [ToolIdentifier]
@@ -32,6 +34,7 @@ public struct AgentRunStateSnapshot:
         self.updatedAt = checkpoint.updatedAt
         self.phase = checkpoint.phase
         self.state = checkpoint.state
+        self.runLimits = checkpoint.runLimits
         self.events = checkpoint.events
         self.lastResponse = checkpoint.lastResponse
         self.partialResponse = checkpoint.partialResponse
@@ -40,6 +43,7 @@ public struct AgentRunStateSnapshot:
         self.suspension = checkpoint.resolvedSuspension
         self.pendingApproval = checkpoint.pendingApproval
         self.pendingUserInput = checkpoint.pendingUserInput
+        self.pendingRunLimit = checkpoint.pendingRunLimit
         self.failure = checkpoint.failure
         self.costRecord = checkpoint.costRecord
         self.exposedToolIdentifiers = checkpoint.exposedToolIdentifiers ?? []

@@ -224,12 +224,6 @@ extension ToolLoopExecutor {
     func suspendedResult(
         from checkpoint: AgentHistoryCheckpoint
     ) throws -> AgentRunResult {
-        guard let response = checkpoint.lastResponse else {
-            throw AgentHistoryError.corruptedCheckpoint(
-                "suspended checkpoint without last response"
-            )
-        }
-
         guard let suspension = checkpoint.resolvedSuspension else {
             throw AgentHistoryError.corruptedCheckpoint(
                 "suspended checkpoint without suspension payload"
@@ -238,7 +232,8 @@ extension ToolLoopExecutor {
 
         return .suspended(
             sessionID: checkpoint.id,
-            response: response,
+            phase: checkpoint.phase,
+            response: checkpoint.lastResponse,
             suspension: suspension,
             state: checkpoint.state,
             events: checkpoint.events,

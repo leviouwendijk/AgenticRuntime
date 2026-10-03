@@ -68,6 +68,13 @@ public extension AgentRunner {
                 workspaceAccessResolution: resolution,
                 metadata: response.metadata
             )
+
+        case .run_limit(let resolution):
+            return try await executor.resume(
+                checkpoint,
+                runLimitResolution: resolution,
+                metadata: response.metadata
+            )
         }
     }
 }

@@ -342,6 +342,19 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting
                 .runProgramGovernedToolRecovery()
         },
+        TestFlow(
+            "agent-run-limit-stop",
+            tags: [
+                "agentic-runtime",
+                "run-limit",
+                "suspension",
+                "interruption",
+                "persistence",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runAgentRunLimitStop()
+        },
     ]
 }
 

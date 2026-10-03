@@ -4,6 +4,7 @@ import Workspace
 
 public struct AgentRunResult: Sendable, Codable, Hashable {
     public let sessionID: String
+    public let phase: AgentHistoryPhase
     public let response: AgentResponse?
     public let suspension: AgentSuspension?
     public let pendingApproval: PendingApproval?
@@ -15,6 +16,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
 
     public init(
         sessionID: String,
+        phase: AgentHistoryPhase,
         response: AgentResponse?,
         suspension: AgentSuspension? = nil,
         pendingApproval: PendingApproval? = nil,
@@ -25,6 +27,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         costRecord: AgentCostRecord? = nil
     ) {
         self.sessionID = sessionID
+        self.phase = phase
         self.response = response
         self.suspension = suspension
         self.pendingApproval = pendingApproval ?? suspension?.pendingApproval
@@ -45,6 +48,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
     ) -> Self {
         .init(
             sessionID: sessionID,
+            phase: .completed,
             response: response,
             suspension: nil,
             pendingApproval: nil,
@@ -57,7 +61,8 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
 
     public static func suspended(
         sessionID: String,
-        response: AgentResponse,
+        phase: AgentHistoryPhase,
+        response: AgentResponse?,
         suspension: AgentSuspension,
         state: AgentLoopState,
         events: [AgentRunEvent] = [],
@@ -66,6 +71,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
     ) -> Self {
         .init(
             sessionID: sessionID,
+            phase: phase,
             response: response,
             suspension: suspension,
             pendingApproval: suspension.pendingApproval,
@@ -87,6 +93,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
     ) -> Self {
         .suspended(
             sessionID: sessionID,
+            phase: .awaiting_approval,
             response: response,
             suspension: .approval(
                 pendingApproval
@@ -109,10 +116,33 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
     ) -> Self {
         .suspended(
             sessionID: sessionID,
+            phase: .suspended,
             response: response,
             suspension: .user_input(
                 pendingUserInput
             ),
+            state: state,
+            events: events,
+            toolUses: toolUses,
+            costRecord: costRecord
+        )
+    }
+
+    public static func interrupted(
+        sessionID: String,
+        response: AgentResponse? = nil,
+        state: AgentLoopState,
+        events: [AgentRunEvent] = [],
+        toolUses: [AgentToolUseRecord] = [],
+        costRecord: AgentCostRecord? = nil
+    ) -> Self {
+        .init(
+            sessionID: sessionID,
+            phase: .interrupted,
+            response: response,
+            suspension: nil,
+            pendingApproval: nil,
+            failure: nil,
             state: state,
             events: events,
             toolUses: toolUses,
@@ -131,6 +161,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
     ) -> Self {
         .init(
             sessionID: sessionID,
+            phase: .failed,
             response: response,
             suspension: nil,
             pendingApproval: nil,
@@ -150,23 +181,30 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         suspension?.pendingWorkspaceAccess
     }
 
+    public var pendingRunLimit: AgentRunLimitExhaustion? {
+        suspension?.pendingRunLimit
+    }
+
     public var isCompleted: Bool {
-        response != nil
-            && suspension == nil
-            && pendingApproval == nil
-            && failure == nil
+        phase == .completed
     }
 
     public var isFailed: Bool {
-        failure != nil
+        phase == .failed
     }
 
     public var isSuspended: Bool {
-        suspension != nil || pendingApproval != nil
+        phase == .suspended
+            || phase == .awaiting_approval
+    }
+
+    public var isInterrupted: Bool {
+        phase == .interrupted
     }
 
     public var isAwaitingApproval: Bool {
-        pendingApproval != nil || suspension?.pendingApproval != nil
+        pendingApproval != nil
+            || suspension?.pendingApproval != nil
     }
 
     public var isAwaitingUserInput: Bool {
@@ -175,5 +213,9 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
 
     public var isAwaitingWorkspaceAccess: Bool {
         pendingWorkspaceAccess != nil
+    }
+
+    public var isAwaitingRunLimit: Bool {
+        pendingRunLimit != nil
     }
 }

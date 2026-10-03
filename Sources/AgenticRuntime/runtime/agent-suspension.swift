@@ -7,18 +7,21 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
     case approval(PendingApproval)
     case user_input(UserInputRequest)
     case workspace_access(WorkspaceAccessRequest)
+    case run_limit(AgentRunLimitExhaustion)
 
     private enum CodingKeys: String, CodingKey {
         case kind
         case approval
         case user_input
         case workspace_access
+        case run_limit
     }
 
     private enum Kind: String, Codable {
         case approval
         case user_input
         case workspace_access
+        case run_limit
 
         init(
             from decoder: any Decoder
@@ -37,6 +40,9 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
 
             case "workspace_access", "workspaceAccess":
                 self = .workspace_access
+
+            case "run_limit", "runLimit":
+                self = .run_limit
 
             default:
                 throw DecodingError.dataCorruptedError(
@@ -82,6 +88,14 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
                     forKey: .workspace_access
                 )
             )
+
+        case .run_limit:
+            self = .run_limit(
+                try container.decode(
+                    AgentRunLimitExhaustion.self,
+                    forKey: .run_limit
+                )
+            )
         }
     }
 
@@ -122,6 +136,16 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
                 request,
                 forKey: .workspace_access
             )
+
+        case .run_limit(let exhaustion):
+            try container.encode(
+                Kind.run_limit,
+                forKey: .kind
+            )
+            try container.encode(
+                exhaustion,
+                forKey: .run_limit
+            )
         }
     }
 
@@ -143,6 +167,14 @@ public enum AgentSuspensionReason: Sendable, Codable, Hashable {
 
     public var pendingWorkspaceAccess: WorkspaceAccessRequest? {
         guard case .workspace_access(let value) = self else {
+            return nil
+        }
+
+        return value
+    }
+
+    public var pendingRunLimit: AgentRunLimitExhaustion? {
+        guard case .run_limit(let value) = self else {
             return nil
         }
 
@@ -204,6 +236,18 @@ public struct AgentSuspension: Sendable, Codable, Hashable, Identifiable {
         )
     }
 
+    public static func run_limit(
+        _ exhaustion: AgentRunLimitExhaustion,
+        metadata: [String: String] = [:]
+    ) -> Self {
+        .init(
+            reason: .run_limit(
+                exhaustion
+            ),
+            metadata: metadata
+        )
+    }
+
     public var pendingApproval: PendingApproval? {
         reason.pendingApproval
     }
@@ -214,5 +258,9 @@ public struct AgentSuspension: Sendable, Codable, Hashable, Identifiable {
 
     public var pendingWorkspaceAccess: WorkspaceAccessRequest? {
         reason.pendingWorkspaceAccess
+    }
+
+    public var pendingRunLimit: AgentRunLimitExhaustion? {
+        reason.pendingRunLimit
     }
 }

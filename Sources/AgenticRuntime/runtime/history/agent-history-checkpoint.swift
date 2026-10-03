@@ -17,6 +17,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
     public let id: String
     public let originalRequest: AgentRequest
     public var state: AgentLoopState
+    public var runLimits: AgentRunLimits
     public var events: [AgentRunEvent]
     public var phase: AgentHistoryPhase
     public var lastResponse: AgentResponse?
@@ -35,6 +36,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         case id
         case originalRequest
         case state
+        case runLimits
         case events
         case phase
         case lastResponse
@@ -66,6 +68,10 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         state = try container.decode(
             AgentLoopState.self,
             forKey: .state
+        )
+        runLimits = try container.decode(
+            AgentRunLimits.self,
+            forKey: .runLimits
         )
         events = try container.decodeIfPresent(
             [AgentRunEvent].self,
@@ -128,6 +134,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         id: String,
         originalRequest: AgentRequest,
         state: AgentLoopState,
+        runLimits: AgentRunLimits,
         events: [AgentRunEvent] = [],
         phase: AgentHistoryPhase = .ready_for_model,
         lastResponse: AgentResponse? = nil,
@@ -145,6 +152,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         self.id = id
         self.originalRequest = originalRequest
         self.state = state
+        self.runLimits = runLimits
         self.events = events
         self.phase = phase
         self.lastResponse = lastResponse
@@ -185,6 +193,10 @@ public extension AgentHistoryCheckpoint {
 
     var pendingUserInput: UserInputRequest? {
         resolvedSuspension?.pendingUserInput
+    }
+
+    var pendingRunLimit: AgentRunLimitExhaustion? {
+        resolvedSuspension?.pendingRunLimit
     }
 
     mutating func suspend(

@@ -1,7 +1,7 @@
 import Agentic
 
 public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
-    public var maximumIterations: Int
+    public var runLimits: AgentRunLimits
     public var appendToolResultsAsMessages: Bool
     public var autonomyMode: AutonomyMode
     public var executionLimits: ExecutionLimits
@@ -20,7 +20,7 @@ public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
     public var streamCheckpointPolicy: AgentStreamCheckpointPolicy
 
     public init(
-        maximumIterations: Int = 12,
+        runLimits: AgentRunLimits = .default,
         appendToolResultsAsMessages: Bool = true,
         autonomyMode: AutonomyMode = .auto_observe,
         executionLimits: ExecutionLimits = .unlimited,
@@ -32,7 +32,7 @@ public struct AgentRunnerConfiguration: Sendable, Codable, Hashable {
         responseDelivery: AgentModelResponseDelivery = .buffered,
         streamCheckpointPolicy: AgentStreamCheckpointPolicy = .default
     ) {
-        self.maximumIterations = max(1, maximumIterations)
+        self.runLimits = runLimits
         self.appendToolResultsAsMessages = appendToolResultsAsMessages
         self.autonomyMode = autonomyMode
         self.executionLimits = executionLimits

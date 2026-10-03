@@ -12,6 +12,7 @@ public enum AgentInteraction {
         case approval
         case user_input
         case workspace_access
+        case run_limit
     }
 
     public typealias Requirement = AgentSuspensionReason
@@ -62,6 +63,7 @@ public enum AgentInteraction {
         case approval(ApprovalDecision)
         case user_input(UserInputReply)
         case workspace_access(WorkspaceAccessResolution)
+        case run_limit(AgentRunLimitResolution)
 
         private enum CodingKeys:
             String,
@@ -71,6 +73,7 @@ public enum AgentInteraction {
             case approval
             case user_input
             case workspace_access
+            case run_limit
         }
 
         private enum CodingKind:
@@ -80,6 +83,7 @@ public enum AgentInteraction {
             case approval
             case user_input
             case workspace_access
+            case run_limit
 
             init(
                 from decoder: any Decoder
@@ -98,6 +102,9 @@ public enum AgentInteraction {
 
                 case "workspace_access", "workspaceAccess":
                     self = .workspace_access
+
+                case "run_limit", "runLimit":
+                    self = .run_limit
 
                 default:
                     throw DecodingError.dataCorruptedError(
@@ -154,6 +161,14 @@ public enum AgentInteraction {
                         forKey: .workspace_access
                     )
                 )
+
+            case .run_limit:
+                self = .run_limit(
+                    try container.decode(
+                        AgentRunLimitResolution.self,
+                        forKey: .run_limit
+                    )
+                )
             }
         }
 
@@ -194,6 +209,16 @@ public enum AgentInteraction {
                     resolution,
                     forKey: .workspace_access
                 )
+
+            case .run_limit(let resolution):
+                try container.encode(
+                    CodingKind.run_limit,
+                    forKey: .kind
+                )
+                try container.encode(
+                    resolution,
+                    forKey: .run_limit
+                )
             }
         }
 
@@ -207,6 +232,9 @@ public enum AgentInteraction {
 
             case .workspace_access:
                 return .workspace_access
+
+            case .run_limit:
+                return .run_limit
             }
         }
     }
@@ -268,6 +296,9 @@ public extension AgentSuspensionReason {
 
         case .workspace_access:
             return .workspace_access
+
+        case .run_limit:
+            return .run_limit
         }
     }
 }

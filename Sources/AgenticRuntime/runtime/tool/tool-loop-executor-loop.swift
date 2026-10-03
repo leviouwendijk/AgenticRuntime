@@ -8,39 +8,17 @@ extension ToolLoopExecutor {
         var checkpoint = initialCheckpoint
 
         while true {
-            guard checkpoint.state.iteration < configuration.maximumIterations else {
-                let failure = AgentRunFailure.maximumIterationsExceeded(
-                    configuration.maximumIterations
-                )
-                checkpoint.phase = .failed
-                checkpoint.failure = failure
-
-                try await appendRunEvent(
-                    .init(
-                        kind: .run_failed,
-                        iteration: checkpoint.state.iteration,
-                        summary: failure.message
-                    ),
-                    to: &checkpoint
-                )
-
-                try await saveCheckpoint(
-                    &checkpoint
-                )
-
-                return .failed(
-                    sessionID: checkpoint.id,
-                    failure: failure,
-                    response: checkpoint.lastResponse,
-                    state: checkpoint.state,
-                    events: checkpoint.events,
-                    toolUses: checkpoint.resolvedToolUses,
-                    costRecord: checkpoint.costRecord
-                )
-            }
-
             switch checkpoint.phase {
             case .ready_for_model:
+                if let exhaustion = runLimitExhaustion(
+                    in: checkpoint
+                ) {
+                    return try await suspendForRunLimit(
+                        exhaustion,
+                        checkpoint: &checkpoint
+                    )
+                }
+
                 checkpoint = try await performModelTurn(
                     from: checkpoint
                 )
@@ -87,8 +65,13 @@ extension ToolLoopExecutor {
                 )
 
             case .interrupted:
-                throw AgentStreamingError.interruptedCheckpoint(
-                    checkpoint.id
+                return .interrupted(
+                    sessionID: checkpoint.id,
+                    response: checkpoint.lastResponse,
+                    state: checkpoint.state,
+                    events: checkpoint.events,
+                    toolUses: checkpoint.resolvedToolUses,
+                    costRecord: checkpoint.costRecord
                 )
 
             case .failed:

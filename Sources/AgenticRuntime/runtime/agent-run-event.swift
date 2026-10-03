@@ -4,6 +4,9 @@ public struct AgentRunEvent: Sendable, Codable, Hashable, Identifiable {
     public enum Kind: String, Sendable, Codable, Hashable, CaseIterable {
         case assistant_response
         case run_failed
+        case run_limit_reached
+        case run_limit_continued
+        case run_limit_stopped
         case compaction
         case model_stream_started
         case assistant_delta

@@ -390,7 +390,9 @@ private func runMutationRecoveryCase(
             )
         ),
         configuration: .init(
-            maximumIterations: 2,
+            runLimits: .init(
+                iterations: 2
+            ),
             autonomyMode: .auto_bounded_mutate,
             recovery: mutationRecoveryPolicy()
         ),

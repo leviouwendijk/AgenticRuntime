@@ -37,7 +37,8 @@ public struct ToolLoopExecutor: Sendable {
             state: .init(
                 iteration: 0,
                 messages: request.messages
-            )
+            ),
+            runLimits: configuration.runLimits
         )
 
         try await recordMessages(
@@ -107,6 +108,18 @@ public struct ToolLoopExecutor: Sendable {
         try await resumeWithWorkspaceAccess(
             checkpoint,
             resolution: workspaceAccessResolution,
+            metadata: metadata
+        )
+    }
+
+    public func resume(
+        _ checkpoint: AgentHistoryCheckpoint,
+        runLimitResolution: AgentRunLimitResolution,
+        metadata: [String: String] = [:]
+    ) async throws -> AgentRunResult {
+        try await resumeFromRunLimit(
+            checkpoint,
+            resolution: runLimitResolution,
             metadata: metadata
         )
     }

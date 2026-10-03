@@ -91,8 +91,13 @@ public actor AgentRunner {
             )
 
         case .interrupted:
-            throw AgentStreamingError.interruptedCheckpoint(
-                checkpoint.id
+            return .interrupted(
+                sessionID: checkpoint.id,
+                response: checkpoint.lastResponse,
+                state: checkpoint.state,
+                events: checkpoint.events,
+                toolUses: checkpoint.resolvedToolUses,
+                costRecord: checkpoint.costRecord
             )
 
         case .failed:
@@ -245,12 +250,6 @@ extension AgentRunner {
     func suspendedResult(
         from checkpoint: AgentHistoryCheckpoint
     ) throws -> AgentRunResult {
-        guard let response = checkpoint.lastResponse else {
-            throw AgentHistoryError.corruptedCheckpoint(
-                "suspended checkpoint without last response"
-            )
-        }
-
         guard let suspension = checkpoint.resolvedSuspension else {
             throw AgentHistoryError.corruptedCheckpoint(
                 "suspended checkpoint without suspension payload"
@@ -259,7 +258,8 @@ extension AgentRunner {
 
         return .suspended(
             sessionID: checkpoint.id,
-            response: response,
+            phase: checkpoint.phase,
+            response: checkpoint.lastResponse,
             suspension: suspension,
             state: checkpoint.state,
             events: checkpoint.events,
