@@ -7,8 +7,7 @@ private final class DomainSink:
 
     func install<T: Tool>(
         _ tool: T,
-        modelContract: AgentToolModelContract?,
-        execution: AgentToolExecutionContract
+        modelContract: ToolModelContract?
     ) {
         installation = installation + .init(
             components: [
@@ -16,8 +15,7 @@ private final class DomainSink:
                     [
                         .tool(
                             tool,
-                            modelContract: modelContract,
-                            execution: execution
+                            modelContract: modelContract
                         ),
                     ]
                 ),
@@ -121,15 +119,13 @@ public func install<DomainType: Domain>(
 
 public func install<ToolType: Tool>(
     _ tool: ToolType,
-    modelContract: AgentToolModelContract? = nil,
-    execution: AgentToolExecutionContract = .fixed
+    modelContract: ToolModelContract? = nil
 ) -> Installation {
     install(
         [
             AgentToolRegistration.tool(
                 tool,
-                modelContract: modelContract,
-                execution: execution
+                modelContract: modelContract
             ),
         ]
     )

@@ -47,10 +47,10 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let prepared = ToolInvocation.Prepared(
             review: .init(
-                call: .init(
+                invocation: .init(
                     id: "runtime-prepared-intent-call",
                     tool: tool,
-                    input: .object([:])
+                    arguments: .object([:])
                 ),
                 preflight: preflight,
                 requirement: .needs_human_review

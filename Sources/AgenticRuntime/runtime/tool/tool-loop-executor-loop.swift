@@ -163,15 +163,15 @@ extension ToolLoopExecutor {
                 AgentModelInvocation(
                     request: preparedRequest,
                     selection: model.selection,
-                    context: modelInvocationContext(
+                    context: await modelInvocationContext(
                         sessionID: checkpoint.id,
                         journal: journal
                     )
                 )
             )
             response = result.response
-        } catch RuntimeToolCallBoundary.exposure_changed {
-            try await finishNativeExposureBoundary(
+        } catch RuntimeToolCallBoundary.capabilities_changed {
+            try await finishNativeCapabilityBoundary(
                 invocations: await journal.snapshot(),
                 checkpoint: &checkpoint
             )

@@ -28,7 +28,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
     public var pendingApproval: PendingApproval?
     public var failure: AgentRunFailure?
     public var costRecord: AgentCostRecord?
-    public var exposedToolIdentifiers: [ToolIdentifier]?
+    public var capabilities: AgentCapabilityState.Snapshot
     public let startedAt: Date
     public var updatedAt: Date
 
@@ -47,7 +47,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         case pendingApproval
         case failure
         case costRecord
-        case exposedToolIdentifiers
+        case capabilities
         case startedAt
         case updatedAt
     }
@@ -115,9 +115,9 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
             AgentCostRecord.self,
             forKey: .costRecord
         )
-        exposedToolIdentifiers = try container.decodeIfPresent(
-            [ToolIdentifier].self,
-            forKey: .exposedToolIdentifiers
+        capabilities = try container.decode(
+            AgentCapabilityState.Snapshot.self,
+            forKey: .capabilities
         )
         let decodedUpdatedAt = try container.decode(
             Date.self,
@@ -145,7 +145,11 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         pendingApproval: PendingApproval? = nil,
         failure: AgentRunFailure? = nil,
         costRecord: AgentCostRecord? = nil,
-        exposedToolIdentifiers: [ToolIdentifier]? = nil,
+        capabilities: AgentCapabilityState.Snapshot = .init(
+            installed: .none,
+            available: .none,
+            visible: .none
+        ),
         startedAt: Date = Date(),
         updatedAt: Date? = nil
     ) {
@@ -163,7 +167,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         self.pendingApproval = pendingApproval ?? suspension?.pendingApproval
         self.failure = failure
         self.costRecord = costRecord
-        self.exposedToolIdentifiers = exposedToolIdentifiers
+        self.capabilities = capabilities
         self.startedAt = startedAt
         self.updatedAt = updatedAt ?? startedAt
     }

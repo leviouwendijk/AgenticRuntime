@@ -31,8 +31,11 @@ extension ToolLoopExecutor {
             return fallback
         }
 
-        return try await visibility.definitions(
-            in: tooling.registry
+        let visible =
+            await capabilityState.visible
+
+        return try tooling.registry.modelFacingDefinitions(
+            for: visible.tools
         )
     }
 
@@ -105,9 +108,13 @@ extension ToolLoopExecutor {
         _ toolCall: ToolCall,
         preflight: ToolPreflight
     ) async throws -> ToolExecutionResult {
-        try await executeApprovedToolReview(
+        let invocation = try tooling.registry.invocation(
+            for: toolCall
+        )
+
+        return try await executeApprovedToolReview(
             ToolInvocation.Review(
-                call: toolCall,
+                invocation: invocation,
                 preflight: preflight,
                 requirement: configuration
                     .toolExecutionPolicy
@@ -124,9 +131,12 @@ extension ToolLoopExecutor {
             policy: configuration.toolExecutionPolicy,
             recovery: configuration.recovery
         )
+        let invocation = try tooling.registry.invocation(
+            for: pendingApproval.toolCall
+        )
         let freshReview = try await invoker.review(
-            pendingApproval.toolCall,
-            workspace: tooling.workspace
+            invocation,
+            context: makeToolContext()
         )
 
         guard freshReview.preflight == pendingApproval.preflight,
@@ -150,7 +160,7 @@ extension ToolLoopExecutor {
         )
         let invocation = try await invoker.invoke(
             review,
-            workspace: tooling.workspace,
+            context: makeToolContext(),
             approvalHandler: RuntimeResolvedToolApprovalHandler(
                 decision: .approved
             )
@@ -162,6 +172,15 @@ extension ToolLoopExecutor {
 
         return execution
     }
+
+    func makeToolContext() -> ToolContext {
+        ToolContext(
+            workspace: tooling.workspace,
+            catalog: tooling.catalog,
+            capabilities: capabilityState
+        )
+    }
+
     func makeDeniedToolResult(
         for toolCall: ToolCall,
         preflight: ToolPreflight,
@@ -178,7 +197,7 @@ extension ToolLoopExecutor {
         return ToolResult(
             toolCallID: toolCall.id,
             tool: toolCall.tool,
-            output: try JSONToolBridge.encode(payload),
+            output: try JSONCoding.default.value(payload),
             isError: true
         )
     }
@@ -197,7 +216,7 @@ extension ToolLoopExecutor {
         return ToolResult(
             toolCallID: toolCall.id,
             tool: toolCall.tool,
-            output: try JSONToolBridge.encode(payload),
+            output: try JSONCoding.default.value(payload),
             isError: false
         )
     }
@@ -216,7 +235,7 @@ extension ToolLoopExecutor {
         return ToolResult(
             toolCallID: toolCall.id,
             tool: toolCall.tool,
-            output: try JSONToolBridge.encode(payload),
+            output: try JSONCoding.default.value(payload),
             isError: true
         )
     }
@@ -246,7 +265,7 @@ extension ToolLoopExecutor {
         _ toolCall: ToolCall,
         checkpoint: inout AgentHistoryCheckpoint
     ) async throws -> ToolProcessingOutcome {
-        let input = try JSONToolBridge.decode(
+        let input = try JSONCoding.default.decode(
             Standard.Tools.ClarifyWithUser.Input.self,
             from: toolCall.input
         )
@@ -379,9 +398,8 @@ extension ToolLoopExecutor {
     func saveCheckpoint(
         _ checkpoint: inout AgentHistoryCheckpoint
     ) async throws {
-        checkpoint.exposedToolIdentifiers = try await visibility.identifiers(
-            in: tooling.registry
-        )
+        checkpoint.capabilities =
+            await capabilityState.snapshot()
         checkpoint.touch()
 
         await publishRunState(

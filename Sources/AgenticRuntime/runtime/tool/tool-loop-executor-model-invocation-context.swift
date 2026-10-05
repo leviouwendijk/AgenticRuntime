@@ -4,13 +4,15 @@ extension ToolLoopExecutor {
     func modelInvocationContext(
         sessionID: String,
         journal: AgentModelToolInvocationJournal
-    ) -> AgentModelInvocationContext {
+    ) async -> AgentModelInvocationContext {
+        let visible =
+            await capabilityState.visible
         let governed = GovernedAgentToolCallResolver(
             registry: tooling.registry,
-            exposure: visibility,
+            visibleToolIdentifiers: visible.tools,
             policy: configuration.toolExecutionPolicy,
             recovery: configuration.recovery,
-            workspace: tooling.workspace,
+            context: makeToolContext(),
             approvalHandler: tooling.approvalHandler,
             resolutionObserver: { invocation in
                 await journal.append(
@@ -22,8 +24,7 @@ extension ToolLoopExecutor {
         return AgentModelInvocationContext(
             toolCallResolver: RuntimeToolCallResolver(
                 resolver: governed,
-                registry: tooling.registry,
-                exposure: visibility
+                capabilityState: capabilityState
             )
         )
     }

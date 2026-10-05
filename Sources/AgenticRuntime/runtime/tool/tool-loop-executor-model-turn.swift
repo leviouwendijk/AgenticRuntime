@@ -2,6 +2,7 @@ import Agentic
 import AgenticIO
 import Workspace
 import AgenticStandard
+import Primitives
 
 extension ToolLoopExecutor {
     func processToolCalls(
@@ -44,9 +45,20 @@ extension ToolLoopExecutor {
             )
 
             do {
-                _ = try await visibility.parseModelCall(
-                    toolCall,
-                    registry: tooling.registry
+                let visible =
+                    await capabilityState.visible
+
+                guard visible.tools.contains(
+                    toolCall.tool
+                ) else {
+                    throw AgentToolCallResolutionError
+                        .toolNotVisible(
+                            toolCall.tool
+                        )
+                }
+
+                _ = try tooling.registry.invocation(
+                    for: toolCall
                 )
             } catch {
                 let result = try makeToolErrorResult(
@@ -90,7 +102,7 @@ extension ToolLoopExecutor {
             do {
                 preflight = try await tooling.registry.preflight(
                     toolCall,
-                    workspace: tooling.workspace
+                    context: makeToolContext()
                 )
             } catch {
                 let result = try makeToolErrorResult(
@@ -159,7 +171,7 @@ extension ToolLoopExecutor {
                     continue
                 }
 
-                let request = try JSONToolBridge.decode(
+                let request = try JSONCoding.default.decode(
                     WorkspaceAccessRequest.self,
                     from: result.output
                 )

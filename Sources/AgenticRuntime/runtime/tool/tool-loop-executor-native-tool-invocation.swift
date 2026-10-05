@@ -10,7 +10,11 @@ extension ToolLoopExecutor {
                 continue
             }
 
-            let call = invocation.review.call
+            let call = ToolCall(
+                id: invocation.review.invocation.id,
+                tool: invocation.review.invocation.tool,
+                input: invocation.review.invocation.arguments
+            )
             let response = AgentResponse(
                 message: Message(
                     role: .assistant,
@@ -154,13 +158,19 @@ extension ToolLoopExecutor {
             to: &checkpoint
         )
 
+        let call = ToolCall(
+            id: review.invocation.id,
+            tool: review.invocation.tool,
+            input: review.invocation.arguments
+        )
+
         let response = AgentResponse(
             message: Message(
                 role: .assistant,
                 content: MessageContent(
                     blocks: [
                         .tool_call(
-                            review.call
+                            call
                         ),
                     ]
                 )
@@ -168,7 +178,7 @@ extension ToolLoopExecutor {
             stopReason: .tool_use
         )
         let pendingApproval = PendingApproval(
-            toolCall: review.call,
+            toolCall: call,
             preflight: review.preflight,
             requirement: review.requirement
         )
@@ -188,12 +198,12 @@ extension ToolLoopExecutor {
 
         markToolPreflight(
             review.preflight,
-            for: review.call,
+            for: call,
             on: &checkpoint
         )
 
         suspendToolBatch(
-            for: review.call,
+            for: call,
             disposition: .suspended_for_approval,
             on: &checkpoint
         )
@@ -208,7 +218,7 @@ extension ToolLoopExecutor {
             response.message
         )
         try await recordToolCall(
-            review.call
+            call
         )
 
         try await appendRunEvent(
@@ -225,8 +235,8 @@ extension ToolLoopExecutor {
             .init(
                 kind: .tool_preflight,
                 iteration: checkpoint.state.iteration,
-                toolCallID: review.call.id,
-                toolName: review.call.tool.rawValue,
+                toolCallID: call.id,
+                toolName: call.tool.rawValue,
                 summary: review.preflight.summary
             ),
             to: &checkpoint
@@ -236,8 +246,8 @@ extension ToolLoopExecutor {
             .init(
                 kind: .pending_approval,
                 iteration: checkpoint.state.iteration,
-                toolCallID: review.call.id,
-                toolName: review.call.tool.rawValue,
+                toolCallID: call.id,
+                toolName: call.tool.rawValue,
                 summary: review.preflight.summary
             ),
             to: &checkpoint
@@ -248,7 +258,7 @@ extension ToolLoopExecutor {
         )
     }
 
-    func finishNativeExposureBoundary(
+    func finishNativeCapabilityBoundary(
         invocations: [ToolInvocation.Result],
         checkpoint: inout AgentHistoryCheckpoint
     ) async throws {

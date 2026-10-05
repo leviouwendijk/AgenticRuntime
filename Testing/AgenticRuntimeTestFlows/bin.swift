@@ -31,6 +31,35 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runAgentCapabilityState()
         },
         TestFlow(
+            "agent-realization",
+            tags: [
+                "agentic-runtime",
+                "agent",
+                "realization",
+                "capabilities",
+                "installation",
+                "model-selection",
+                "visibility",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runAgentRealization()
+        },
+        TestFlow(
+            "agent-invocation",
+            tags: [
+                "agentic-runtime",
+                "agent",
+                "invocation",
+                "model-selection",
+                "capabilities",
+                "visibility",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runAgentInvocation()
+        },
+        TestFlow(
             "program-execution-record",
             tags: [
                 "agentic-runtime",

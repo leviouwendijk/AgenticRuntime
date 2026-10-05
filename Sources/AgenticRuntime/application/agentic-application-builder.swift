@@ -8,6 +8,7 @@ public enum AgenticApplicationComponent:
     case skills([AgentSkillRegistration])
     case programs([ProgramRegistration])
     case agents([AgentDefinition])
+    case launches([ApplicationLaunchEntry])
     case gateways([AgentModelGatewayFactory])
     case modelProviders([any AgentModelProvider])
 }
@@ -200,6 +201,122 @@ public func program<ProgramType: Program>(
     ProgramRegistration(
         program,
         defaultRealization: realization
+    )
+}
+
+@resultBuilder
+public enum ApplicationLaunchBuilder {
+    public static func buildBlock(
+        _ entries: [ApplicationLaunchEntry]...
+    ) -> [ApplicationLaunchEntry] {
+        entries.flatMap {
+            $0
+        }
+    }
+
+    public static func buildExpression(
+        _ entry: ApplicationLaunchEntry
+    ) -> [ApplicationLaunchEntry] {
+        [
+            entry,
+        ]
+    }
+
+    public static func buildExpression(
+        _ entries: [ApplicationLaunchEntry]
+    ) -> [ApplicationLaunchEntry] {
+        entries
+    }
+
+    public static func buildOptional(
+        _ entries: [ApplicationLaunchEntry]?
+    ) -> [ApplicationLaunchEntry] {
+        entries ?? []
+    }
+
+    public static func buildEither(
+        first entries: [ApplicationLaunchEntry]
+    ) -> [ApplicationLaunchEntry] {
+        entries
+    }
+
+    public static func buildEither(
+        second entries: [ApplicationLaunchEntry]
+    ) -> [ApplicationLaunchEntry] {
+        entries
+    }
+
+    public static func buildArray(
+        _ entries: [[ApplicationLaunchEntry]]
+    ) -> [ApplicationLaunchEntry] {
+        entries.flatMap {
+            $0
+        }
+    }
+
+    public static func buildLimitedAvailability(
+        _ entries: [ApplicationLaunchEntry]
+    ) -> [ApplicationLaunchEntry] {
+        entries
+    }
+}
+
+public func launches(
+    @ApplicationLaunchBuilder
+    _ content: () -> [ApplicationLaunchEntry]
+) -> AgenticApplicationComponent {
+    .launches(
+        content()
+    )
+}
+
+public func agent<AgentType: Agent>(
+    _ agent: AgentType.Type,
+    identifier: ApplicationLaunchIdentifier? = nil,
+    title: String? = nil,
+    subtitle: String? = nil
+) -> ApplicationLaunchEntry {
+    let definition = agent.definition
+
+    return .init(
+        identifier:
+            identifier
+            ?? .init(
+                rawValue:
+                    definition
+                    .identifier
+                    .rawValue
+            ),
+        title: title,
+        subtitle: subtitle,
+        launch: .agent(
+            definition.identifier
+        )
+    )
+}
+
+public func program<ProgramType: Program>(
+    _ program: ProgramType.Type,
+    identifier: ApplicationLaunchIdentifier? = nil,
+    title: String? = nil,
+    subtitle: String? = nil
+) -> ApplicationLaunchEntry {
+    let definition = program.definition
+
+    return .init(
+        identifier:
+            identifier
+            ?? .init(
+                rawValue:
+                    definition
+                    .identifier
+                    .rawValue
+            ),
+        title: title,
+        subtitle: subtitle,
+        launch: .program(
+            definition.identifier
+        )
     )
 }
 

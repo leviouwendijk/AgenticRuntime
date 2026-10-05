@@ -51,7 +51,7 @@ private struct ObserveRecoveryFixtureTool: Tool {
 
     func call(
         _ input: Input,
-        workspace _: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> Output {
         _ = input
 
@@ -211,9 +211,11 @@ extension AgenticProgramRuntimeFlowTesting {
         let toolCall = ToolCall(
             id: "fixture-observe-recovery-call",
             tool: "fixture.observe_recovery",
-            input: try JSONValue.encoding(
-                ObserveRecoveryFixtureInput()
-            )
+            input: .object([
+                "arguments": try JSONValue.encoding(
+                    ObserveRecoveryFixtureInput()
+                ),
+            ])
         )
         let policy = Recovery.Policy(
             rules: [

@@ -57,11 +57,11 @@ public struct ProgramRunner: Sendable {
         metadata: [String: String],
         resume: ProgramCheckpoint.Resume<ProgramType>?
     ) async throws -> ProgramExecution<ProgramType> {
-        let inputValue = try JSONToolBridge.encode(input)
+        let inputValue = try JSONCoding.default.value(input)
         let realizationValue: JSONValue?
 
         if let realization {
-            realizationValue = try JSONToolBridge.encode(realization)
+            realizationValue = try JSONCoding.default.value(realization)
         } else {
             realizationValue = nil
         }
@@ -135,7 +135,7 @@ public struct ProgramRunner: Sendable {
                 try await resumeControl.requireConsumed()
             }
 
-            let outputValue = try JSONToolBridge.encode(output)
+            let outputValue = try JSONCoding.default.value(output)
             let completedAt = Date()
             let steps = await trace.snapshot()
             let record = ProgramExecutionRecord(

@@ -8,6 +8,7 @@ public extension ToolLoopExecutor {
         sessionID: String,
         configuration: AgentRunnerConfiguration = .default,
         tooling: AgentRuntimeServices.Tooling = .init(),
+        capabilityState: AgentCapabilityState? = nil,
         extensions: [any AgentHarnessExtension] = [],
         recording: AgentRuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
@@ -31,12 +32,24 @@ public extension ToolLoopExecutor {
             eventSinks: stores.eventSinks
         )
 
+        let resolvedTooling = tooling.using(
+            workspace: try environment.workspace?.context()
+        )
+        let resolvedCapabilities =
+            capabilityState
+            ?? AgentCapabilityState(
+                installed: .init(
+                    tools: resolvedTooling.registry
+                        .modelFacingDefinitions
+                        .map(\.identifier)
+                )
+            )
+
         self.init(
             model: model,
             configuration: resolvedConfiguration,
-            tooling: tooling.using(
-                workspace: try environment.workspace?.context()
-            ),
+            tooling: resolvedTooling,
+            capabilityState: resolvedCapabilities,
             extensions: extensions,
             recording: resolvedRecording
         )

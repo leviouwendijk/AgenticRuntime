@@ -36,7 +36,7 @@ public struct ProgramRegistration:
             services,
             metadata
             in
-            let decodedInput = try JSONToolBridge.decode(
+            let decodedInput = try JSONCoding.default.decode(
                 ProgramType.Input.self,
                 from: input
             )
@@ -44,7 +44,7 @@ public struct ProgramRegistration:
             let appliedRealization: ProgramRealization<ProgramType>?
 
             if let realization {
-                appliedRealization = try JSONToolBridge.decode(
+                appliedRealization = try JSONCoding.default.decode(
                     ProgramRealization<ProgramType>.self,
                     from: realization
                 )

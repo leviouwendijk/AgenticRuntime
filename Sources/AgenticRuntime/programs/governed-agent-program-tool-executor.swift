@@ -1,7 +1,6 @@
 import Agentic
 import Foundation
 import Primitives
-import Workspace
 
 public enum ProgramToolGovernanceError:
     Error,
@@ -42,14 +41,14 @@ public struct GovernedProgramToolExecutor:
     Sendable
 {
     public let invoker: ToolInvoker
-    public let workspace: WorkspaceContext?
+    public let context: ToolContext
     public let approvalHandler: (any ToolApprovalHandler)?
 
     public init(
         registry: ToolRegistry,
         policy: ToolExecutionPolicy,
         recovery: Recovery.Policy? = nil,
-        workspace: WorkspaceContext? = nil,
+        context: ToolContext = .init(),
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
         self.init(
@@ -58,18 +57,18 @@ public struct GovernedProgramToolExecutor:
                 policy: policy,
                 recovery: recovery
             ),
-            workspace: workspace,
+            context: context,
             approvalHandler: approvalHandler
         )
     }
 
     public init(
         invoker: ToolInvoker,
-        workspace: WorkspaceContext? = nil,
+        context: ToolContext = .init(),
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
         self.invoker = invoker
-        self.workspace = workspace
+        self.context = context
         self.approvalHandler = approvalHandler
     }
 
@@ -77,19 +76,19 @@ public struct GovernedProgramToolExecutor:
         _ identifier: ToolIdentifier,
         input: JSONValue
     ) async throws -> ToolExecutionResult {
-        let call = ToolCall(
+        let invocation = ToolInvocation(
             id: "program-\(UUID().uuidString)",
             tool: identifier,
-            input: input
+            arguments: input
         )
-        let invocation = try await invoker.invoke(
-            call,
-            workspace: workspace,
+        let invocationResult = try await invoker.invoke(
+            invocation,
+            context: context,
             approvalHandler: approvalHandler
         )
 
         return try resolve(
-            invocation,
+            invocationResult,
             identifier: identifier,
             source: "agent_program"
         )
@@ -123,9 +122,14 @@ public struct GovernedProgramToolExecutor:
             )
 
         case .approved:
+            let invocation = ToolInvocation(
+                id: pendingApproval.toolCall.id,
+                tool: pendingApproval.toolCall.tool,
+                arguments: pendingApproval.toolCall.input
+            )
             let freshReview = try await invoker.review(
-                pendingApproval.toolCall,
-                workspace: workspace
+                invocation,
+                context: context
             )
 
             guard freshReview.preflight == pendingApproval.preflight,
@@ -136,16 +140,16 @@ public struct GovernedProgramToolExecutor:
                 )
             }
 
-            let invocation = try await invoker.invoke(
+            let invocationResult = try await invoker.invoke(
                 freshReview,
-                workspace: workspace,
+                context: context,
                 approvalHandler: ProgramResolvedApprovalHandler(
                     decision: .approved
                 )
             )
 
             return try resolve(
-                invocation,
+                invocationResult,
                 identifier: identifier,
                 source: "agent_program"
             )
@@ -173,7 +177,11 @@ public struct GovernedProgramToolExecutor:
             throw ProgramSuspensionSignal(
                 suspension: .approval(
                     PendingApproval(
-                        toolCall: invocation.review.call,
+                        toolCall: ToolCall(
+                            id: invocation.review.invocation.id,
+                            tool: invocation.review.invocation.tool,
+                            input: invocation.review.invocation.arguments
+                        ),
                         preflight: invocation.review.preflight,
                         requirement: invocation.review.requirement
                     ),

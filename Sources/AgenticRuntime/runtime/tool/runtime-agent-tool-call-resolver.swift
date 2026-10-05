@@ -4,7 +4,7 @@ enum RuntimeToolCallBoundary:
     Error,
     Sendable
 {
-    case exposure_changed
+    case capabilities_changed
 }
 
 struct RuntimeToolCallResolver:
@@ -12,31 +12,22 @@ struct RuntimeToolCallResolver:
     Sendable
 {
     let resolver: GovernedAgentToolCallResolver
-    let registry: ToolRegistry
-    let exposure: AgentToolExposure
+    let capabilityState: AgentCapabilityState
 
     func resolve(
         _ call: ToolCall
     ) async throws -> ToolResult {
-        let before = Set(
-            try await exposure.identifiers(
-                in: registry
-            )
-        )
-
+        let before =
+            await capabilityState.snapshot()
         let result = try await resolver.resolve(
             call
         )
-
-        let after = Set(
-            try await exposure.identifiers(
-                in: registry
-            )
-        )
+        let after =
+            await capabilityState.snapshot()
 
         guard before == after else {
             throw RuntimeToolCallBoundary
-                .exposure_changed
+                .capabilities_changed
         }
 
         return result

@@ -1,5 +1,6 @@
 import Agentic
 import AgenticIO
+import Primitives
 
 extension ToolLoopExecutor {
     func resumeWithWorkspaceAccess(
@@ -44,7 +45,7 @@ extension ToolLoopExecutor {
         let result = ToolResult(
             toolCallID: toolCallID,
             tool: ToolIdentifier(toolName),
-            output: try JSONToolBridge.encode(
+            output: try JSONCoding.default.value(
                 WorkspaceAccessResumePayload(
                     kind: resolution == .deny
                         ? "workspace_access_denied"

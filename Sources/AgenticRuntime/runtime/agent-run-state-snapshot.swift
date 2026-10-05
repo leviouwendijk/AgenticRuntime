@@ -24,7 +24,7 @@ public struct AgentRunStateSnapshot:
     public let pendingRunLimit: AgentRunLimitExhaustion?
     public let failure: AgentRunFailure?
     public let costRecord: AgentCostRecord?
-    public let exposedToolIdentifiers: [ToolIdentifier]
+    public let capabilities: AgentCapabilityState.Snapshot
 
     init(
         checkpoint: AgentHistoryCheckpoint
@@ -46,6 +46,6 @@ public struct AgentRunStateSnapshot:
         self.pendingRunLimit = checkpoint.pendingRunLimit
         self.failure = checkpoint.failure
         self.costRecord = checkpoint.costRecord
-        self.exposedToolIdentifiers = checkpoint.exposedToolIdentifiers ?? []
+        self.capabilities = checkpoint.capabilities
     }
 }

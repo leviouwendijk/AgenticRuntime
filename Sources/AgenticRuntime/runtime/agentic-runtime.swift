@@ -11,6 +11,8 @@ public struct AgenticRuntime:
     public let toolInventory: ToolInventory
     public let skills: SkillRegistry
     public let programs: ProgramRegistry
+    public let agents: AgentRegistry
+    public let launches: [ApplicationLaunchEntry]
     public let gateways: GatewayCatalog
     public let profiles: ProfileCatalog
 
@@ -49,6 +51,15 @@ public struct AgenticRuntime:
             ] = registration
         }
 
+        let agents = try AgentRegistry(
+            application.agentDefinitions
+        )
+        let launches = try validateApplicationLaunchEntries(
+            application.launchEntries,
+            agents: agents,
+            programs: programs
+        )
+
         let modelCatalogs = try await ModelCatalogs(
             modelProviders: application.modelProviders,
             gatewayFactories: application.gatewayFactories
@@ -60,9 +71,27 @@ public struct AgenticRuntime:
         self.toolInventory = toolInventory
         self.skills = skills
         self.programs = programs
+        self.agents = agents
+        self.launches = launches
         self.gateways = modelCatalogs.gateways
         self.profiles = modelCatalogs.profiles
         self.programExecutions = programExecutions
+    }
+
+    public func realizeAgent(
+        identifiedBy identifier: AgentIdentifier
+    ) throws -> AgentRealization {
+        let definition = try agents.requireAgent(
+            identifiedBy: identifier
+        )
+
+        return AgentRealization.materialize(
+            definition: definition,
+            catalog: catalog,
+            tools: tools,
+            programs: programs,
+            agents: agents
+        )
     }
 
     public func executeProgram(

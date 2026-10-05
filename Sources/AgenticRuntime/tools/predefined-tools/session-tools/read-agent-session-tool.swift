@@ -1,5 +1,4 @@
 import Agentic
-import Workspace
 import Primitives
 import Schema
 import Macros
@@ -68,7 +67,7 @@ public struct ReadAgentSessionTool: Tool {
 
     public func preflight(
         _ input: Input,
-        workspace: WorkspaceContext?
+        in context: ToolContext
     ) async throws -> ToolPreflight {
 
         return .init(
@@ -81,7 +80,7 @@ public struct ReadAgentSessionTool: Tool {
 
     public func call(
         _ input: Input,
-        workspace: WorkspaceContext?
+        in context: ToolContext
     ) async throws -> Output {
 
         let summary = try catalog.loadSession(

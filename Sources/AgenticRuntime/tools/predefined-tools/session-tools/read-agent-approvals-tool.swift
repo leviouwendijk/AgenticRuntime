@@ -1,5 +1,4 @@
 import Agentic
-import Workspace
 import Primitives
 import Schema
 import Macros
@@ -76,7 +75,7 @@ public struct ReadAgentApprovalsTool: Tool {
 
     public func preflight(
         _ input: Input,
-        workspace: WorkspaceContext?
+        in context: ToolContext
     ) async throws -> ToolPreflight {
 
         return .init(
@@ -89,7 +88,7 @@ public struct ReadAgentApprovalsTool: Tool {
 
     public func call(
         _ input: Input,
-        workspace: WorkspaceContext?
+        in context: ToolContext
     ) async throws -> Output {
 
         var events = try await catalog.loadApprovals(

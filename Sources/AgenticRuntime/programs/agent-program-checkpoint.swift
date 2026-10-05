@@ -196,7 +196,7 @@ public extension ProgramCheckpoint {
                 .user_input,
                 .user_input(let request)
             ):
-                guard try JSONToolBridge.encode(
+                guard try JSONCoding.default.value(
                     request
                 ) == checkpoint.suspendedStep.input
                 else {
@@ -226,14 +226,14 @@ public extension ProgramCheckpoint {
                     .invalid_suspension
             }
 
-            let input = try JSONToolBridge.decode(
+            let input = try JSONCoding.default.decode(
                 ProgramType.Input.self,
                 from: checkpoint.input
             )
             let realization: ProgramRealization<ProgramType>?
 
             if let value = checkpoint.realization {
-                realization = try JSONToolBridge.decode(
+                realization = try JSONCoding.default.decode(
                     ProgramRealization<ProgramType>.self,
                     from: value
                 )
@@ -401,7 +401,7 @@ actor ProgramResumeControl {
             return nil
         }
 
-        let input = try JSONToolBridge.encode(
+        let input = try JSONCoding.default.value(
             request
         )
 

@@ -54,7 +54,7 @@ public struct ExecutePreparedIntentTool: Tool {
 
     public func preflight(
         _ input: Input,
-        workspace: WorkspaceContext?
+        in context: ToolContext
     ) async throws -> ToolPreflight {
         let intent = try await executor.manager.executableIntent(
             id: input.id
@@ -98,12 +98,12 @@ public struct ExecutePreparedIntentTool: Tool {
 
     public func call(
         _ input: Input,
-        workspace: WorkspaceContext?
+        in context: ToolContext
     ) async throws -> Output {
         let execution = try await executor.execute(
             id: input.id,
             context: .init(
-                workspace: workspace,
+                workspace: context.workspace,
                 preparedIntentID: input.id
             )
         )

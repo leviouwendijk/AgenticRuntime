@@ -96,7 +96,7 @@ struct ProgramRecordingInferenceInvoker<ProgramType: Program>:
         let ownedSite = InferenceSite<ProgramType, InferenceType>(
             identifier: site.identifier
         )
-        let inputValue = try JSONToolBridge.encode(input)
+        let inputValue = try JSONCoding.default.value(input)
         let index = await trace.reserveIndex()
         let startedAt = Date()
         var appliedRealization: InferenceRealizationConfiguration?
@@ -126,7 +126,7 @@ struct ProgramRecordingInferenceInvoker<ProgramType: Program>:
                     )
                 }
 
-                let output = try JSONToolBridge.decode(
+                let output = try JSONCoding.default.decode(
                     InferenceType.Output.self,
                     from: outputValue
                 )
@@ -139,7 +139,7 @@ struct ProgramRecordingInferenceInvoker<ProgramType: Program>:
                 input: input,
                 using: executor
             )
-            let outputValue = try JSONToolBridge.encode(
+            let outputValue = try JSONCoding.default.value(
                 execution.output
             )
             let completedAt = Date()
@@ -239,7 +239,7 @@ struct ProgramRecordingToolInvoker:
         Input: Encodable & Sendable,
         Output: Decodable & Sendable
     {
-        let inputValue = try JSONToolBridge.encode(input)
+        let inputValue = try JSONCoding.default.value(input)
         let index = await trace.reserveIndex()
 
         if let replayed = try await trace.replay(
@@ -260,7 +260,7 @@ struct ProgramRecordingToolInvoker:
                 )
             }
 
-            let decoded = try JSONToolBridge.decode(
+            let decoded = try JSONCoding.default.decode(
                 Output.self,
                 from: replayedOutput
             )
@@ -297,7 +297,7 @@ struct ProgramRecordingToolInvoker:
             outputValue = execution.result.output
             recovery = execution.recovery
 
-            let decoded = try JSONToolBridge.decode(
+            let decoded = try JSONCoding.default.decode(
                 Output.self,
                 from: execution.result.output
             )
@@ -399,7 +399,7 @@ struct ProgramRecordingProgramInvoker:
         input: ProgramType.Input,
         in context: ProgramContext
     ) async throws -> ProgramType.Output {
-        let inputValue = try JSONToolBridge.encode(input)
+        let inputValue = try JSONCoding.default.value(input)
         let index = await trace.reserveIndex()
         let startedAt = Date()
 
@@ -415,7 +415,7 @@ struct ProgramRecordingProgramInvoker:
                     )
                 }
 
-                let output = try JSONToolBridge.decode(
+                let output = try JSONCoding.default.decode(
                     ProgramType.Output.self,
                     from: outputValue
                 )
@@ -429,7 +429,7 @@ struct ProgramRecordingProgramInvoker:
                 input: input,
                 in: context
             )
-            let outputValue = try JSONToolBridge.encode(output)
+            let outputValue = try JSONCoding.default.value(output)
             let completedAt = Date()
 
             await trace.append(

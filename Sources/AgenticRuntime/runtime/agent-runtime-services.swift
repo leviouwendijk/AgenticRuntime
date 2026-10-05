@@ -37,20 +37,23 @@ public struct AgentRuntimeServices: Sendable {
 
     /// Governed tool execution capabilities shared by agent execution paths.
     ///
-    /// Model-visible exposure is deliberately not stored here. Exposure is
-    /// derived from run configuration and checkpoint state by the runner.
+    /// Model-visible Tool selection is not stored here. It is projected from
+    /// the live AgentCapabilityState by the runner.
     public struct Tooling: Sendable {
         public var registry: ToolRegistry
         public var workspace: WorkspaceContext?
+        public var catalog: Catalog
         public var approvalHandler: (any ToolApprovalHandler)?
 
         public init(
             registry: ToolRegistry = .init(),
             workspace: WorkspaceContext? = nil,
+            catalog: Catalog = .none,
             approvalHandler: (any ToolApprovalHandler)? = nil
         ) {
             self.registry = registry
             self.workspace = workspace
+            self.catalog = catalog
             self.approvalHandler = approvalHandler
         }
 
@@ -60,6 +63,7 @@ public struct AgentRuntimeServices: Sendable {
             .init(
                 registry: registry,
                 workspace: workspace,
+                catalog: catalog,
                 approvalHandler: approvalHandler
             )
         }
@@ -70,6 +74,18 @@ public struct AgentRuntimeServices: Sendable {
             .init(
                 registry: registry,
                 workspace: workspace,
+                catalog: catalog,
+                approvalHandler: approvalHandler
+            )
+        }
+
+        public func using(
+            catalog: Catalog
+        ) -> Self {
+            .init(
+                registry: registry,
+                workspace: workspace,
+                catalog: catalog,
                 approvalHandler: approvalHandler
             )
         }

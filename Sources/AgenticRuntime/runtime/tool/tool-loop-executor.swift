@@ -7,7 +7,7 @@ public struct ToolLoopExecutor: Sendable {
     public let model: AgentRuntimeServices.Model
     public let configuration: AgentRunnerConfiguration
     public let tooling: AgentRuntimeServices.Tooling
-    public let visibility: AgentToolExposure
+    public let capabilityState: AgentCapabilityState
     public let extensions: [any AgentHarnessExtension]
     public let recording: AgentRuntimeServices.Recording
 
@@ -15,14 +15,14 @@ public struct ToolLoopExecutor: Sendable {
         model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
         tooling: AgentRuntimeServices.Tooling = .init(),
-        visibility: AgentToolExposure = .init(),
+        capabilityState: AgentCapabilityState,
         extensions: [any AgentHarnessExtension] = [],
         recording: AgentRuntimeServices.Recording = .init()
     ) {
         self.model = model
         self.configuration = configuration
         self.tooling = tooling
-        self.visibility = visibility
+        self.capabilityState = capabilityState
         self.extensions = extensions
         self.recording = recording
     }
@@ -38,7 +38,8 @@ public struct ToolLoopExecutor: Sendable {
                 iteration: 0,
                 messages: request.messages
             ),
-            runLimits: configuration.runLimits
+            runLimits: configuration.runLimits,
+            capabilities: await capabilityState.snapshot()
         )
 
         try await recordMessages(

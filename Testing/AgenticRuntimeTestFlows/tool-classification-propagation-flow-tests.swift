@@ -152,7 +152,7 @@ private struct ClassificationPropagationTool: Tool {
 
     func call(
         _ input: Input,
-        workspace _: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> Output {
         _ = input
         await probe.recordCall()

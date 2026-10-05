@@ -136,10 +136,9 @@ private struct ProgramToolRecoveryFixtureTool: Tool {
 
     func preflight(
         _ input: Input,
-        workspace: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> ToolPreflight {
         _ = input
-        _ = workspace
         await probe.recordPreflight()
 
         return ToolPreflight(
@@ -151,7 +150,7 @@ private struct ProgramToolRecoveryFixtureTool: Tool {
 
     func call(
         _ input: Input,
-        workspace _: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> Output {
         _ = input
         let number = await probe.recordCall()
@@ -226,10 +225,9 @@ private struct ProgramToolRecoveryFixtureTool: Tool {
     func reconcile(
         _ input: Input,
         after failure: ToolCall.Failure,
-        workspace: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> ToolCall.Reconciliation<Output>? {
         _ = input
-        _ = workspace
 
         guard failure.phase == .call else {
             return nil
@@ -372,9 +370,14 @@ private func runProgramToolResumeRecovery()
             ProgramToolRecoveryInput()
         )
     )
+    let invocation = ToolInvocation(
+        id: call.id,
+        tool: call.tool,
+        arguments: call.input
+    )
     let review = try await executor.invoker.review(
-        call,
-        workspace: executor.workspace
+        invocation,
+        context: executor.context
     )
 
     try Expect.equal(

@@ -9,6 +9,7 @@ public extension AgentRunner {
         sessionID: String,
         configuration: AgentRunnerConfiguration = .default,
         tooling: AgentRuntimeServices.Tooling = .init(),
+        capabilityState: AgentCapabilityState? = nil,
         extensions: [any AgentHarnessExtension] = [],
         recording: AgentRuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
@@ -38,6 +39,7 @@ public extension AgentRunner {
             tooling: tooling.using(
                 workspace: try environment.workspace?.context()
             ),
+            capabilityState: capabilityState,
             extensions: extensions,
             recording: resolvedRecording
         )

@@ -1,5 +1,6 @@
 import Agentic
 import AgenticStandard
+import Primitives
 
 extension ToolLoopExecutor {
     func resumeWithUserInput(
@@ -74,7 +75,7 @@ extension ToolLoopExecutor {
         let result = ToolResult(
             toolCallID: toolCallID,
             tool: ToolIdentifier(toolName),
-            output: try JSONToolBridge.encode(
+            output: try JSONCoding.default.value(
                 UserInputResumePayload(
                     kind: response.isSkipped
                         ? "user_input_skipped"

@@ -1,5 +1,4 @@
 import Agentic
-import AgenticStandard
 import AgenticUsage
 import Workspace
 import Foundation
@@ -8,6 +7,7 @@ public actor AgentRunner {
     public let model: AgentRuntimeServices.Model
     public let configuration: AgentRunnerConfiguration
     public let tooling: AgentRuntimeServices.Tooling
+    public let capabilityState: AgentCapabilityState
     public let extensions: [any AgentHarnessExtension]
     public let recording: AgentRuntimeServices.Recording
 
@@ -15,12 +15,22 @@ public actor AgentRunner {
         model: AgentRuntimeServices.Model,
         configuration: AgentRunnerConfiguration = .default,
         tooling: AgentRuntimeServices.Tooling = .init(),
+        capabilityState: AgentCapabilityState? = nil,
         extensions: [any AgentHarnessExtension] = [],
         recording: AgentRuntimeServices.Recording = .init()
     ) {
         self.model = model
         self.configuration = configuration
         self.tooling = tooling
+        self.capabilityState =
+            capabilityState
+            ?? AgentCapabilityState(
+                installed: AgentCapabilitySet(
+                    tools: tooling.registry
+                        .modelFacingDefinitions
+                        .map(\.identifier)
+                )
+            )
         self.extensions = extensions
         self.recording = recording
     }
@@ -180,68 +190,17 @@ extension AgentRunner {
     func makeToolLoopExecutor(
         restoring checkpoint: AgentHistoryCheckpoint? = nil
     ) async throws -> ToolLoopExecutor {
-        var registry = tooling.registry
-        let findToolsIdentifier =
-            Standard.Tools.FindTools.identifier
-        let explicitlyAvailableFindTools =
-            configuration.capabilities?
-                .tools
-                .contains(
-                    findToolsIdentifier
-                )
-            == true
-        let shouldBindFindTools =
-            configuration.visibility.usesDiscovery
-            || explicitlyAvailableFindTools
-        var installedDefinitions =
-            registry.modelFacingDefinitions
-
-        if shouldBindFindTools,
-           registry.modelFacingDefinition(
-               identifiedBy: findToolsIdentifier
-           ) == nil {
-            installedDefinitions.append(
-                .init(
-                    identifier: Standard.Tools.FindTools.definition.identifier,
-                    description: Standard.Tools.FindTools.definition.purpose,
-                    risk: Standard.Tools.FindTools.definition.risk
-                )
-            )
-        }
-
-        let capabilities = AgentCapabilityState(
-            installed: installedDefinitions,
-            capabilities: configuration.capabilities,
-            visibility: configuration.visibility
-        )
-
-        if shouldBindFindTools,
-           registry.registeredTool(
-               identifiedBy: findToolsIdentifier
-           ) == nil {
-            try registry.register(
-                Standard.Tools.FindTools(
-                    availability: capabilities.available,
-                    exposure: capabilities
-                )
-            )
-        }
-
-        if configuration.visibility.usesDiscovery,
-           let identifiers = checkpoint?.exposedToolIdentifiers {
-            _ = try await capabilities.restoreVisibleToolIdentifiers(
-                identifiers,
-                in: registry
+        if let checkpoint {
+            _ = await capabilityState.restore(
+                checkpoint.capabilities
             )
         }
 
         return ToolLoopExecutor(
             model: model,
             configuration: configuration,
-            tooling: tooling.using(
-                registry: registry
-            ),
-            visibility: capabilities.visible,
+            tooling: tooling,
+            capabilityState: capabilityState,
             extensions: extensions,
             recording: recording
         )
@@ -285,6 +244,7 @@ public extension AgentRunner {
             tooling: tooling.using(
                 registry: modeApplication.toolRegistry
             ),
+            capabilityState: modeApplication.capabilityState,
             extensions: extensions,
             recording: recording
         )
@@ -310,6 +270,7 @@ public extension AgentRunner {
             tooling: tooling.using(
                 registry: modeApplication.toolRegistry
             ),
+            capabilityState: modeApplication.capabilityState,
             extensions: extensions,
             recording: recording,
             enableHistoryPersistence: enableHistoryPersistence

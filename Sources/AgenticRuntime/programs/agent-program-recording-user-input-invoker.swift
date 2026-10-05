@@ -11,7 +11,7 @@ struct ProgramRecordingUserInputInvoker:
     func ask(
         _ request: UserInputRequest
     ) async throws -> UserInputResponse {
-        let inputValue = try JSONToolBridge.encode(
+        let inputValue = try JSONCoding.default.value(
             request
         )
         let index = await trace.reserveIndex()
@@ -28,7 +28,7 @@ struct ProgramRecordingUserInputInvoker:
                 )
             }
 
-            let reply = try JSONToolBridge.decode(
+            let reply = try JSONCoding.default.decode(
                 UserInputReply.self,
                 from: outputValue
             )
@@ -49,7 +49,7 @@ struct ProgramRecordingUserInputInvoker:
                request: request
            )
         {
-            let outputValue = try JSONToolBridge.encode(
+            let outputValue = try JSONCoding.default.value(
                 response.reply
             )
             let completedAt = Date()

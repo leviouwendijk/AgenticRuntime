@@ -234,7 +234,7 @@ private struct ProgramReplayMutationTool:
 
     func preflight(
         _ input: Input,
-        workspace _: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> ToolPreflight {
         _ = input
         let revision = await probe.revision()
@@ -248,7 +248,7 @@ private struct ProgramReplayMutationTool:
 
     func call(
         _ input: Input,
-        workspace _: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> Output {
         await probe.recordMutation()
 
@@ -280,7 +280,7 @@ private struct ProgramReplayTailTool:
 
     func preflight(
         _ input: Input,
-        workspace _: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> ToolPreflight {
         _ = input
 
@@ -293,7 +293,7 @@ private struct ProgramReplayTailTool:
 
     func call(
         _ input: Input,
-        workspace _: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> Output {
         await probe.recordTail()
 

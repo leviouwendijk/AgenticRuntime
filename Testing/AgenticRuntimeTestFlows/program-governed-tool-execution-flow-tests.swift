@@ -4,7 +4,6 @@ import Primitives
 import Schema
 import Macros
 import TestFlows
-import Workspace
 
 private actor GovernedProgramToolProbe {
     private var executionCount = 0
@@ -89,7 +88,7 @@ private struct GovernedObserveProgramTool:
 
     func call(
         _ input: Input,
-        workspace _: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> Output {
         await probe.record()
 
@@ -115,7 +114,7 @@ private struct GovernedMutationProgramTool:
 
     func call(
         _ input: Input,
-        workspace _: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> Output {
         await probe.record()
 
@@ -434,8 +433,14 @@ extension AgenticProgramRuntimeFlowTesting {
             tool: "fixture.governed_program_tool",
             input: resumedInput
         )
+        let resumedInvocation = ToolInvocation(
+            id: resumedCall.id,
+            tool: resumedCall.tool,
+            arguments: resumedCall.input
+        )
         let resumedReview = try await resumedExecutor.invoker.review(
-            resumedCall
+            resumedInvocation,
+            context: .init()
         )
         let pendingApproval = PendingApproval(
             toolCall: resumedCall,

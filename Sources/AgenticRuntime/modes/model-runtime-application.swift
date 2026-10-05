@@ -7,6 +7,7 @@ public struct ModeRuntimeApplication: Sendable {
     public var toolRegistry: ToolRegistry
     public var skillRegistry: SkillRegistry
     public var loadedSkills: [AgentSkill]
+    public var capabilityState: AgentCapabilityState
     public var missingSkillIdentifiers: [AgentSkillIdentifier]
     public var metadata: [String: String]
 
@@ -17,6 +18,7 @@ public struct ModeRuntimeApplication: Sendable {
         toolRegistry: ToolRegistry,
         skillRegistry: SkillRegistry,
         loadedSkills: [AgentSkill],
+        capabilityState: AgentCapabilityState,
         missingSkillIdentifiers: [AgentSkillIdentifier],
         metadata: [String: String] = [:]
     ) {
@@ -26,6 +28,7 @@ public struct ModeRuntimeApplication: Sendable {
         self.toolRegistry = toolRegistry
         self.skillRegistry = skillRegistry
         self.loadedSkills = loadedSkills
+        self.capabilityState = capabilityState
         self.missingSkillIdentifiers = missingSkillIdentifiers
         self.metadata = metadata
     }
@@ -45,8 +48,17 @@ public struct ModeRuntimeApplication: Sendable {
         )
         var effectiveConfiguration = configuration
         effectiveConfiguration.autonomyMode = selection.mode.autonomyMode
-        effectiveConfiguration.visibility = .explicit(
-            selection.exposedToolIdentifiers
+        let installed = AgentCapabilitySet(
+            tools: tools.modelFacingDefinitions.map(
+                \.identifier
+            )
+        )
+        let capabilityState = AgentCapabilityState(
+            installed: installed,
+            available: installed,
+            visible: .init(
+                tools: selection.exposedToolIdentifiers
+            )
         )
         let metadata = selection.metadata.merging(
             additionalMetadata
@@ -61,6 +73,7 @@ public struct ModeRuntimeApplication: Sendable {
             toolRegistry: tools,
             skillRegistry: selectedSkills.registry,
             loadedSkills: selectedSkills.loadedSkills,
+            capabilityState: capabilityState,
             missingSkillIdentifiers: selectedSkills.missingIdentifiers,
             metadata: metadata
         )
@@ -71,23 +84,14 @@ public struct ModeRuntimeApplication: Sendable {
     }
 
     public var toolDefinitions: [ToolDescriptor] {
-        let modelFacing = toolRegistry.modelFacingDefinitions
+        let selected = Set(
+            selection.exposedToolIdentifiers
+        )
 
-        switch configuration.visibility {
-        case .all:
-            return modelFacing
-
-        case .explicit(let identifiers),
-             .discoverable(let identifiers):
-            let selected = Set(
-                identifiers
+        return toolRegistry.modelFacingDefinitions.filter { definition in
+            selected.contains(
+                definition.identifier
             )
-
-            return modelFacing.filter { definition in
-                selected.contains(
-                    definition.identifier
-                )
-            }
         }
     }
 }

@@ -125,10 +125,10 @@ private struct MutationRecoveryFixtureTool: Tool {
 
     func preflight(
         _ input: Input,
-        workspace: WorkspaceContext?
+        in context: ToolContext
     ) async throws -> ToolPreflight {
         _ = input
-        _ = workspace
+        _ = context
         await probe.recordPreflight()
 
         return ToolPreflight(
@@ -140,7 +140,7 @@ private struct MutationRecoveryFixtureTool: Tool {
 
     func call(
         _ input: Input,
-        workspace _: WorkspaceContext?
+        in _: ToolContext
     ) async throws -> Output {
         _ = input
         let call = await probe.recordCall()
@@ -190,10 +190,10 @@ private struct MutationRecoveryFixtureTool: Tool {
     func reconcile(
         _ input: Input,
         after failure: ToolCall.Failure,
-        workspace: WorkspaceContext?
+        in context: ToolContext
     ) async throws -> ToolCall.Reconciliation<Output>? {
         _ = input
-        _ = workspace
+        _ = context
 
         guard failure.phase == .call else {
             throw MutationRecoveryFixtureError.invalid_failure
@@ -372,9 +372,11 @@ private func runMutationRecoveryCase(
     let toolCall = ToolCall(
         id: "fixture-mutation-recovery-\(mode.rawValue)",
         tool: "fixture.mutation_recovery",
-        input: try JSONValue.encoding(
-            MutationRecoveryFixtureInput()
-        )
+        input: .object([
+            "arguments": try JSONValue.encoding(
+                MutationRecoveryFixtureInput()
+            ),
+        ])
     )
     let registry = try ToolRegistry {
         MutationRecoveryFixtureTool(
