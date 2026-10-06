@@ -1,4 +1,5 @@
 import Agentic
+import AgenticStandard
 import AgenticRuntime
 import Primitives
 import Schema
@@ -388,6 +389,127 @@ extension AgenticProgramRuntimeFlowTesting {
             .field(
                 "incident_report",
                 String(recovery.incident.report != nil)
+            ),
+        ]
+    }
+}
+
+
+private enum ToolInputDecodeFixtureError: Error {
+    case encoded_input_not_object
+}
+
+extension AgenticProgramRuntimeFlowTesting {
+    static func runMalformedClarifyToolInputRecovery()
+        async throws
+        -> [TestDiagnostic]
+    {
+        let state = ObserveRecoveryModelState()
+        let encodedInput = try JSONValue.encoding(
+            Standard.Tools.ClarifyWithUser.Input(
+                prompt: "fixture prompt"
+            )
+        )
+
+        guard case .object(var arguments) = encodedInput else {
+            throw ToolInputDecodeFixtureError.encoded_input_not_object
+        }
+
+        arguments.removeValue(
+            forKey: "prompt"
+        )
+
+        let toolCall = ToolCall(
+            id: "fixture-malformed-clarify-call",
+            tool: Standard.Tools.ClarifyWithUser.identifier,
+            input: .object([
+                "arguments": .object(arguments),
+            ])
+        )
+        let registry = try ToolRegistry {
+            Standard.Tools.ClarifyWithUser()
+        }
+        let runner = AgentRunner(
+            model: .init(
+                invoker: ObserveRecoveryModelInvoker(
+                    state: state,
+                    toolCall: toolCall
+                )
+            ),
+            configuration: .init(
+                runLimits: .init(
+                    iterations: 2
+                )
+            ),
+            tooling: .init(
+                registry: registry
+            )
+        )
+
+        let result = try await runner.run(
+            AgentRequest(
+                messages: [
+                    Message(
+                        role: .user,
+                        text: "Exercise malformed clarify_with_user input recovery."
+                    ),
+                ]
+            ),
+            sessionID: "fixture-malformed-clarify-input"
+        )
+        let invocations = await state.snapshot()
+        let toolUse = try Expect.notNil(
+            result.toolUses.first,
+            "malformed clarify call has a durable tool-use record"
+        )
+
+        try Expect.equal(
+            toolUse.result?.isError,
+            true,
+            "malformed clarify input becomes a terminal model-facing tool error"
+        )
+        try Expect.equal(
+            invocations.count,
+            2,
+            "malformed clarify input returns control to the model for one corrective turn"
+        )
+
+        let terminalResults = invocations[1].request.messages
+            .flatMap(\.content.blocks)
+            .compactMap { block -> ToolResult? in
+                guard case .tool_result(let result) = block else {
+                    return nil
+                }
+
+                return result
+            }
+            .filter { result in
+                result.toolCallID == toolCall.id
+            }
+
+        try Expect.equal(
+            terminalResults.count,
+            1,
+            "malformed clarify toolUse receives exactly one terminal toolResult"
+        )
+        try Expect.equal(
+            terminalResults[0].isError,
+            true,
+            "malformed clarify toolResult remains an error while the run continues"
+        )
+
+        return [
+            .field(
+                "model_invocations",
+                String(invocations.count)
+            ),
+            .field(
+                "terminal_results",
+                String(terminalResults.count)
+            ),
+            .field(
+                "tool_result_error",
+                String(terminalResults[0].isError)
             ),
         ]
     }

@@ -86,19 +86,6 @@ extension ToolLoopExecutor {
                 continue
             }
 
-            if toolCall.tool == Standard.Tools.ClarifyWithUser.identifier {
-                suspendToolBatch(
-                    for: toolCall,
-                    disposition: .suspended_for_user_input,
-                    on: &checkpoint
-                )
-
-                return try await suspendForUserInput(
-                    invocation,
-                    checkpoint: &checkpoint
-                )
-            }
-
             let review: ToolInvocation.Review
 
             do {
@@ -152,6 +139,19 @@ extension ToolLoopExecutor {
                 ),
                 to: &checkpoint
             )
+
+            if toolCall.tool == Standard.Tools.ClarifyWithUser.identifier {
+                suspendToolBatch(
+                    for: toolCall,
+                    disposition: .suspended_for_user_input,
+                    on: &checkpoint
+                )
+
+                return try await suspendForUserInput(
+                    invocation,
+                    checkpoint: &checkpoint
+                )
+            }
 
             if toolCall.tool == SystemIO.Tools.RequestPathGrant.identifier {
                 let execution = try await executeApprovedToolCall(

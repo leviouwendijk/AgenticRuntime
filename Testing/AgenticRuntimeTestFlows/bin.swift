@@ -372,6 +372,19 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runProgramGovernedToolRecovery()
         },
         TestFlow(
+            "malformed-clarify-tool-input-recovery",
+            tags: [
+                "agentic-runtime",
+                "tool",
+                "decode",
+                "recovery",
+                "user-input",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runMalformedClarifyToolInputRecovery()
+        },
+        TestFlow(
             "agent-run-limit-stop",
             tags: [
                 "agentic-runtime",
