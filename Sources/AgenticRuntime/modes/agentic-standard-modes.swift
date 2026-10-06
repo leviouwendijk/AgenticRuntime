@@ -38,7 +38,7 @@ public extension Mode {
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [
             SystemIO.Tools.ReadFile.identifier,
-            SystemIO.Tools.ScanPaths.identifier
+            SystemIO.Tools.ScanFilepaths.identifier
         ],
         loadedSkillIdentifiers: [
             "context-packing",
@@ -66,7 +66,7 @@ public extension Mode {
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [
             SystemIO.Tools.ReadFile.identifier,
-            SystemIO.Tools.ScanPaths.identifier,
+            SystemIO.Tools.ScanFilepaths.identifier,
             SystemIO.Tools.MutateFiles.identifier
         ],
         loadedSkillIdentifiers: [
@@ -95,7 +95,7 @@ public extension Mode {
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [
             SystemIO.Tools.ReadFile.identifier,
-            SystemIO.Tools.ScanPaths.identifier
+            SystemIO.Tools.ScanFilepaths.identifier
         ],
         loadedSkillIdentifiers: [
             "evidence-citation",
@@ -123,7 +123,7 @@ public extension Mode {
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [
             SystemIO.Tools.ReadFile.identifier,
-            SystemIO.Tools.ScanPaths.identifier,
+            SystemIO.Tools.ScanFilepaths.identifier,
             SystemIO.Tools.MutateFiles.identifier
         ],
         loadedSkillIdentifiers: [
@@ -175,7 +175,7 @@ public extension Mode {
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [
             SystemIO.Tools.ReadFile.identifier,
-            SystemIO.Tools.ScanPaths.identifier
+            SystemIO.Tools.ScanFilepaths.identifier
         ],
         loadedSkillIdentifiers: [
             "privacy-discipline",
