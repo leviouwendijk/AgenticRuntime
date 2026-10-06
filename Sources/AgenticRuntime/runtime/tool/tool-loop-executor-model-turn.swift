@@ -44,6 +44,8 @@ extension ToolLoopExecutor {
                 toolCall
             )
 
+            let invocation: ToolInvocation
+
             do {
                 let visible =
                     await capabilityState.visible
@@ -57,7 +59,7 @@ extension ToolLoopExecutor {
                         )
                 }
 
-                _ = try tooling.registry.invocation(
+                invocation = try tooling.registry.invocation(
                     for: toolCall
                 )
             } catch {
@@ -92,16 +94,20 @@ extension ToolLoopExecutor {
                 )
 
                 return try await suspendForUserInput(
-                    toolCall,
+                    invocation,
                     checkpoint: &checkpoint
                 )
             }
 
-            let preflight: ToolPreflight
+            let review: ToolInvocation.Review
 
             do {
-                preflight = try await tooling.registry.preflight(
-                    toolCall,
+                review = try await ToolInvoker(
+                    registry: tooling.registry,
+                    policy: configuration.toolExecutionPolicy,
+                    recovery: configuration.recovery
+                ).review(
+                    invocation,
                     context: makeToolContext()
                 )
             } catch {
@@ -127,6 +133,8 @@ extension ToolLoopExecutor {
                 batch = checkpoint.toolBatch ?? batch
                 continue
             }
+
+            let preflight = review.preflight
 
             markToolPreflight(
                 preflight,
@@ -189,12 +197,7 @@ extension ToolLoopExecutor {
                 )
             }
 
-            let requirement = ToolExecutionPolicy(
-                autonomyMode: configuration.autonomyMode,
-                limits: configuration.executionLimits
-            ).evaluate(
-                preflight
-            )
+            let requirement = review.requirement
 
             switch requirement {
             case .no_approval_needed:

@@ -1,4 +1,5 @@
 import Agentic
+import Primitives
 
 extension ToolLoopExecutor {
     func applyNativeToolInvocations(
@@ -10,10 +11,8 @@ extension ToolLoopExecutor {
                 continue
             }
 
-            let call = ToolCall(
-                id: invocation.review.invocation.id,
-                tool: invocation.review.invocation.tool,
-                input: invocation.review.invocation.arguments
+            let call = try modelToolCall(
+                for: invocation.review.invocation
             )
             let response = AgentResponse(
                 message: Message(
@@ -158,10 +157,8 @@ extension ToolLoopExecutor {
             to: &checkpoint
         )
 
-        let call = ToolCall(
-            id: review.invocation.id,
-            tool: review.invocation.tool,
-            input: review.invocation.arguments
+        let call = try modelToolCall(
+            for: review.invocation
         )
 
         let response = AgentResponse(
@@ -255,6 +252,26 @@ extension ToolLoopExecutor {
 
         try await saveCheckpoint(
             &checkpoint
+        )
+    }
+
+    func modelToolCall(
+        for invocation: ToolInvocation
+    ) throws -> ToolCall {
+        var input: [String: JSONValue] = [
+            "arguments": invocation.arguments,
+        ]
+
+        if let execution = invocation.execution {
+            input["execution"] = try JSONValue.encoding(
+                execution
+            )
+        }
+
+        return ToolCall(
+            id: invocation.id,
+            tool: invocation.tool,
+            input: .object(input)
         )
     }
 

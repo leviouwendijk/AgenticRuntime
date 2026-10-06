@@ -262,19 +262,19 @@ extension ToolLoopExecutor {
     }
 
     func suspendForUserInput(
-        _ toolCall: ToolCall,
+        _ invocation: ToolInvocation,
         checkpoint: inout AgentHistoryCheckpoint
     ) async throws -> ToolProcessingOutcome {
         let input = try JSONCoding.default.decode(
             Standard.Tools.ClarifyWithUser.Input.self,
-            from: toolCall.input
+            from: invocation.arguments
         )
         let request = try input.request()
         let suspension = AgentSuspension.user_input(
             request,
             metadata: [
-                "toolCallID": toolCall.id,
-                "toolName": toolCall.tool.rawValue
+                "toolCallID": invocation.id,
+                "toolName": invocation.tool.rawValue
             ]
         )
 
@@ -286,8 +286,8 @@ extension ToolLoopExecutor {
             .init(
                 kind: .pending_user_input,
                 iteration: checkpoint.state.iteration,
-                toolCallID: toolCall.id,
-                toolName: toolCall.tool.rawValue,
+                toolCallID: invocation.id,
+                toolName: invocation.tool.rawValue,
                 summary: request.prompt
             ),
             to: &checkpoint
