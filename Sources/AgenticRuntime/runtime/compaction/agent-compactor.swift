@@ -243,15 +243,10 @@ private extension AgentCompactor {
                 return "tool call \(value.tool.rawValue)"
 
             case .tool_result(let value):
-                if let name = value.tool?.rawValue {
-                    return value.isError
-                        ? "tool result \(name) error"
-                        : "tool result \(name)"
-                }
-
+                let name = value.call.tool.rawValue
                 return value.isError
-                    ? "tool result \(value.toolCallID) error"
-                    : "tool result \(value.toolCallID)"
+                    ? "tool result \(name) error"
+                    : "tool result \(name)"
             }
         }
 

@@ -66,7 +66,7 @@ public extension CompactionTrigger {
                 partial += 64 + value.tool.rawValue.count
 
             case .tool_result(let value):
-                partial += 96 + (value.tool?.rawValue.count ?? 0)
+                partial += 96 + value.call.tool.rawValue.count
             }
         }
     }

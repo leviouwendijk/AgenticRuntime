@@ -43,8 +43,10 @@ extension ToolLoopExecutor {
         }
 
         let result = ToolResult(
-            toolCallID: toolCallID,
-            tool: ToolIdentifier(toolName),
+            call: ToolCall.Reference(
+                id: toolCallID,
+                tool: ToolIdentifier(toolName)
+            ),
             output: try JSONCoding.default.value(
                 WorkspaceAccessResumePayload(
                     kind: resolution == .deny

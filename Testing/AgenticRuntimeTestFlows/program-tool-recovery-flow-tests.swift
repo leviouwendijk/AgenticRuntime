@@ -449,7 +449,7 @@ private struct ProgramToolRecoveryProgram: Program {
                 guard
                     failure.effect == .applied,
                     failure.result.isError,
-                    failure.result.tool == ToolIdentifier("fixture.program_tool_recovery"),
+                    failure.result.call.tool == ToolIdentifier("fixture.program_tool_recovery"),
                     failure.result.output != .null
                 else {
                     throw failure
@@ -469,7 +469,7 @@ private struct ProgramToolRecoveryProgram: Program {
                 guard
                     failure.effect == .unknown,
                     failure.result.isError,
-                    failure.result.tool == ToolIdentifier("fixture.program_tool_recovery"),
+                    failure.result.call.tool == ToolIdentifier("fixture.program_tool_recovery"),
                     failure.result.output != .null
                 else {
                     return .recover(

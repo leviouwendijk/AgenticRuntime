@@ -66,7 +66,7 @@ extension AgenticProgramRuntimeFlowTesting {
             limit: 1,
             consumed: 1
         )
-        let suspension = AgentSuspension.run_limit(
+        let suspension = Run.Suspension.run_limit(
             exhaustion
         )
         let checkpoint = AgentHistoryCheckpoint(

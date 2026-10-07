@@ -3,7 +3,7 @@ import Agentic
 extension ToolLoopExecutor {
     func interrupt(
         _ checkpoint: AgentHistoryCheckpoint,
-        mode: AgentRunInterruptionMode,
+        mode: Run.Interruption.Mode,
         reason: String? = nil
     ) async throws -> AgentRunResult {
         var checkpoint = checkpoint
@@ -26,11 +26,11 @@ extension ToolLoopExecutor {
         )
     }
 
-    func requestedInterruption() async -> AgentRunInterruptionRequest? {
-        await interruptionController.current()
+    func requestedInterruption() async -> Run.Interruption? {
+        await runControl.current()
     }
 
-    func requestedUrgentInterruption() async -> AgentRunInterruptionRequest? {
+    func requestedUrgentInterruption() async -> Run.Interruption? {
         guard let request = await requestedInterruption(),
               request.mode == .urgent else {
             return nil
@@ -41,7 +41,7 @@ extension ToolLoopExecutor {
 
     func applyInterruption(
         to checkpoint: inout AgentHistoryCheckpoint,
-        request: AgentRunInterruptionRequest
+        request: Run.Interruption
     ) async throws {
         try await closeOutstandingToolCallsForInterruption(
             in: &checkpoint
@@ -66,13 +66,13 @@ extension ToolLoopExecutor {
             &checkpoint
         )
 
-        await interruptionController.clear()
+        await runControl.clear()
     }
 
     func interruptStreamingTurn(
         checkpoint: inout AgentHistoryCheckpoint,
         accumulator: AgentStreamAccumulator,
-        request: AgentRunInterruptionRequest
+        request: Run.Interruption
     ) async throws {
         checkpoint.partialResponse = accumulator.partial
 
@@ -148,12 +148,12 @@ extension ToolLoopExecutor {
     }
 
     private func interruptionSummary(
-        _ request: AgentRunInterruptionRequest
+        _ request: Run.Interruption
     ) -> String {
         let prefix: String
 
         switch request.mode {
-        case .after_iteration:
+        case .graceful:
             prefix = "Run stopped at the next iteration boundary."
 
         case .urgent:

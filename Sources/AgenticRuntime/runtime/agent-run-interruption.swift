@@ -1,62 +1,94 @@
 import Foundation
 
-public enum AgentRunInterruptionMode:
-    String,
-    Sendable,
-    Codable,
-    Hashable,
-    CaseIterable
-{
-    /// Finish the current agent iteration, including any already-started tool work,
-    /// then stop before the next model turn.
-    case after_iteration
+public enum Run {}
 
-    /// Stop at the earliest safe boundary. Streaming model output may be cancelled
-    /// immediately; an already-running effectful tool is allowed to settle first.
-    case urgent
-}
+public extension Run {
+    struct Interruption:
+        Sendable,
+        Codable,
+        Hashable
+    {
+        public let mode: Mode
+        public let reason: String?
 
-public struct AgentRunInterruptionRequest:
-    Sendable,
-    Codable,
-    Hashable
-{
-    public let mode: AgentRunInterruptionMode
-    public let reason: String?
-
-    public init(
-        mode: AgentRunInterruptionMode,
-        reason: String? = nil
-    ) {
-        self.mode = mode
-        self.reason = reason
-    }
-}
-
-public actor AgentRunInterruptionController {
-    private var request: AgentRunInterruptionRequest?
-
-    public init() {}
-
-    public func request(
-        _ mode: AgentRunInterruptionMode,
-        reason: String? = nil
-    ) {
-        if request?.mode == .urgent {
-            return
+        public init(
+            mode: Mode,
+            reason: String? = nil
+        ) {
+            self.mode = mode
+            self.reason = reason
         }
 
-        request = .init(
-            mode: mode,
-            reason: reason
-        )
-    }
+        public enum Mode:
+            String,
+            Sendable,
+            Codable,
+            Hashable,
+            CaseIterable
+        {
+            // Finish the current executor-defined stable unit/boundary, then stop before
+            // starting more work.
+            case graceful
 
-    public func current() -> AgentRunInterruptionRequest? {
-        request
-    }
-
-    public func clear() {
-        request = nil
+            // Stop at the earliest safe boundary. Streaming model output may be cancelled
+            // immediately; an already-running effectful tool is allowed to settle first.
+            case urgent
+        }
     }
 }
+
+public extension Run {
+    actor Control {
+        private var interruption: Interruption?
+
+        public init() {}
+
+        public func request(
+            _ mode: Interruption.Mode,
+            reason: String? = nil
+        ) {
+            if interruption?.mode == .urgent {
+                return
+            }
+
+            interruption = .init(
+                mode: mode,
+                reason: reason
+            )
+        }
+
+        public func current() -> Interruption? {
+            interruption
+        }
+
+        public func clear() {
+            interruption = nil
+        }
+    }
+}
+
+// MARK: - Deprecated compatibility aliases
+
+@available(
+    *,
+    deprecated,
+    renamed: "Run.Interruption.Mode"
+)
+public typealias AgentRunInterruptionMode =
+    Run.Interruption.Mode
+
+@available(
+    *,
+    deprecated,
+    renamed: "Run.Interruption"
+)
+public typealias AgentRunInterruptionRequest =
+    Run.Interruption
+
+@available(
+    *,
+    deprecated,
+    renamed: "Run.Control"
+)
+public typealias AgentRunInterruptionController =
+    Run.Control

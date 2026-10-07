@@ -15,7 +15,7 @@ public enum AgentInteraction {
         case run_limit
     }
 
-    public typealias Requirement = AgentSuspensionReason
+    public typealias Requirement = Run.Suspension.Reason
 
     public struct Request:
         Sendable,
@@ -24,11 +24,11 @@ public enum AgentInteraction {
         Identifiable
     {
         public let sessionID: String
-        public let suspension: AgentSuspension
+        public let suspension: Run.Suspension
 
         public init(
             sessionID: String,
-            suspension: AgentSuspension
+            suspension: Run.Suspension
         ) {
             self.sessionID = sessionID
             self.suspension = suspension
@@ -285,7 +285,7 @@ public enum AgentInteraction {
     }
 }
 
-public extension AgentSuspensionReason {
+public extension Run.Suspension.Reason {
     var interactionKind: AgentInteraction.Kind {
         switch self {
         case .approval:

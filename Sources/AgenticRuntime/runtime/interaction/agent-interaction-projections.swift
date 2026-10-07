@@ -1,4 +1,4 @@
-public extension AgentSuspension {
+public extension Run.Suspension {
     func interactionRequest(
         sessionID: String
     ) -> AgentInteraction.Request {

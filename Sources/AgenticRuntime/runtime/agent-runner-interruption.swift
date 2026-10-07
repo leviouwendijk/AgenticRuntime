@@ -1,9 +1,9 @@
 public extension AgentRunner {
     func requestInterruption(
-        _ mode: AgentRunInterruptionMode,
+        _ mode: Run.Interruption.Mode,
         reason: String? = nil
     ) async {
-        await interruptionController.request(
+        await runControl.request(
             mode,
             reason: reason
         )
@@ -11,7 +11,7 @@ public extension AgentRunner {
 
     func interrupt(
         sessionID: String,
-        mode: AgentRunInterruptionMode,
+        mode: Run.Interruption.Mode,
         reason: String? = nil
     ) async throws -> AgentRunResult {
         guard let historyStore = recording.historyStore else {

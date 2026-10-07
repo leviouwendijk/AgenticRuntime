@@ -8,7 +8,15 @@ public struct ToolLoopExecutor: Sendable {
     public let configuration: AgentRunnerConfiguration
     public let tooling: AgentRuntimeServices.Tooling
     public let capabilityState: AgentCapabilityState
-    public let interruptionController: AgentRunInterruptionController
+    public let runControl: Run.Control
+    @available(
+        *,
+        deprecated,
+        renamed: "runControl"
+    )
+    public var interruptionController: Run.Control {
+        runControl
+    }
     public let extensions: [any AgentHarnessExtension]
     public let recording: AgentRuntimeServices.Recording
 
@@ -17,7 +25,7 @@ public struct ToolLoopExecutor: Sendable {
         configuration: AgentRunnerConfiguration = .default,
         tooling: AgentRuntimeServices.Tooling = .init(),
         capabilityState: AgentCapabilityState,
-        interruptionController: AgentRunInterruptionController = .init(),
+        runControl: Run.Control = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: AgentRuntimeServices.Recording = .init()
     ) {
@@ -25,7 +33,7 @@ public struct ToolLoopExecutor: Sendable {
         self.configuration = configuration
         self.tooling = tooling
         self.capabilityState = capabilityState
-        self.interruptionController = interruptionController
+        self.runControl = runControl
         self.extensions = extensions
         self.recording = recording
     }

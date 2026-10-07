@@ -24,7 +24,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
     public var partialResponse: AgentPartialResponse?
     public var toolBatch: AgentToolUseBatch?
     public var toolUses: [AgentToolUseRecord]
-    public var suspension: AgentSuspension?
+    public var suspension: Run.Suspension?
     public var pendingApproval: PendingApproval?
     public var failure: AgentRunFailure?
     public var costRecord: AgentCostRecord?
@@ -98,7 +98,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
             forKey: .toolUses
         ) ?? []
         suspension = try container.decodeIfPresent(
-            AgentSuspension.self,
+            Run.Suspension.self,
             forKey: .suspension
         )
         let decodedPendingApproval = try container.decodeIfPresent(
@@ -141,7 +141,7 @@ public struct AgentHistoryCheckpoint: Sendable, Codable, Hashable, Identifiable 
         partialResponse: AgentPartialResponse? = nil,
         toolBatch: AgentToolUseBatch? = nil,
         toolUses: [AgentToolUseRecord] = [],
-        suspension: AgentSuspension? = nil,
+        suspension: Run.Suspension? = nil,
         pendingApproval: PendingApproval? = nil,
         failure: AgentRunFailure? = nil,
         costRecord: AgentCostRecord? = nil,
@@ -181,7 +181,7 @@ public extension AgentHistoryCheckpoint {
         )
     }
 
-    var resolvedSuspension: AgentSuspension? {
+    var resolvedSuspension: Run.Suspension? {
         if let suspension {
             return suspension
         }
@@ -204,7 +204,7 @@ public extension AgentHistoryCheckpoint {
     }
 
     mutating func suspend(
-        _ suspension: AgentSuspension
+        _ suspension: Run.Suspension
     ) {
         self.suspension = suspension
         self.pendingApproval = suspension.pendingApproval

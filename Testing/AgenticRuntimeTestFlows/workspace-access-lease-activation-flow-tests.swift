@@ -246,7 +246,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "workspace-access leases survive durable encode/decode"
         )
 
-        let suspension = AgentSuspension.workspace_access(
+        let suspension = Run.Suspension.workspace_access(
             turnRequest,
             metadata: [
                 "toolCallID": "fixture-request",

@@ -13,7 +13,7 @@ extension AgenticProgramRuntimeFlowTesting {
         batch.mark(
             toolCallID: call.id,
             disposition: .executed,
-            result: .init(toolCallID: call.id, tool: call.tool, output: .null, isError: false),
+            result: .init(call: .init(id: call.id, tool: call.tool), output: .null, isError: false),
             observations: observations
         )
         let decoded = try JSONDecoder().decode(AgentToolUseBatch.self, from: JSONEncoder().encode(batch))

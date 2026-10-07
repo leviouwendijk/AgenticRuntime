@@ -30,8 +30,7 @@ private struct ProgramCaughtToolFailureExecutor:
         throw ProgramToolFailure(
             tool: identifier,
             result: ToolResult(
-                toolCallID: "fixture-caught-tool-failure",
-                tool: identifier,
+                call: .init(id: "fixture-caught-tool-failure", tool: identifier),
                 output: .null,
                 isError: true
             )
@@ -64,7 +63,7 @@ private struct ProgramCaughtToolFailureResumeFixture:
             as: String.self
         ) { failure -> String in
             guard failure.tool == Self.toolIdentifier,
-                  failure.result.tool
+                  failure.result.call.tool
                     == Self.toolIdentifier,
                   failure.result.isError
             else {
@@ -159,7 +158,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "caught failure remains typed as ProgramToolFailure"
         )
         try Expect.equal(
-            failedResult.tool,
+            failedResult.call.tool,
             ProgramCaughtToolFailureResumeFixture
                 .toolIdentifier,
             "durable failed result retains exact tool identity"

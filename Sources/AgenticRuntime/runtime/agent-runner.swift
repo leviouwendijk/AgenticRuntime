@@ -8,7 +8,15 @@ public actor AgentRunner {
     public let configuration: AgentRunnerConfiguration
     public let tooling: AgentRuntimeServices.Tooling
     public let capabilityState: AgentCapabilityState
-    public let interruptionController: AgentRunInterruptionController
+    public let runControl: Run.Control
+    @available(
+        *,
+        deprecated,
+        renamed: "runControl"
+    )
+    public var interruptionController: Run.Control {
+        runControl
+    }
     public let extensions: [any AgentHarnessExtension]
     public let recording: AgentRuntimeServices.Recording
 
@@ -32,7 +40,7 @@ public actor AgentRunner {
                         .map(\.identifier)
                 )
             )
-        self.interruptionController = AgentRunInterruptionController()
+        self.runControl = Run.Control()
         self.extensions = extensions
         self.recording = recording
     }
@@ -203,7 +211,7 @@ extension AgentRunner {
             configuration: configuration,
             tooling: tooling,
             capabilityState: capabilityState,
-            interruptionController: interruptionController,
+            runControl: runControl,
             extensions: extensions,
             recording: recording
         )

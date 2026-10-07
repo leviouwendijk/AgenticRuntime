@@ -441,7 +441,7 @@ private func runMutationRecoveryCase(
             return result
         }
         .filter { result in
-            result.toolCallID == toolCall.id
+            result.call.id == toolCall.id
         }
 
     try Expect.equal(

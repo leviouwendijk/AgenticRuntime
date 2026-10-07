@@ -70,8 +70,8 @@ extension ToolLoopExecutor {
             .init(
                 kind: result.isError ? .tool_error : .tool_result,
                 iteration: checkpoint.state.iteration,
-                toolCallID: result.toolCallID,
-                toolName: result.tool?.rawValue,
+                toolCallID: result.call.id,
+                toolName: result.call.tool.rawValue,
                 summary: summary
             ),
             to: &checkpoint
@@ -160,8 +160,7 @@ extension ToolLoopExecutor {
         reason: String
     ) -> ToolResult {
         ToolResult(
-            toolCallID: toolCall.id,
-            tool: toolCall.tool,
+            call: toolCall.reference,
             output: .object([
                 "kind": .string("tool_error"),
                 "toolCallID": .string(toolCall.id),

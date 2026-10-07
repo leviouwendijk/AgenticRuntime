@@ -3,264 +3,286 @@ import AgenticIO
 import Workspace
 import Foundation
 
-public enum AgentSuspensionReason: Sendable, Codable, Hashable {
-    case approval(PendingApproval)
-    case user_input(UserInputRequest)
-    case workspace_access(WorkspaceAccessRequest)
-    case run_limit(AgentRunLimitExhaustion)
+public extension Run.Suspension {
+    enum Reason: Sendable, Codable, Hashable {
+        case approval(PendingApproval)
+        case user_input(UserInputRequest)
+        case workspace_access(WorkspaceAccessRequest)
+        case run_limit(AgentRunLimitExhaustion)
 
-    private enum CodingKeys: String, CodingKey {
-        case kind
-        case approval
-        case user_input
-        case workspace_access
-        case run_limit
-    }
+        private enum CodingKeys: String, CodingKey {
+            case kind
+            case approval
+            case user_input
+            case workspace_access
+            case run_limit
+        }
 
-    private enum Kind: String, Codable {
-        case approval
-        case user_input
-        case workspace_access
-        case run_limit
+        private enum Kind: String, Codable {
+            case approval
+            case user_input
+            case workspace_access
+            case run_limit
 
-        init(
+            init(
+                from decoder: any Decoder
+            ) throws {
+                let container = try decoder.singleValueContainer()
+                let rawValue = try container.decode(
+                    String.self
+                )
+
+                switch rawValue {
+                case "approval":
+                    self = .approval
+
+                case "user_input", "userInput":
+                    self = .user_input
+
+                case "workspace_access", "workspaceAccess":
+                    self = .workspace_access
+
+                case "run_limit", "runLimit":
+                    self = .run_limit
+
+                default:
+                    throw DecodingError.dataCorruptedError(
+                        in: container,
+                        debugDescription: "Unsupported Run.Suspension.Reason.Kind '\(rawValue)'."
+                    )
+                }
+            }
+        }
+
+        public init(
             from decoder: any Decoder
         ) throws {
-            let container = try decoder.singleValueContainer()
-            let rawValue = try container.decode(
-                String.self
+            let container = try decoder.container(
+                keyedBy: CodingKeys.self
+            )
+            let kind = try container.decode(
+                Kind.self,
+                forKey: .kind
             )
 
-            switch rawValue {
-            case "approval":
-                self = .approval
+            switch kind {
+            case .approval:
+                self = .approval(
+                    try container.decode(
+                        PendingApproval.self,
+                        forKey: .approval
+                    )
+                )
 
-            case "user_input", "userInput":
-                self = .user_input
+            case .user_input:
+                self = .user_input(
+                    try container.decode(
+                        UserInputRequest.self,
+                        forKey: .user_input
+                    )
+                )
 
-            case "workspace_access", "workspaceAccess":
-                self = .workspace_access
+            case .workspace_access:
+                self = .workspace_access(
+                    try container.decode(
+                        WorkspaceAccessRequest.self,
+                        forKey: .workspace_access
+                    )
+                )
 
-            case "run_limit", "runLimit":
-                self = .run_limit
-
-            default:
-                throw DecodingError.dataCorruptedError(
-                    in: container,
-                    debugDescription: "Unsupported AgentSuspensionReason.Kind '\(rawValue)'."
+            case .run_limit:
+                self = .run_limit(
+                    try container.decode(
+                        AgentRunLimitExhaustion.self,
+                        forKey: .run_limit
+                    )
                 )
             }
         }
-    }
 
-    public init(
-        from decoder: any Decoder
-    ) throws {
-        let container = try decoder.container(
-            keyedBy: CodingKeys.self
-        )
-        let kind = try container.decode(
-            Kind.self,
-            forKey: .kind
-        )
+        public func encode(
+            to encoder: any Encoder
+        ) throws {
+            var container = encoder.container(
+                keyedBy: CodingKeys.self
+            )
 
-        switch kind {
-        case .approval:
-            self = .approval(
-                try container.decode(
-                    PendingApproval.self,
+            switch self {
+            case .approval(let approval):
+                try container.encode(
+                    Kind.approval,
+                    forKey: .kind
+                )
+                try container.encode(
+                    approval,
                     forKey: .approval
                 )
-            )
 
-        case .user_input:
-            self = .user_input(
-                try container.decode(
-                    UserInputRequest.self,
+            case .user_input(let userInput):
+                try container.encode(
+                    Kind.user_input,
+                    forKey: .kind
+                )
+                try container.encode(
+                    userInput,
                     forKey: .user_input
                 )
-            )
 
-        case .workspace_access:
-            self = .workspace_access(
-                try container.decode(
-                    WorkspaceAccessRequest.self,
+            case .workspace_access(let request):
+                try container.encode(
+                    Kind.workspace_access,
+                    forKey: .kind
+                )
+                try container.encode(
+                    request,
                     forKey: .workspace_access
                 )
-            )
 
-        case .run_limit:
-            self = .run_limit(
-                try container.decode(
-                    AgentRunLimitExhaustion.self,
+            case .run_limit(let exhaustion):
+                try container.encode(
+                    Kind.run_limit,
+                    forKey: .kind
+                )
+                try container.encode(
+                    exhaustion,
                     forKey: .run_limit
                 )
-            )
-        }
-    }
-
-    public func encode(
-        to encoder: any Encoder
-    ) throws {
-        var container = encoder.container(
-            keyedBy: CodingKeys.self
-        )
-
-        switch self {
-        case .approval(let approval):
-            try container.encode(
-                Kind.approval,
-                forKey: .kind
-            )
-            try container.encode(
-                approval,
-                forKey: .approval
-            )
-
-        case .user_input(let userInput):
-            try container.encode(
-                Kind.user_input,
-                forKey: .kind
-            )
-            try container.encode(
-                userInput,
-                forKey: .user_input
-            )
-
-        case .workspace_access(let request):
-            try container.encode(
-                Kind.workspace_access,
-                forKey: .kind
-            )
-            try container.encode(
-                request,
-                forKey: .workspace_access
-            )
-
-        case .run_limit(let exhaustion):
-            try container.encode(
-                Kind.run_limit,
-                forKey: .kind
-            )
-            try container.encode(
-                exhaustion,
-                forKey: .run_limit
-            )
-        }
-    }
-
-    public var pendingApproval: PendingApproval? {
-        guard case .approval(let value) = self else {
-            return nil
+            }
         }
 
-        return value
-    }
+        public var pendingApproval: PendingApproval? {
+            guard case .approval(let value) = self else {
+                return nil
+            }
 
-    public var pendingUserInput: UserInputRequest? {
-        guard case .user_input(let value) = self else {
-            return nil
+            return value
         }
 
-        return value
-    }
+        public var pendingUserInput: UserInputRequest? {
+            guard case .user_input(let value) = self else {
+                return nil
+            }
 
-    public var pendingWorkspaceAccess: WorkspaceAccessRequest? {
-        guard case .workspace_access(let value) = self else {
-            return nil
+            return value
         }
 
-        return value
-    }
+        public var pendingWorkspaceAccess: WorkspaceAccessRequest? {
+            guard case .workspace_access(let value) = self else {
+                return nil
+            }
 
-    public var pendingRunLimit: AgentRunLimitExhaustion? {
-        guard case .run_limit(let value) = self else {
-            return nil
+            return value
         }
 
-        return value
+        public var pendingRunLimit: AgentRunLimitExhaustion? {
+            guard case .run_limit(let value) = self else {
+                return nil
+            }
+
+            return value
+        }
     }
 }
 
-public struct AgentSuspension: Sendable, Codable, Hashable, Identifiable {
-    public let id: String
-    public var reason: AgentSuspensionReason
-    public let createdAt: Date
-    public var metadata: [String: String]
+public extension Run {
+    struct Suspension: Sendable, Codable, Hashable, Identifiable {
+        public let id: String
+        public var reason: Reason
+        public let createdAt: Date
+        public var metadata: [String: String]
 
-    public init(
-        id: String = UUID().uuidString,
-        reason: AgentSuspensionReason,
-        createdAt: Date = Date(),
-        metadata: [String: String] = [:]
-    ) {
-        self.id = id
-        self.reason = reason
-        self.createdAt = createdAt
-        self.metadata = metadata
-    }
+        public init(
+            id: String = UUID().uuidString,
+            reason: Reason,
+            createdAt: Date = Date(),
+            metadata: [String: String] = [:]
+        ) {
+            self.id = id
+            self.reason = reason
+            self.createdAt = createdAt
+            self.metadata = metadata
+        }
 
-    public static func approval(
-        _ approval: PendingApproval,
-        metadata: [String: String] = [:]
-    ) -> Self {
-        .init(
-            reason: .approval(
-                approval
-            ),
-            metadata: metadata
-        )
-    }
+        public static func approval(
+            _ approval: PendingApproval,
+            metadata: [String: String] = [:]
+        ) -> Self {
+            .init(
+                reason: .approval(
+                    approval
+                ),
+                metadata: metadata
+            )
+        }
 
-    public static func user_input(
-        _ userInput: UserInputRequest,
-        metadata: [String: String] = [:]
-    ) -> Self {
-        .init(
-            reason: .user_input(
-                userInput
-            ),
-            metadata: metadata
-        )
-    }
+        public static func user_input(
+            _ userInput: UserInputRequest,
+            metadata: [String: String] = [:]
+        ) -> Self {
+            .init(
+                reason: .user_input(
+                    userInput
+                ),
+                metadata: metadata
+            )
+        }
 
-    public static func workspace_access(
-        _ request: WorkspaceAccessRequest,
-        metadata: [String: String] = [:]
-    ) -> Self {
-        .init(
-            reason: .workspace_access(
-                request
-            ),
-            metadata: metadata
-        )
-    }
+        public static func workspace_access(
+            _ request: WorkspaceAccessRequest,
+            metadata: [String: String] = [:]
+        ) -> Self {
+            .init(
+                reason: .workspace_access(
+                    request
+                ),
+                metadata: metadata
+            )
+        }
 
-    public static func run_limit(
-        _ exhaustion: AgentRunLimitExhaustion,
-        metadata: [String: String] = [:]
-    ) -> Self {
-        .init(
-            reason: .run_limit(
-                exhaustion
-            ),
-            metadata: metadata
-        )
-    }
+        public static func run_limit(
+            _ exhaustion: AgentRunLimitExhaustion,
+            metadata: [String: String] = [:]
+        ) -> Self {
+            .init(
+                reason: .run_limit(
+                    exhaustion
+                ),
+                metadata: metadata
+            )
+        }
 
-    public var pendingApproval: PendingApproval? {
-        reason.pendingApproval
-    }
+        public var pendingApproval: PendingApproval? {
+            reason.pendingApproval
+        }
 
-    public var pendingUserInput: UserInputRequest? {
-        reason.pendingUserInput
-    }
+        public var pendingUserInput: UserInputRequest? {
+            reason.pendingUserInput
+        }
 
-    public var pendingWorkspaceAccess: WorkspaceAccessRequest? {
-        reason.pendingWorkspaceAccess
-    }
+        public var pendingWorkspaceAccess: WorkspaceAccessRequest? {
+            reason.pendingWorkspaceAccess
+        }
 
-    public var pendingRunLimit: AgentRunLimitExhaustion? {
-        reason.pendingRunLimit
+        public var pendingRunLimit: AgentRunLimitExhaustion? {
+            reason.pendingRunLimit
+        }
     }
 }
+
+// MARK: - Deprecated compatibility aliases
+
+@available(
+    *,
+    deprecated,
+    renamed: "Run.Suspension"
+)
+public typealias AgentSuspension =
+    Run.Suspension
+
+@available(
+    *,
+    deprecated,
+    renamed: "Run.Suspension.Reason"
+)
+public typealias AgentSuspensionReason =
+    Run.Suspension.Reason

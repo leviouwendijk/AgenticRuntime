@@ -18,7 +18,7 @@ public struct AgentRunStateSnapshot:
     public let partialResponse: AgentPartialResponse?
     public let toolBatch: AgentToolUseBatch?
     public let toolUses: [AgentToolUseRecord]
-    public let suspension: AgentSuspension?
+    public let suspension: Run.Suspension?
     public let pendingApproval: PendingApproval?
     public let pendingUserInput: UserInputRequest?
     public let pendingRunLimit: AgentRunLimitExhaustion?

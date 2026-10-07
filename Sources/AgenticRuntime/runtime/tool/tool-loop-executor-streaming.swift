@@ -164,7 +164,7 @@ extension ToolLoopExecutor {
         } catch is CancellationError {
             let interruption =
                 await requestedInterruption()
-                ?? AgentRunInterruptionRequest(
+                ?? Run.Interruption(
                     mode: .urgent,
                     reason: "Execution task was cancelled."
                 )
@@ -326,8 +326,8 @@ extension ToolLoopExecutor {
                     kind: result.isError ? .tool_error : .tool_result,
                     iteration: checkpoint.state.iteration,
                     messageID: accumulator.partial.messageID,
-                    toolCallID: result.toolCallID,
-                    toolName: result.tool?.rawValue,
+                    toolCallID: result.call.id,
+                    toolName: result.call.tool.rawValue,
                     summary: result.isError
                         ? "streamed tool result error"
                         : "streamed tool result"

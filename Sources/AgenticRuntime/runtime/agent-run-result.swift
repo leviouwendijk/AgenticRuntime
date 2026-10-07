@@ -6,7 +6,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
     public let sessionID: String
     public let phase: AgentHistoryPhase
     public let response: AgentResponse?
-    public let suspension: AgentSuspension?
+    public let suspension: Run.Suspension?
     public let pendingApproval: PendingApproval?
     public let failure: AgentRunFailure?
     public let state: AgentLoopState
@@ -18,7 +18,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         sessionID: String,
         phase: AgentHistoryPhase,
         response: AgentResponse?,
-        suspension: AgentSuspension? = nil,
+        suspension: Run.Suspension? = nil,
         pendingApproval: PendingApproval? = nil,
         failure: AgentRunFailure? = nil,
         state: AgentLoopState,
@@ -63,7 +63,7 @@ public struct AgentRunResult: Sendable, Codable, Hashable {
         sessionID: String,
         phase: AgentHistoryPhase,
         response: AgentResponse?,
-        suspension: AgentSuspension,
+        suspension: Run.Suspension,
         state: AgentLoopState,
         events: [AgentRunEvent] = [],
         toolUses: [AgentToolUseRecord] = [],

@@ -196,7 +196,7 @@ extension ToolLoopExecutor {
         } catch is CancellationError {
             let interruption =
                 await requestedInterruption()
-                ?? AgentRunInterruptionRequest(
+                ?? Run.Interruption(
                     mode: .urgent,
                     reason: "Execution task was cancelled."
                 )

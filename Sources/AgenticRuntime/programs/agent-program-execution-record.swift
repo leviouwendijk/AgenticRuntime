@@ -91,7 +91,7 @@ public struct ProgramStepRecord:
     public var toolResult: ToolResult?
     public var inference: Inference
     public var recovery: Recovery.Record?
-    public var suspension: AgentSuspension?
+    public var suspension: Run.Suspension?
     public var failure: ProgramFailureRecord?
     public var startedAt: Date
     public var completedAt: Date
@@ -106,7 +106,7 @@ public struct ProgramStepRecord:
         toolResult: ToolResult? = nil,
         inference: Inference = .init(),
         recovery: Recovery.Record? = nil,
-        suspension: AgentSuspension? = nil,
+        suspension: Run.Suspension? = nil,
         failure: ProgramFailureRecord? = nil,
         startedAt: Date,
         completedAt: Date,
@@ -140,7 +140,7 @@ public struct ProgramExecutionRecord:
     public var output: JSONValue?
     public var steps: [ProgramStepRecord]
     public var outcome: ProgramExecutionOutcome
-    public var suspension: AgentSuspension?
+    public var suspension: Run.Suspension?
     public var checkpoint: ProgramCheckpoint?
     public var failure: ProgramFailureRecord?
     public var startedAt: Date
@@ -155,7 +155,7 @@ public struct ProgramExecutionRecord:
         output: JSONValue? = nil,
         steps: [ProgramStepRecord] = [],
         outcome: ProgramExecutionOutcome,
-        suspension: AgentSuspension? = nil,
+        suspension: Run.Suspension? = nil,
         checkpoint: ProgramCheckpoint? = nil,
         failure: ProgramFailureRecord? = nil,
         startedAt: Date,
@@ -222,7 +222,7 @@ extension ProgramStepRecord {
     var replayableToolFailure: ProgramToolFailure? {
         guard case .tool(let identifier) = kind,
               let toolResult,
-              toolResult.tool == identifier,
+              toolResult.call.tool == identifier,
               toolResult.isError,
               failure?.type
                 == String(reflecting: ProgramToolFailure.self)

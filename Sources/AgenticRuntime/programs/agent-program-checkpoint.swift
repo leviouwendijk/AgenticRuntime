@@ -18,7 +18,7 @@ public struct ProgramCheckpoint:
     public var realization: JSONValue?
     public var completedSteps: [ProgramStepRecord]
     public var suspendedStep: ProgramStepRecord
-    public var suspension: AgentSuspension
+    public var suspension: Run.Suspension
     public var startedAt: Date
     public var metadata: [String: String]
 
@@ -29,7 +29,7 @@ public struct ProgramCheckpoint:
         realization: JSONValue? = nil,
         completedSteps: [ProgramStepRecord],
         suspendedStep: ProgramStepRecord,
-        suspension: AgentSuspension,
+        suspension: Run.Suspension,
         startedAt: Date,
         metadata: [String: String] = [:]
     ) {
@@ -305,7 +305,7 @@ struct ProgramSuspensionSignal:
     Error,
     Sendable
 {
-    let suspension: AgentSuspension
+    let suspension: Run.Suspension
 }
 
 enum ProgramCheckpointResolution:

@@ -547,8 +547,7 @@ private struct FixtureProgramToolExecutor:
 
         return ToolExecutionResult(
             result: ToolResult(
-                toolCallID: "fixture-\(identifier.rawValue)",
-                tool: identifier,
+                call: .init(id: "fixture-\(identifier.rawValue)", tool: identifier),
                 output: try JSONValue.encoding(
                     FixtureOutput(
                         value: "tool:\(decoded.value)"

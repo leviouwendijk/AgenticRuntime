@@ -18,7 +18,7 @@ extension ToolLoopExecutor {
         _ exhaustion: AgentRunLimitExhaustion,
         checkpoint: inout AgentHistoryCheckpoint
     ) async throws -> AgentRunResult {
-        let suspension = AgentSuspension.run_limit(
+        let suspension = Run.Suspension.run_limit(
             exhaustion
         )
 

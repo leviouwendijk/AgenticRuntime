@@ -195,8 +195,7 @@ extension ToolLoopExecutor {
         )
 
         return ToolResult(
-            toolCallID: toolCall.id,
-            tool: toolCall.tool,
+            call: toolCall.reference,
             output: try JSONCoding.default.value(payload),
             isError: true
         )
@@ -214,8 +213,7 @@ extension ToolLoopExecutor {
         )
 
         return ToolResult(
-            toolCallID: toolCall.id,
-            tool: toolCall.tool,
+            call: toolCall.reference,
             output: try JSONCoding.default.value(payload),
             isError: false
         )
@@ -233,8 +231,7 @@ extension ToolLoopExecutor {
         )
 
         return ToolResult(
-            toolCallID: toolCall.id,
-            tool: toolCall.tool,
+            call: toolCall.reference,
             output: try JSONCoding.default.value(payload),
             isError: true
         )
@@ -270,7 +267,7 @@ extension ToolLoopExecutor {
             from: invocation.arguments
         )
         let request = try input.request()
-        let suspension = AgentSuspension.user_input(
+        let suspension = Run.Suspension.user_input(
             request,
             metadata: [
                 "toolCallID": invocation.id,
@@ -309,7 +306,7 @@ extension ToolLoopExecutor {
         toolCall: ToolCall,
         checkpoint: inout AgentHistoryCheckpoint
     ) async throws -> ToolProcessingOutcome {
-        let suspension = AgentSuspension.workspace_access(
+        let suspension = Run.Suspension.workspace_access(
             request,
             metadata: [
                 "toolCallID": toolCall.id,

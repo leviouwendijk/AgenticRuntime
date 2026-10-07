@@ -72,7 +72,7 @@ struct ProgramRecordingUserInputInvoker:
             return response
         }
 
-        let suspension = AgentSuspension.user_input(
+        let suspension = Run.Suspension.user_input(
             request
         )
         let completedAt = Date()
