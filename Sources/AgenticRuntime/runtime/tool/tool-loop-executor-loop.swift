@@ -10,6 +10,14 @@ extension ToolLoopExecutor {
         while true {
             switch checkpoint.phase {
             case .ready_for_model:
+                if let interruption = await requestedInterruption() {
+                    return try await interrupt(
+                        checkpoint,
+                        mode: interruption.mode,
+                        reason: interruption.reason
+                    )
+                }
+
                 if let exhaustion = runLimitExhaustion(
                     in: checkpoint
                 ) {
@@ -186,7 +194,19 @@ extension ToolLoopExecutor {
 
             return checkpoint
         } catch is CancellationError {
-            throw CancellationError()
+            let interruption =
+                await requestedInterruption()
+                ?? AgentRunInterruptionRequest(
+                    mode: .urgent,
+                    reason: "Execution task was cancelled."
+                )
+
+            try await applyInterruption(
+                to: &checkpoint,
+                request: interruption
+            )
+
+            return checkpoint
         } catch {
             let failure = AgentRunFailure.modelInvocationFailed(
                 error
@@ -261,6 +281,14 @@ extension ToolLoopExecutor {
             checkpoint.phase = .processing_tool_calls
         } else {
             checkpoint.phase = .completed
+        }
+
+        if let interruption = await requestedUrgentInterruption() {
+            try await applyInterruption(
+                to: &checkpoint,
+                request: interruption
+            )
+            return checkpoint
         }
 
         try await saveCheckpoint(

@@ -7,6 +7,7 @@ public struct AgentRunEvent: Sendable, Codable, Hashable, Identifiable {
         case run_limit_reached
         case run_limit_continued
         case run_limit_stopped
+        case run_interrupted
         case compaction
         case model_stream_started
         case assistant_delta

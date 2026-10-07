@@ -38,6 +38,16 @@ extension ToolLoopExecutor {
         }
 
         for record in batch.records where !record.isTerminal {
+            if let interruption = await requestedUrgentInterruption() {
+                return .result(
+                    try await interrupt(
+                        checkpoint,
+                        mode: interruption.mode,
+                        reason: interruption.reason
+                    )
+                )
+            }
+
             let toolCall = record.toolCall
 
             try await recordToolCall(

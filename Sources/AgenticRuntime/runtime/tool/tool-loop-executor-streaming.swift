@@ -102,6 +102,15 @@ extension ToolLoopExecutor {
                     checkpoint
                 )
 
+                if let interruption = await requestedUrgentInterruption() {
+                    try await interruptStreamingTurn(
+                        checkpoint: &checkpoint,
+                        accumulator: accumulator,
+                        request: interruption
+                    )
+                    return checkpoint
+                }
+
                 if checkpointState.shouldSave(
                     event: event,
                     policy: configuration.streamCheckpointPolicy
@@ -153,12 +162,20 @@ extension ToolLoopExecutor {
 
             return checkpoint
         } catch is CancellationError {
+            let interruption =
+                await requestedInterruption()
+                ?? AgentRunInterruptionRequest(
+                    mode: .urgent,
+                    reason: "Execution task was cancelled."
+                )
+
             try await interruptStreamingTurn(
                 checkpoint: &checkpoint,
-                accumulator: accumulator
+                accumulator: accumulator,
+                request: interruption
             )
 
-            throw CancellationError()
+            return checkpoint
         } catch {
             try await failStreamingTurn(
                 checkpoint: &checkpoint,
@@ -237,28 +254,6 @@ extension ToolLoopExecutor {
         )
 
         return checkpoint
-    }
-
-    private func interruptStreamingTurn(
-        checkpoint: inout AgentHistoryCheckpoint,
-        accumulator: AgentStreamAccumulator
-    ) async throws {
-        checkpoint.phase = .interrupted
-        checkpoint.partialResponse = accumulator.partial
-
-        try await appendRunEvent(
-            .init(
-                kind: .model_stream_interrupted,
-                iteration: checkpoint.state.iteration,
-                messageID: accumulator.partial.messageID,
-                summary: "model stream interrupted"
-            ),
-            to: &checkpoint
-        )
-
-        try await saveCheckpoint(
-            &checkpoint
-        )
     }
 
     private func failStreamingTurn(
