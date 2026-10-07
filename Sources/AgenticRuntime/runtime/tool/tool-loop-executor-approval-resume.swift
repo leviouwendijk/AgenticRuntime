@@ -6,6 +6,20 @@ public extension ToolLoopExecutor {
         approvalDecision: ApprovalDecision,
         metadata: [String: String] = [:]
     ) async throws -> AgentRunResult {
+        try await resumeApproval(
+            checkpoint,
+            decision: approvalDecision,
+            metadata: metadata
+        )
+    }
+}
+
+extension ToolLoopExecutor {
+    func resumeApproval(
+        _ checkpoint: AgentHistoryCheckpoint,
+        decision: ApprovalDecision,
+        metadata: [String: String]
+    ) async throws -> AgentRunResult {
         var checkpoint = checkpoint
 
         guard let pendingApproval = checkpoint.resolvedSuspension?.pendingApproval else {
@@ -14,7 +28,7 @@ public extension ToolLoopExecutor {
             )
         }
 
-        switch approvalDecision {
+        switch decision {
         case .approved:
             try await appendRunEvent(
                 .init(

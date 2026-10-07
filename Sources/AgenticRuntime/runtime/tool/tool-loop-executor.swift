@@ -91,7 +91,7 @@ public struct ToolLoopExecutor: Sendable {
         answer: UserInputAnswer,
         metadata: [String: String] = [:]
     ) async throws -> AgentRunResult {
-        try await resume(
+        try await resumeWithUserInput(
             checkpoint,
             reply: .answer(
                 answer
@@ -171,30 +171,30 @@ public struct ToolLoopExecutor: Sendable {
 
         switch response.resolution {
         case .approval(let decision):
-            return try await resume(
+            return try await resumeApproval(
                 checkpoint,
-                approvalDecision: decision,
+                decision: decision,
                 metadata: response.metadata
             )
 
         case .user_input(let reply):
-            return try await resume(
+            return try await resumeWithUserInput(
                 checkpoint,
                 reply: reply,
                 metadata: response.metadata
             )
 
         case .workspace_access(let resolution):
-            return try await resume(
+            return try await resumeWithWorkspaceAccess(
                 checkpoint,
-                workspaceAccessResolution: resolution,
+                resolution: resolution,
                 metadata: response.metadata
             )
 
         case .run_limit(let resolution):
-            return try await resume(
+            return try await resumeFromRunLimit(
                 checkpoint,
-                runLimitResolution: resolution,
+                resolution: resolution,
                 metadata: response.metadata
             )
         }
