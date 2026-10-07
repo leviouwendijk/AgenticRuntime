@@ -1,6 +1,6 @@
 public extension AgentRunner {
     func resume(
-        interaction response: AgentInteraction.Response
+        interaction response: Run.Interaction.Response
     ) async throws -> AgentRunResult {
         guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
@@ -14,67 +14,13 @@ public extension AgentRunner {
             )
         }
 
-        guard checkpoint.id == response.sessionID else {
-            throw AgentInteractionError.sessionMismatch(
-                expected: checkpoint.id,
-                received: response.sessionID
-            )
-        }
-
-        guard let suspension = checkpoint.resolvedSuspension else {
-            throw AgentInteractionError.noCurrentSuspension(
-                sessionID: checkpoint.id
-            )
-        }
-
-        guard suspension.id == response.requestID else {
-            throw AgentInteractionError.requestMismatch(
-                expected: suspension.id,
-                received: response.requestID
-            )
-        }
-
-        let expectedKind = suspension.reason.interactionKind
-
-        guard expectedKind == response.kind else {
-            throw AgentInteractionError.resolutionMismatch(
-                expected: expectedKind,
-                received: response.kind
-            )
-        }
-
         let executor = try await makeToolLoopExecutor(
             restoring: checkpoint
         )
 
-        switch response.resolution {
-        case .approval(let decision):
-            return try await executor.resume(
-                checkpoint,
-                approvalDecision: decision,
-                metadata: response.metadata
-            )
-
-        case .user_input(let reply):
-            return try await executor.resume(
-                checkpoint,
-                reply: reply,
-                metadata: response.metadata
-            )
-
-        case .workspace_access(let resolution):
-            return try await executor.resume(
-                checkpoint,
-                workspaceAccessResolution: resolution,
-                metadata: response.metadata
-            )
-
-        case .run_limit(let resolution):
-            return try await executor.resume(
-                checkpoint,
-                runLimitResolution: resolution,
-                metadata: response.metadata
-            )
-        }
+        return try await executor.resume(
+            checkpoint,
+            interaction: response
+        )
     }
 }

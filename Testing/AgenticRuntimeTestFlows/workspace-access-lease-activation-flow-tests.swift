@@ -253,11 +253,11 @@ extension AgenticProgramRuntimeFlowTesting {
                 "toolName": "request_path_grant"
             ]
         )
-        let interaction = AgentInteraction.Request(
+        let interaction = Run.Interaction.Request(
             sessionID: currentTurnID,
             suspension: suspension
         )
-        let response = AgentInteraction.Response(
+        let response = Run.Interaction.Response(
             request: interaction,
             resolution: .workspace_access(
                 .grant_for_turn
@@ -267,7 +267,7 @@ extension AgenticProgramRuntimeFlowTesting {
             response
         )
         let decodedResponse = try JSONDecoder().decode(
-            AgentInteraction.Response.self,
+            Run.Interaction.Response.self,
             from: encodedResponse
         )
 

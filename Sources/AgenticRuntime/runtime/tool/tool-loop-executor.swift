@@ -135,6 +135,70 @@ public struct ToolLoopExecutor: Sendable {
             metadata: metadata
         )
     }
+
+    public func resume(
+        _ checkpoint: AgentHistoryCheckpoint,
+        interaction response: Run.Interaction.Response
+    ) async throws -> AgentRunResult {
+        guard checkpoint.id == response.sessionID else {
+            throw Run.Interaction.Error.sessionMismatch(
+                expected: checkpoint.id,
+                received: response.sessionID
+            )
+        }
+
+        guard let suspension = checkpoint.resolvedSuspension else {
+            throw Run.Interaction.Error.noCurrentSuspension(
+                sessionID: checkpoint.id
+            )
+        }
+
+        guard suspension.id == response.requestID else {
+            throw Run.Interaction.Error.requestMismatch(
+                expected: suspension.id,
+                received: response.requestID
+            )
+        }
+
+        let expectedKind = suspension.reason.interactionKind
+
+        guard expectedKind == response.kind else {
+            throw Run.Interaction.Error.resolutionMismatch(
+                expected: expectedKind,
+                received: response.kind
+            )
+        }
+
+        switch response.resolution {
+        case .approval(let decision):
+            return try await resume(
+                checkpoint,
+                approvalDecision: decision,
+                metadata: response.metadata
+            )
+
+        case .user_input(let reply):
+            return try await resume(
+                checkpoint,
+                reply: reply,
+                metadata: response.metadata
+            )
+
+        case .workspace_access(let resolution):
+            return try await resume(
+                checkpoint,
+                workspaceAccessResolution: resolution,
+                metadata: response.metadata
+            )
+
+        case .run_limit(let resolution):
+            return try await resume(
+                checkpoint,
+                runLimitResolution: resolution,
+                metadata: response.metadata
+            )
+        }
+    }
 }
 
 extension ToolLoopExecutor {

@@ -182,7 +182,7 @@ public struct ProgramExecutionRecord:
         outcome == .suspended
     }
 
-    public var interactionRequest: AgentInteraction.Request? {
+    public var interactionRequest: Run.Interaction.Request? {
         checkpoint?.interactionRequest
     }
 }
@@ -213,7 +213,7 @@ public struct ProgramExecution<ProgramType: Program>:
         record.outcome == .failed
     }
 
-    public var interactionRequest: AgentInteraction.Request? {
+    public var interactionRequest: Run.Interaction.Request? {
         record.interactionRequest
     }
 }

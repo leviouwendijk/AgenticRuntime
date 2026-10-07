@@ -193,7 +193,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let resumed = try await runner.resume(
             ProgramCaughtToolFailureResumeFixture(),
             from: durableCheckpoint,
-            interaction: AgentInteraction.Response(
+            interaction: Run.Interaction.Response(
                 request: request,
                 resolution: .user_input(
                     .confirmation(true)

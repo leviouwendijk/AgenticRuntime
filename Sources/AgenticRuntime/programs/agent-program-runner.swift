@@ -32,7 +32,7 @@ public struct ProgramRunner: Sendable {
     public func resume<ProgramType: Program>(
         _ program: ProgramType,
         from checkpoint: ProgramCheckpoint,
-        interaction response: AgentInteraction.Response
+        interaction response: Run.Interaction.Response
     ) async throws -> ProgramExecution<ProgramType> {
         let resume = try ProgramCheckpoint.Resume<ProgramType>(
             checkpoint: checkpoint,

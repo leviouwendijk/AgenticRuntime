@@ -18,7 +18,7 @@ public struct ProgramRegistration:
     private let resumeHandler:
         @Sendable (
             ProgramCheckpoint,
-            AgentInteraction.Response,
+            Run.Interaction.Response,
             AgentRuntimeServices
         ) async throws -> ProgramExecutionRecord
 
@@ -105,7 +105,7 @@ public struct ProgramRegistration:
 
     public func resume(
         from checkpoint: ProgramCheckpoint,
-        interaction response: AgentInteraction.Response,
+        interaction response: Run.Interaction.Response,
         services: AgentRuntimeServices = .init()
     ) async throws -> ProgramExecutionRecord {
         try await resumeHandler(

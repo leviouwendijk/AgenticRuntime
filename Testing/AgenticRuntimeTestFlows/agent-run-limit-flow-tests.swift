@@ -101,12 +101,12 @@ extension AgenticProgramRuntimeFlowTesting {
                 historyStore: historyStore
             )
         )
-        let interactionRequest = AgentInteraction.Request(
+        let interactionRequest = Run.Interaction.Request(
             sessionID: sessionID,
             suspension: suspension
         )
         let result = try await runner.resume(
-            interaction: AgentInteraction.Response(
+            interaction: Run.Interaction.Response(
                 request: interactionRequest,
                 resolution: .run_limit(
                     .stop

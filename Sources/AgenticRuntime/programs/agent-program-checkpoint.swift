@@ -44,7 +44,7 @@ public struct ProgramCheckpoint:
         self.metadata = metadata
     }
 
-    public var interactionRequest: AgentInteraction.Request {
+    public var interactionRequest: Run.Interaction.Request {
         .init(
             sessionID: sessionID,
             suspension: suspension
@@ -105,7 +105,7 @@ public extension ProgramCheckpoint {
 
         public init(
             checkpoint: ProgramCheckpoint,
-            response: AgentInteraction.Response
+            response: Run.Interaction.Response
         ) throws {
             guard checkpoint.programIdentifier
                     == ProgramType.definition.identifier
@@ -142,7 +142,7 @@ public extension ProgramCheckpoint {
             }
 
             guard response.sessionID == checkpoint.sessionID else {
-                throw AgentInteractionError.sessionMismatch(
+                throw Run.Interaction.Error.sessionMismatch(
                     expected: checkpoint.sessionID,
                     received: response.sessionID
                 )
@@ -151,7 +151,7 @@ public extension ProgramCheckpoint {
             guard response.requestID
                     == checkpoint.suspension.id
             else {
-                throw AgentInteractionError.requestMismatch(
+                throw Run.Interaction.Error.requestMismatch(
                     expected: checkpoint.suspension.id,
                     received: response.requestID
                 )
@@ -181,7 +181,7 @@ public extension ProgramCheckpoint {
                 guard case .approval(let decision) =
                         response.resolution
                 else {
-                    throw AgentInteractionError.resolutionMismatch(
+                    throw Run.Interaction.Error.resolutionMismatch(
                         expected: .approval,
                         received: response.kind
                     )
@@ -207,7 +207,7 @@ public extension ProgramCheckpoint {
                 guard case .user_input(let reply) =
                         response.resolution
                 else {
-                    throw AgentInteractionError.resolutionMismatch(
+                    throw Run.Interaction.Error.resolutionMismatch(
                         expected: .user_input,
                         received: response.kind
                     )

@@ -385,7 +385,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let approved = try await approvedRunner.resume(
             ProgramReplayProgram(),
             from: roundTrippedCheckpoint,
-            interaction: AgentInteraction.Response(
+            interaction: Run.Interaction.Response(
                 request: request,
                 resolution: .approval(.approved)
             )

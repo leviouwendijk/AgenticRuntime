@@ -120,7 +120,7 @@ extension AgenticProgramRuntimeFlowTesting {
             _ = try await runner.resume(
                 ProgramUserInputResumeFixture(),
                 from: durableFirstCheckpoint,
-                interaction: AgentInteraction.Response(
+                interaction: Run.Interaction.Response(
                     request: firstRequest,
                     resolution: .user_input(
                         .skip
@@ -140,7 +140,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let afterRequiredAnswer = try await runner.resume(
             ProgramUserInputResumeFixture(),
             from: durableFirstCheckpoint,
-            interaction: AgentInteraction.Response(
+            interaction: Run.Interaction.Response(
                 request: firstRequest,
                 resolution: .user_input(
                     .text(
@@ -224,7 +224,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let optionalAnswerResult = try await runner.resume(
             ProgramUserInputResumeFixture(),
             from: durableSecondCheckpoint,
-            interaction: AgentInteraction.Response(
+            interaction: Run.Interaction.Response(
                 request: secondRequest,
                 resolution: .user_input(
                     .text(
@@ -307,7 +307,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let optionalSkipResult = try await runner.resume(
             ProgramUserInputResumeFixture(),
             from: durableSecondCheckpoint,
-            interaction: AgentInteraction.Response(
+            interaction: Run.Interaction.Response(
                 request: secondRequest,
                 resolution: .user_input(
                     .skip

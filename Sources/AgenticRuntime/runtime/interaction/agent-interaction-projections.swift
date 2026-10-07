@@ -1,7 +1,7 @@
 public extension Run.Suspension {
     func interactionRequest(
         sessionID: String
-    ) -> AgentInteraction.Request {
+    ) -> Run.Interaction.Request {
         .init(
             sessionID: sessionID,
             suspension: self
@@ -10,7 +10,7 @@ public extension Run.Suspension {
 }
 
 public extension AgentRunResult {
-    var interactionRequest: AgentInteraction.Request? {
+    var interactionRequest: Run.Interaction.Request? {
         suspension?.interactionRequest(
             sessionID: sessionID
         )
@@ -18,7 +18,7 @@ public extension AgentRunResult {
 }
 
 public extension AgentRunStateSnapshot {
-    var interactionRequest: AgentInteraction.Request? {
+    var interactionRequest: Run.Interaction.Request? {
         suspension?.interactionRequest(
             sessionID: sessionID
         )

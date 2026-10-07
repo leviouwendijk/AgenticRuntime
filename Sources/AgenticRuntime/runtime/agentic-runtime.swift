@@ -120,7 +120,7 @@ public struct AgenticRuntime:
 
     public func resumeProgram(
         from checkpoint: ProgramCheckpoint,
-        interaction response: AgentInteraction.Response,
+        interaction response: Run.Interaction.Response,
         services: AgentRuntimeServices = .init()
     ) async throws -> ProgramExecutionRecord {
         let identifier = checkpoint.programIdentifier
