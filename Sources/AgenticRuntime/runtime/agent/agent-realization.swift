@@ -72,20 +72,10 @@ extension AgentRealization {
         let requestedVisible = catalog.resolve(
             definition.capabilities.visible
         )
-        let installed = AgentCapabilitySet(
-            tools: tools.modelFacingDefinitions.map(
-                \.identifier
-            ),
-            programs: programs.definitions.map(
-                \.identifier
-            ),
-            // There is not yet a Runtime-wide executable Inference registry.
-            // Semantic Catalog declarations therefore cannot become invocation
-            // authority merely by appearing in an Agent capability selection.
-            inferences: [],
-            agents: agents.definitions.map(
-                \.identifier
-            )
+        let installed = installedCapabilities(
+            tools: tools,
+            programs: programs,
+            agents: agents
         )
         let available = requestedAvailable.intersecting(
             installed
@@ -101,6 +91,28 @@ extension AgentRealization {
             installed: installed,
             available: available,
             visible: visible
+        )
+    }
+
+    static func installedCapabilities(
+        tools: ToolRegistry,
+        programs: ProgramRegistry,
+        agents: AgentRegistry
+    ) -> AgentCapabilitySet {
+        AgentCapabilitySet(
+            tools: tools.modelFacingDefinitions.map(
+                \.identifier
+            ),
+            programs: programs.definitions.map(
+                \.identifier
+            ),
+            // There is not yet a Runtime-wide executable Inference registry.
+            // Semantic Catalog declarations therefore cannot become invocation
+            // authority merely by appearing in an Agent capability selection.
+            inferences: [],
+            agents: agents.definitions.map(
+                \.identifier
+            )
         )
     }
 }
