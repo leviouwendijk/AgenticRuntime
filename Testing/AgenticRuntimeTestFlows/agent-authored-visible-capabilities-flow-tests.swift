@@ -287,11 +287,7 @@ extension AgenticProgramRuntimeFlowTesting {
                     .coder: AgentModelSelection.coder,
                 ]
             ),
-            autonomyMode: .auto_observe,
-            exposedToolIdentifiers: [
-                AuthoredVisibleReadTool.definition.identifier,
-                AuthoredVisibleMutateTool.definition.identifier,
-            ]
+            autonomyMode: .auto_observe
         )
         let selection = ModeSelection(
             mode: mode

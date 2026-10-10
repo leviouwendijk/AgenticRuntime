@@ -12,7 +12,6 @@ public extension Mode {
             ]
         ),
         autonomyMode: .suggest_only,
-        exposedToolIdentifiers: [],
         budgetPosture: .generous,
         approvalStrictness: .strict,
         metadata: [
@@ -31,10 +30,6 @@ public extension Mode {
             ]
         ),
         autonomyMode: .auto_observe,
-        exposedToolIdentifiers: [
-            SystemIO.Tools.ReadFile.identifier,
-            SystemIO.Tools.ScanFilepaths.identifier
-        ],
         budgetPosture: .balanced,
         approvalStrictness: .strict,
         metadata: [
@@ -54,11 +49,6 @@ public extension Mode {
             ]
         ),
         autonomyMode: .auto_observe,
-        exposedToolIdentifiers: [
-            SystemIO.Tools.ReadFile.identifier,
-            SystemIO.Tools.ScanFilepaths.identifier,
-            SystemIO.Tools.MutateFiles.identifier
-        ],
         budgetPosture: .balanced,
         approvalStrictness: .review_bounded_mutation,
         metadata: [
@@ -77,10 +67,6 @@ public extension Mode {
             ]
         ),
         autonomyMode: .auto_observe,
-        exposedToolIdentifiers: [
-            SystemIO.Tools.ReadFile.identifier,
-            SystemIO.Tools.ScanFilepaths.identifier
-        ],
         budgetPosture: .balanced,
         approvalStrictness: .strict,
         metadata: [
@@ -100,11 +86,6 @@ public extension Mode {
             ]
         ),
         autonomyMode: .auto_observe,
-        exposedToolIdentifiers: [
-            SystemIO.Tools.ReadFile.identifier,
-            SystemIO.Tools.ScanFilepaths.identifier,
-            SystemIO.Tools.MutateFiles.identifier
-        ],
         budgetPosture: .balanced,
         approvalStrictness: .review_bounded_mutation,
         metadata: [
@@ -124,7 +105,6 @@ public extension Mode {
             ]
         ),
         autonomyMode: .auto_observe,
-        exposedToolIdentifiers: [],
         budgetPosture: .minimal,
         approvalStrictness: .relaxed_observe,
         metadata: [
@@ -142,10 +122,6 @@ public extension Mode {
             ]
         ),
         autonomyMode: .auto_observe,
-        exposedToolIdentifiers: [
-            SystemIO.Tools.ReadFile.identifier,
-            SystemIO.Tools.ScanFilepaths.identifier
-        ],
         budgetPosture: .local_only,
         approvalStrictness: .locked_down,
         metadata: [
