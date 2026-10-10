@@ -1,5 +1,5 @@
 {
-  "originHash" : "3ba7fc3a0122322b9909725c8503328639a1ce4855c8933420f2f5f6ff5849cc",
+  "originHash" : "0cd8b1726daa977b5cea67a66282b531c7ce5e77cf0cafd34ba0ac27b5c7c8eb",
   "pins" : [
     {
       "identity" : "agentic",
@@ -7,7 +7,7 @@
       "location" : "https://github.com/leviouwendijk/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "e2df3ec573dad9e24f514f0ca65a14ddc1d8f7ef"
+        "revision" : "bc285528402be47e12f6374f6b162ab19ec01132"
       }
     },
     {
@@ -17,15 +17,6 @@
       "state" : {
         "branch" : "master",
         "revision" : "96596542964b23b89096b8304c2956a433261d9f"
-      }
-    },
-    {
-      "identity" : "agenticusage",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/leviouwendijk/AgenticUsage.git",
-      "state" : {
-        "branch" : "master",
-        "revision" : "fa7db7150793164145e7e2bbbdb4dbc0db45185f"
       }
     },
     {

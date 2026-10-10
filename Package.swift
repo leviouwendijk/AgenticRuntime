@@ -92,6 +92,10 @@ let package = Package(
                     package: "Agentic"
                 ),
                 .product(
+                    name: "AgenticContext",
+                    package: "Agentic"
+                ),
+                .product(
                     name: "AgenticModels",
                     package: "Agentic"
                 ),
@@ -163,6 +167,10 @@ let package = Package(
                 ),
                 .product(
                     name: "AgenticStandard",
+                    package: "Agentic"
+                ),
+                .product(
+                    name: "AgenticContext",
                     package: "Agentic"
                 ),
                 .product(

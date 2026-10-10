@@ -1,4 +1,5 @@
 import Agentic
+import AgenticContext
 
 public extension Context {
     /// Opt-in harness bridge, running after model-facing tool projection and
@@ -39,10 +40,13 @@ public extension Context {
                 using: resolver,
                 modelContextLimit: modelContextLimit
             )
+            let policy = await allocator.policy
             let maximum = max(
                 0,
-                min(allocator.policy.maximumInputTokens,
-                    modelContextLimit - allocator.policy.reservedOutputTokens)
+                min(
+                    policy.maximumInputTokens,
+                    modelContextLimit - policy.reservedOutputTokens
+                )
             )
             let preparation = try InferencePreparer.prepare(
                 request: request,

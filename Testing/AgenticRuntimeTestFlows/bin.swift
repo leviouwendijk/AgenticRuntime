@@ -26,12 +26,6 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try AgenticProgramRuntimeFlowTesting.runInstructionSelection()
         },
         TestFlow(
-            "context-allocator",
-            tags: ["runtime", "context", "allocator", "working-set", "budget"]
-        ) {
-            try await AgenticProgramRuntimeFlowTesting.runContextAllocator()
-        },
-        TestFlow(
             "context-inference-preparation",
             tags: ["runtime", "context", "inference", "budget", "token-estimation"]
         ) {

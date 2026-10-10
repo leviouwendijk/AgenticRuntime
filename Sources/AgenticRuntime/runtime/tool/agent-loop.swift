@@ -1,4 +1,5 @@
 import Agentic
+import AgenticContext
 import Workspace
 import Foundation
 

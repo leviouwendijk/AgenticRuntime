@@ -1,4 +1,5 @@
 import Agentic
+import AgenticContext
 
 extension AgentLoop {
     func prepareModelRequest(
