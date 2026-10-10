@@ -27,7 +27,6 @@ public extension AgenticRuntime {
             tooling: tooling.using(
                 registry: tools
             ),
-            capabilityState: state,
             inventory: CapabilityInventory(
                 installed: installed,
                 state: state
@@ -41,7 +40,7 @@ public extension AgenticRuntime {
     ///
     /// The realized Agent establishes the single authoritative
     /// ``AgentCapabilityState`` (preserving authored visible capabilities). The
-    /// mode contributes model routing, autonomy posture, loaded skills, and
+    /// mode contributes model routing, autonomy posture, instructions, and
     /// metadata but must NOT replace the Agent's capability authority.
     func makeModeAgentRunner(
         identifiedBy identifier: AgentIdentifier,
@@ -49,7 +48,6 @@ public extension AgenticRuntime {
         selection: ModeSelection,
         configuration: AgentRunner.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
-        skills: SkillRegistry = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init()
     ) throws -> AgentRunner {
@@ -61,7 +59,7 @@ public extension AgenticRuntime {
             configuration: configuration,
             tools: tools,
             capabilityState: realization.makeCapabilityState(),
-            skills: skills
+            instructionCatalog: catalog
         )
 
         return AgentRunner(
@@ -72,7 +70,6 @@ public extension AgenticRuntime {
             tooling: tooling.using(
                 registry: modeApplication.toolRegistry
             ),
-            capabilityState: modeApplication.capabilityState,
             inventory: CapabilityInventory(
                 installed: installed,
                 state: modeApplication.capabilityState
@@ -89,7 +86,6 @@ public extension AgenticRuntime {
         selection: ModeSelection,
         configuration: AgentRunner.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
-        skills: SkillRegistry = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         sessionID: String
@@ -100,7 +96,6 @@ public extension AgenticRuntime {
             selection: selection,
             configuration: configuration,
             tooling: tooling,
-            skills: skills,
             extensions: extensions,
             recording: recording
         )

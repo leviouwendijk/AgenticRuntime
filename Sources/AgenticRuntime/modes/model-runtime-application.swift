@@ -5,10 +5,13 @@ public struct ModeRuntimeApplication: Sendable {
     public var configuration: AgentRunner.Configuration
     public var modelSelection: AgentModelSelection
     public var toolRegistry: ToolRegistry
-    public var skillRegistry: SkillRegistry
-    public var loadedSkills: [AgentSkill]
+    /// Native, catalog-backed selection in the order requested by the Mode.
+    public var selectedInstructions: Instructions
+    public var missingInstructionIdentifiers: [InstructionIdentifier]
+
+    public var instructions: Instructions { selectedInstructions }
+
     public var capabilityState: AgentCapabilityState
-    public var missingSkillIdentifiers: [AgentSkillIdentifier]
     public var metadata: [String: String]
 
     public init(
@@ -16,20 +19,18 @@ public struct ModeRuntimeApplication: Sendable {
         configuration: AgentRunner.Configuration,
         modelSelection: AgentModelSelection,
         toolRegistry: ToolRegistry,
-        skillRegistry: SkillRegistry,
-        loadedSkills: [AgentSkill],
         capabilityState: AgentCapabilityState,
-        missingSkillIdentifiers: [AgentSkillIdentifier],
-        metadata: [String: String] = [:]
+        metadata: [String: String] = [:],
+        selectedInstructions: Instructions = Instructions([]),
+        missingInstructionIdentifiers: [InstructionIdentifier] = []
     ) {
         self.selection = selection
         self.configuration = configuration
         self.modelSelection = modelSelection
         self.toolRegistry = toolRegistry
-        self.skillRegistry = skillRegistry
-        self.loadedSkills = loadedSkills
+        self.selectedInstructions = selectedInstructions
+        self.missingInstructionIdentifiers = missingInstructionIdentifiers
         self.capabilityState = capabilityState
-        self.missingSkillIdentifiers = missingSkillIdentifiers
         self.metadata = metadata
     }
 
@@ -37,7 +38,7 @@ public struct ModeRuntimeApplication: Sendable {
     /// ``AgentCapabilityState`` (for example produced by
     /// ``AgentRealization.makeCapabilityState()``).
     ///
-    /// The mode supplies model routing, autonomy posture, loaded skills, and
+    /// The mode supplies model routing, autonomy posture, selected instructions, and
     /// metadata. It must NOT silently manufacture a fresh visibility authority:
     /// that would discard an agent's authored visible capabilities. The caller
     /// is therefore responsible for passing the single live capability state
@@ -47,11 +48,11 @@ public struct ModeRuntimeApplication: Sendable {
         configuration: AgentRunner.Configuration = .default,
         tools: ToolRegistry,
         capabilityState: AgentCapabilityState,
-        skills: SkillRegistry = .init(),
+        instructionCatalog: Catalog = .none,
         metadata additionalMetadata: [String: String] = [:]
     ) throws {
-        let selectedSkills = try skills.selecting(
-            selection.loadedSkillIdentifiers
+        let selectedInstructions = try instructionCatalog.selectingInstructions(
+            selection.loadedInstructionIdentifiers
         )
         var effectiveConfiguration = configuration
         effectiveConfiguration.autonomyMode = selection.mode.autonomyMode
@@ -66,11 +67,10 @@ public struct ModeRuntimeApplication: Sendable {
             configuration: effectiveConfiguration,
             modelSelection: selection.modelSelection,
             toolRegistry: tools,
-            skillRegistry: selectedSkills.registry,
-            loadedSkills: selectedSkills.loadedSkills,
             capabilityState: capabilityState,
-            missingSkillIdentifiers: selectedSkills.missingIdentifiers,
-            metadata: metadata
+            metadata: metadata,
+            selectedInstructions: selectedInstructions.instructions,
+            missingInstructionIdentifiers: selectedInstructions.missingIdentifiers
         )
     }
 

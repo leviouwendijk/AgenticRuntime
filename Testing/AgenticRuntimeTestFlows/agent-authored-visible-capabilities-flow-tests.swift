@@ -428,7 +428,6 @@ extension AgenticProgramRuntimeFlowTesting {
         let reselected = AgentRunner(
             model: model.selecting(.reviewer),
             tooling: .init(registry: runtime.tools),
-            capabilityState: capabilityState,
             inventory: CapabilityInventory(
                 installed: runtime.installed,
                 state: capabilityState
@@ -437,6 +436,11 @@ extension AgenticProgramRuntimeFlowTesting {
         _ = try await reselected.run(
             AgentRequest(messages: [Message(role: .user, text: "after reselect")]),
             sessionID: "fixture-authored-visible-reselected"
+        )
+        try Expect.equal(
+            await reselected.capabilityState === capabilityState,
+            true,
+            "Runner capability state is derived from its inventory."
         )
         let afterReselect = await capabilityState.snapshot()
         let allInvocations = await recorder.snapshot()

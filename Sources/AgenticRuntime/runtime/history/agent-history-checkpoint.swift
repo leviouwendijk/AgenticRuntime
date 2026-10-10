@@ -31,6 +31,9 @@ public extension AgentRunner {
         /// Persisted mapping for the last actual provider request. Nil on
         /// legacy checkpoints fails closed for model Tool execution.
         public var lastAdvertisedTools: [ToolIdentifier]?
+        /// The original, validated function-to-target mapping for the provider
+        /// request. Restored calls never bind against a newly derived projection.
+        public var lastAdvertisedCapabilities: ModelCapabilityProjection?
         public var toolUses: [AgentToolUseRecord]
         public var suspension: Run.Suspension?
         public var pendingApproval: PendingApproval?
@@ -55,6 +58,7 @@ public extension AgentRunner {
             case partialResponse
             case toolBatch
             case lastAdvertisedTools
+            case lastAdvertisedCapabilities
             case toolUses
             case suspension
             case pendingApproval
@@ -126,6 +130,10 @@ public extension AgentRunner {
                 [ToolIdentifier].self,
                 forKey: .lastAdvertisedTools
             )
+            lastAdvertisedCapabilities = try container.decodeIfPresent(
+                ModelCapabilityProjection.self,
+                forKey: .lastAdvertisedCapabilities
+            )
             toolUses = try container.decodeIfPresent(
                 [AgentToolUseRecord].self,
                 forKey: .toolUses
@@ -178,6 +186,7 @@ public extension AgentRunner {
             partialResponse: AgentPartialResponse? = nil,
             toolBatch: AgentToolUseBatch? = nil,
             lastAdvertisedTools: [ToolIdentifier]? = nil,
+            lastAdvertisedCapabilities: ModelCapabilityProjection? = nil,
             toolUses: [AgentToolUseRecord] = [],
             suspension: Run.Suspension? = nil,
             pendingApproval: PendingApproval? = nil,
@@ -205,6 +214,7 @@ public extension AgentRunner {
             self.partialResponse = partialResponse
             self.toolBatch = toolBatch
             self.lastAdvertisedTools = lastAdvertisedTools
+            self.lastAdvertisedCapabilities = lastAdvertisedCapabilities
             self.toolUses = toolUses
             self.suspension = suspension
             self.pendingApproval = pendingApproval ?? suspension?.pendingApproval

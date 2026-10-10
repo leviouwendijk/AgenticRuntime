@@ -5,8 +5,26 @@ import Primitives
 ///
 /// This is a transport projection, not a Tool registration: only actual Tools
 /// carry Tool ActionRisk, and invocation still requires live capability checks.
-public struct ModelCapabilityProjection: Sendable {
-    public struct Entry: Sendable {
+public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.entries == rhs.entries
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(entries)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        try self.init(container.decode([Entry].self))
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(entries)
+    }
+
+    public struct Entry: Sendable, Codable, Hashable {
         public let function: ModelFunctionDescriptor
         public let target: CapabilityInvocation.Target
 

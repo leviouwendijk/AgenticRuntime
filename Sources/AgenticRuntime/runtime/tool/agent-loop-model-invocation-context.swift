@@ -1,58 +1,33 @@
 import Agentic
 
-/// A model request must not smuggle duplicate or altered Tool schemas into
-/// the direct function interface through a harness extension.
+/// Extensions may prepare messages or sampling settings, but cannot smuggle
+/// changed function declarations or reorder bindings into the provider request.
 enum RuntimeModelToolAuthorizationError: Error, Sendable {
     case invalidProjection
+    case invalidArguments
 }
 
 extension AgentLoop {
     func modelInvocationContext(
         request: AgentRequest,
+        projection: ModelCapabilityProjection,
+        advertisedTools: [ToolDescriptor],
         sessionID: String,
         journal: AgentModelToolInvocationJournal
     ) async throws -> AgentModelInvocationContext {
-        let visible = await capabilityState.visible
-        let registry = await currentTools()
-        let advertised = request.tools.map(\.identifier)
-        guard Set(advertised).count == advertised.count else {
+        _ = sessionID
+        // Validate extensions against the exact function declarations bound
+        // to this turn, not a newly acquired visibility snapshot.
+        guard request.tools == advertisedTools,
+              request.tools.map(\.name) == projection.functions.map(\.name)
+        else {
             throw RuntimeModelToolAuthorizationError.invalidProjection
         }
-        for definition in request.tools {
-            guard visible.tools.contains(definition.identifier),
-                  registry.modelFacingDefinition(
-                    identifiedBy: definition.identifier
-                  ) == definition
-            else {
-                throw AgentToolCallResolutionError.toolNotVisible(
-                    definition.identifier
-                )
-            }
-        }
-        let governed = GovernedAgentToolCallResolver(
-            registry: registry,
-            visibleToolIdentifiers: advertised,
-            policy: configuration.toolExecutionPolicy,
-            recovery: configuration.recovery,
-            context: await makeToolContext(),
-            approvalHandler: tooling.approvalHandler,
-            observationHandler: { observation in
-                try? await self.record(
-                    .tool_observation(observation)
-                )
-            },
-            resolutionObserver: { invocation in
-                await journal.append(
-                    invocation
-                )
-            }
-        )
-
         return AgentModelInvocationContext(
-            toolCallResolver: RuntimeToolCallResolver(
-                resolver: governed,
-                capabilityState: capabilityState,
-                advertisedTools: Set(advertised)
+            toolCallResolver: RuntimeModelCapabilityCallResolver(
+                dispatcher: await modelDispatcher(journal: journal),
+                projection: projection,
+                journal: journal
             )
         )
     }

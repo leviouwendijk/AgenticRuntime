@@ -54,6 +54,47 @@ extension AgentLoop {
                 toolCall
             )
 
+            // Semantic model functions are not installed Tools. A saved,
+            // request-bound projection is required to invoke them.
+            if let projection = checkpoint.lastAdvertisedCapabilities,
+               let target = projection.target(named: toolCall.tool.rawValue) {
+                switch target {
+                case .program, .inference:
+                    do {
+                        let resolver = RuntimeModelCapabilityCallResolver(
+                            dispatcher: await modelDispatcher(),
+                            projection: projection,
+                            journal: nil
+                        )
+                        let result = try await resolver.resolve(toolCall)
+                        try await appendToolResult(
+                            result,
+                            for: toolCall,
+                            disposition: result.isError ? .failed_execution : .executed,
+                            to: &checkpoint,
+                            summary: "semantic capability invoked"
+                        )
+                    } catch {
+                        let result = try makeToolErrorResult(for: toolCall, error: error)
+                        try await appendToolResult(
+                            result,
+                            for: toolCall,
+                            disposition: .failed_execution,
+                            to: &checkpoint,
+                            summary: localizedDescription(for: error)
+                        )
+                    }
+                    try await saveCheckpoint(&checkpoint)
+                    batch = checkpoint.toolBatch ?? batch
+                    continue
+
+                case .tool:
+                    break
+                case .agent:
+                    throw RuntimeModelToolAuthorizationError.invalidProjection
+                }
+            }
+
             let invocation: ToolInvocation
 
             do {

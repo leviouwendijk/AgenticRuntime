@@ -14,6 +14,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
 
     static let flows: [TestFlow] = [
         TestFlow(
+            "instruction-selection",
+            tags: ["runtime", "instructions", "catalog", "selection"]
+        ) {
+            try AgenticProgramRuntimeFlowTesting.runInstructionSelection()
+        },
+        TestFlow(
             "context-allocator",
             tags: ["runtime", "context", "allocator", "working-set", "budget"]
         ) {

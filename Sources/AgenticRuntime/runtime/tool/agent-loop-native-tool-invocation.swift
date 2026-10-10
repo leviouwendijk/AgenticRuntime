@@ -2,6 +2,34 @@ import Agentic
 import Primitives
 
 extension AgentLoop {
+    func applyNativeSemanticInvocations(
+        _ invocations: [ModelSemanticInvocationResult],
+        to checkpoint: inout AgentRunner.Checkpoint
+    ) async throws {
+        for invocation in invocations {
+            let response = AgentResponse(
+                message: Message(
+                    role: .assistant,
+                    content: MessageContent(blocks: [.tool_call(invocation.call)])
+                ),
+                stopReason: .tool_use
+            )
+            checkpoint.state.messages.append(response.message)
+            checkpoint.lastResponse = response
+            storeToolBatch(AgentToolUseBatch(response: response), to: &checkpoint)
+            try await recordMessage(response.message)
+            try await recordToolCall(invocation.call)
+            try await appendToolResult(
+                invocation.result,
+                for: invocation.call,
+                disposition: invocation.result.isError ? .failed_execution : .executed,
+                to: &checkpoint,
+                summary: "native semantic capability invocation"
+            )
+            finishToolBatch(on: &checkpoint)
+        }
+    }
+
     func applyNativeToolInvocations(
         _ invocations: [ToolInvocation.Result],
         to checkpoint: inout AgentRunner.Checkpoint
@@ -148,12 +176,17 @@ extension AgentLoop {
     func suspendForNativeApproval(
         _ review: ToolInvocation.Review,
         invocations: [ToolInvocation.Result],
+        semanticInvocations: [ModelSemanticInvocationResult],
         checkpoint: inout AgentRunner.Checkpoint
     ) async throws {
         checkpoint.state.iteration += 1
 
         try await applyNativeToolInvocations(
             invocations,
+            to: &checkpoint
+        )
+        try await applyNativeSemanticInvocations(
+            semanticInvocations,
             to: &checkpoint
         )
 
@@ -277,12 +310,17 @@ extension AgentLoop {
 
     func finishNativeCapabilityBoundary(
         invocations: [ToolInvocation.Result],
+        semanticInvocations: [ModelSemanticInvocationResult],
         checkpoint: inout AgentRunner.Checkpoint
     ) async throws {
         checkpoint.state.iteration += 1
 
         try await applyNativeToolInvocations(
             invocations,
+            to: &checkpoint
+        )
+        try await applyNativeSemanticInvocations(
+            semanticInvocations,
             to: &checkpoint
         )
 

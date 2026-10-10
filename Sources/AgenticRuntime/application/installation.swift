@@ -169,54 +169,6 @@ public func install(
     )
 }
 
-public func install(
-    _ skill: AgentSkill
-) -> Installation {
-    install(
-        [
-            AgentSkillRegistration.skill(
-                skill
-            ),
-        ]
-    )
-}
-
-public func install(
-    _ draft: AgentSkillDraft
-) -> Installation {
-    install(
-        [
-            AgentSkillRegistration.skill(
-                draft
-            ),
-        ]
-    )
-}
-
-public func install(
-    _ provider: any AgentSkillProvider
-) -> Installation {
-    install(
-        [
-            AgentSkillRegistration.provider(
-                provider
-            ),
-        ]
-    )
-}
-
-public func install(
-    _ registrations: [AgentSkillRegistration]
-) -> Installation {
-    .init(
-        components: [
-            .skills(
-                registrations
-            ),
-        ]
-    )
-}
-
 public func install<ProgramType: Program>(
     _ program: ProgramType,
     realization: ProgramRealization<ProgramType>? = nil

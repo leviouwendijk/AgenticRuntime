@@ -1,5 +1,6 @@
 import Agentic
 import AgenticRuntime
+import Foundation
 import Macros
 import Primitives
 import Schema
@@ -276,6 +277,15 @@ extension AgenticProgramRuntimeFlowTesting {
             "Both schemas derive from typed Input and require arguments."
         )
 
+        // Persisting a checkpoint must preserve provider-to-target identity,
+        // rather than decoding a fresh live registry after resumption.
+        let encodedProjection = try JSONEncoder().encode(projection)
+        let resumedProjection = try JSONDecoder().decode(
+            ModelCapabilityProjection.self, from: encodedProjection
+        )
+        try Expect.equal(resumedProjection, projection,
+            "Checkpoint round-trip retains each advertised semantic target")
+
         await state.hide(.init(programs: [ProjectionProgram.definition.identifier]))
         let hidden = try await runtime.modelProjection(for: state)
         let inventoryAfterHide = try await inventory.modelProjection()
@@ -288,6 +298,28 @@ extension AgenticProgramRuntimeFlowTesting {
             "Live capability hiding removes a provider-visible Program."
         )
         try Expect.equal(
+            resumedProjection.target(named: programName), programTarget,
+            "Saved projection preserves identity even after live visibility changes."
+        )
+        let dispatcher = CapabilityDispatcher(
+            runtime: runtime, capabilityState: state, inventory: inventory
+        )
+        let hiddenDispatch = try await dispatcher.invoke(
+            .program(
+                identifier: ProjectionProgram.definition.identifier,
+                input: try JSONCoding.default.value(ProjectionInput(message: "hidden")),
+                realization: nil
+            ),
+            origin: .model(projection: resumedProjection, function: programName)
+        )
+        if case .program(let record) = hiddenDispatch {
+            try Expect.equal(record.outcome, .succeeded,
+                "A previously advertised Program remains executable after hide.")
+        } else {
+            try Expect.equal(false, true,
+                "Saved projection must dispatch to its original Program.")
+        }
+        try Expect.equal(
             hidden.name(for: inferenceTarget), inferenceName,
             "Hiding a Program does not rename an unrelated Inference."
         )
@@ -299,6 +331,27 @@ extension AgenticProgramRuntimeFlowTesting {
             revealed.name(for: programTarget), programName,
             "A revealed Program retains its stable provider function name."
         )
+
+        // Availability, unlike visibility, is a live execution boundary.
+        // Disabling must revoke even a function present in the saved request.
+        await state.disable(.init(programs: [ProjectionProgram.definition.identifier]))
+        var revoked = false
+        do {
+            _ = try await dispatcher.invoke(
+                .program(
+                    identifier: ProjectionProgram.definition.identifier,
+                    input: try JSONCoding.default.value(ProjectionInput(message: "revoked")),
+                    realization: nil
+                ),
+                origin: .model(projection: resumedProjection, function: programName)
+            )
+        } catch CapabilityInvocationError.notAvailable(let target) {
+            revoked = true
+            try Expect.equal(target, programTarget,
+                "Revocation targets the exact previously advertised Program.")
+        }
+        try Expect.equal(revoked, true,
+            "Disabling availability revokes a saved provider function mapping.")
 
         return [
             .field("projected", String(projection.entries.count)),

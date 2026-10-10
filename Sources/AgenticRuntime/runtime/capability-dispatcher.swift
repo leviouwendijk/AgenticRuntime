@@ -85,24 +85,48 @@ public enum CapabilityInvocationError: Error, Sendable {
 /// execution boundaries. This is NOT a provider-schema projection and does not
 /// grant authority merely because a registration exists in the Runtime.
 public struct CapabilityDispatcher: Sendable {
-    public let runtime: AgenticRuntime
+    public let runtime: AgenticRuntime?
     public let capabilityState: AgentCapabilityState
     public let inventory: CapabilityInventory?
     public let services: RuntimeServices
     public let configuration: AgentRunner.Configuration
+    public let observationHandler: ToolExecutionObservations.Observer?
+    public let resolutionObserver: (@Sendable (ToolInvocation.Result) async -> Void)?
+
+    /// Model and Program invocation need the inventory's actual executable
+    /// bindings; no separate Runtime installation is required.
+    public init(
+        inventory: CapabilityInventory,
+        services: RuntimeServices = .init(),
+        configuration: AgentRunner.Configuration = .default,
+        observationHandler: ToolExecutionObservations.Observer? = nil,
+        resolutionObserver: (@Sendable (ToolInvocation.Result) async -> Void)? = nil
+    ) {
+        self.runtime = nil
+        self.capabilityState = inventory.state
+        self.inventory = inventory
+        self.services = services
+        self.configuration = configuration
+        self.observationHandler = observationHandler
+        self.resolutionObserver = resolutionObserver
+    }
 
     public init(
         runtime: AgenticRuntime,
         capabilityState: AgentCapabilityState,
         inventory: CapabilityInventory? = nil,
         services: RuntimeServices = .init(),
-        configuration: AgentRunner.Configuration = .default
+        configuration: AgentRunner.Configuration = .default,
+        observationHandler: ToolExecutionObservations.Observer? = nil,
+        resolutionObserver: (@Sendable (ToolInvocation.Result) async -> Void)? = nil
     ) {
         self.runtime = runtime
-        self.capabilityState = capabilityState
+        self.capabilityState = inventory?.state ?? capabilityState
         self.inventory = inventory
         self.services = services
         self.configuration = configuration
+        self.observationHandler = observationHandler
+        self.resolutionObserver = resolutionObserver
     }
 
     public func invoke(
@@ -136,6 +160,9 @@ public struct CapabilityDispatcher: Sendable {
             guard target.isVisible(in: snapshot.available) else {
                 throw CapabilityInvocationError.notAvailable(target)
             }
+            // An exact request-bound function mapping remains valid when
+            // future visibility changes. Disabling availability still revokes
+            // live invocation authority above.
         case .delegated_agent:
             // Parent/child authority requires the later delegation control plane.
             if case .agent(let identifier, _, _) = invocation {
@@ -152,6 +179,9 @@ public struct CapabilityDispatcher: Sendable {
             if let inventory {
                 tools = await inventory.tools()
             } else {
+                guard let runtime else {
+                    throw CapabilityInvocationError.notInstalled(target)
+                }
                 tools = runtime.tools
             }
             let effectiveCatalog: Catalog
@@ -164,6 +194,9 @@ public struct CapabilityDispatcher: Sendable {
             if let inventory {
                 inspections = await inventory.capabilityInspections()
             } else {
+                guard let runtime else {
+                    throw CapabilityInvocationError.notInstalled(target)
+                }
                 inspections = runtime.installed.capabilityInspections()
             }
             let governed = GovernedAgentToolCallResolver(
@@ -177,7 +210,9 @@ public struct CapabilityDispatcher: Sendable {
                     capabilities: capabilityState,
                     inspections: inspections
                 ),
-                approvalHandler: services.tooling.approvalHandler
+                approvalHandler: services.tooling.approvalHandler,
+                observationHandler: observationHandler,
+                resolutionObserver: resolutionObserver
             )
             let result = try await governed.resolve(call)
             return .tool(result)
@@ -193,6 +228,9 @@ public struct CapabilityDispatcher: Sendable {
                     services: services,
                     metadata: services.metadata
                 ))
+            }
+            guard let runtime else {
+                throw CapabilityInvocationError.notInstalled(target)
             }
             return .program(
                 try await runtime.executeProgram(
@@ -219,6 +257,9 @@ public struct CapabilityDispatcher: Sendable {
                     realization: realization,
                     using: executor
                 ))
+            }
+            guard let runtime else {
+                throw CapabilityInvocationError.notInstalled(target)
             }
             return .inference(
                 try await runtime.executeInference(

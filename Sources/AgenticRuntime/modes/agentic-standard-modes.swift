@@ -13,11 +13,6 @@ public extension Mode {
         ),
         autonomyMode: .suggest_only,
         exposedToolIdentifiers: [],
-        loadedSkillIdentifiers: [
-            "context-packing",
-            "handoff-summary",
-            "evidence-citation"
-        ],
         budgetPosture: .generous,
         approvalStrictness: .strict,
         metadata: [
@@ -39,11 +34,6 @@ public extension Mode {
         exposedToolIdentifiers: [
             SystemIO.Tools.ReadFile.identifier,
             SystemIO.Tools.ScanFilepaths.identifier
-        ],
-        loadedSkillIdentifiers: [
-            "context-packing",
-            "tool-first-retrieval",
-            "evidence-citation"
         ],
         budgetPosture: .balanced,
         approvalStrictness: .strict,
@@ -69,12 +59,6 @@ public extension Mode {
             SystemIO.Tools.ScanFilepaths.identifier,
             SystemIO.Tools.MutateFiles.identifier
         ],
-        loadedSkillIdentifiers: [
-            "safe-file-editing",
-            "context-packing",
-            "refactoring-plan",
-            "failure-triage"
-        ],
         budgetPosture: .balanced,
         approvalStrictness: .review_bounded_mutation,
         metadata: [
@@ -96,11 +80,6 @@ public extension Mode {
         exposedToolIdentifiers: [
             SystemIO.Tools.ReadFile.identifier,
             SystemIO.Tools.ScanFilepaths.identifier
-        ],
-        loadedSkillIdentifiers: [
-            "evidence-citation",
-            "failure-triage",
-            "approval-sensitive-actions"
         ],
         budgetPosture: .balanced,
         approvalStrictness: .strict,
@@ -126,12 +105,6 @@ public extension Mode {
             SystemIO.Tools.ScanFilepaths.identifier,
             SystemIO.Tools.MutateFiles.identifier
         ],
-        loadedSkillIdentifiers: [
-            "debugging-loop",
-            "failure-triage",
-            "safe-file-editing",
-            "evidence-citation"
-        ],
         budgetPosture: .balanced,
         approvalStrictness: .review_bounded_mutation,
         metadata: [
@@ -152,10 +125,6 @@ public extension Mode {
         ),
         autonomyMode: .auto_observe,
         exposedToolIdentifiers: [],
-        loadedSkillIdentifiers: [
-            "cost-aware-contexting",
-            "transcript-summarization"
-        ],
         budgetPosture: .minimal,
         approvalStrictness: .relaxed_observe,
         metadata: [
@@ -176,10 +145,6 @@ public extension Mode {
         exposedToolIdentifiers: [
             SystemIO.Tools.ReadFile.identifier,
             SystemIO.Tools.ScanFilepaths.identifier
-        ],
-        loadedSkillIdentifiers: [
-            "privacy-discipline",
-            "cost-aware-contexting"
         ],
         budgetPosture: .local_only,
         approvalStrictness: .locked_down,

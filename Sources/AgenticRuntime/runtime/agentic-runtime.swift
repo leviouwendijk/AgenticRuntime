@@ -8,6 +8,15 @@ public struct AgenticRuntime:
     public let application: AgenticApplication
     public let installed: InstalledCapabilities
     public var catalog: Catalog { installed.catalog }
+    /// Authored, metadata-only instructions; not executable capabilities.
+    public var instructions: [InstructionDefinition] { installed.instructions }
+
+    public func selectInstructions(
+        _ identifiers: [InstructionIdentifier]
+    ) throws -> InstructionSelection {
+        try catalog.selectingInstructions(identifiers)
+    }
+
     public var adapters: InferenceAdapterCatalog { installed.adapters }
 
     /// Construct an executor using precisely this application's installed adapters.
@@ -23,7 +32,6 @@ public struct AgenticRuntime:
         )
     }
     public var tools: ToolRegistry { installed.tools }
-    public let skills: SkillRegistry
     public var programs: InstalledCapabilities.Programs { installed.programs }
     public var inferences: InstalledCapabilities.Inferences { installed.inferences }
     public var agents: InstalledCapabilities.Agents { installed.agents }
@@ -46,9 +54,6 @@ public struct AgenticRuntime:
         application: AgenticApplication
     ) async throws {
         let installed = try InstalledCapabilities(application: application)
-        let skills = try Agentic.skill.registry {
-            application.skillRegistrations
-        }
         let launches = try validateApplicationLaunchEntries(
             application.launchEntries,
             installed: installed
@@ -61,7 +66,6 @@ public struct AgenticRuntime:
 
         self.application = application
         self.installed = installed
-        self.skills = skills
         self.launches = launches
         self.gateways = modelCatalogs.gateways
         self.profiles = modelCatalogs.profiles

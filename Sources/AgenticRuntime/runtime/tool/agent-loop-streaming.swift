@@ -11,10 +11,17 @@ extension AgentLoop {
             &checkpoint
         )
 
+        // Snapshot the request's capabilities once. Request preparation,
+        // advertised transport, and invocation authorization share that view.
+        let projection = try await inventory.modelProjection()
+        let advertisedTools = try await modelCapabilityDefinitions(
+            for: projection
+        )
         let preparedRequest = try await prepareModelRequest(
             from: try await requestWithCurrentState(
                 from: checkpoint.originalRequest,
-                messages: checkpoint.state.messages
+                messages: checkpoint.state.messages,
+                definitions: advertisedTools
             ),
             checkpoint: checkpoint
         )
@@ -33,7 +40,13 @@ extension AgentLoop {
         var checkpointState = AgentStreamCheckpointState()
         let journal = AgentModelToolInvocationJournal()
 
-        checkpoint.lastAdvertisedTools = preparedRequest.tools.map(\.identifier)
+        checkpoint.lastAdvertisedCapabilities = projection
+        checkpoint.lastAdvertisedTools = projection.entries.compactMap { entry in
+            if case .tool(let identifier) = entry.target {
+                return identifier
+            }
+            return nil
+        }
         checkpoint.phase = .receiving_model_response
         checkpoint.partialResponse = accumulator.partial
 
@@ -57,6 +70,8 @@ extension AgentLoop {
                 selection: model.selection,
                 context: try await modelInvocationContext(
                     request: preparedRequest,
+                    projection: projection,
+                    advertisedTools: advertisedTools,
                     sessionID: checkpoint.id,
                     journal: journal
                 )
@@ -142,11 +157,13 @@ extension AgentLoop {
                 response: response,
                 checkpoint: checkpoint,
                 turnIndex: turnIndex,
-                nativeInvocations: await journal.snapshot()
+                nativeInvocations: await journal.snapshot(),
+                nativeSemanticInvocations: await journal.semanticSnapshot()
             )
         } catch RuntimeToolCallBoundary.capabilities_changed {
             try await finishNativeCapabilityBoundary(
                 invocations: await journal.snapshot(),
+                semanticInvocations: await journal.semanticSnapshot(),
                 checkpoint: &checkpoint
             )
 
@@ -155,6 +172,7 @@ extension AgentLoop {
             try await suspendForNativeApproval(
                 review,
                 invocations: await journal.snapshot(),
+                semanticInvocations: await journal.semanticSnapshot(),
                 checkpoint: &checkpoint
             )
 
@@ -190,7 +208,8 @@ extension AgentLoop {
         response: AgentResponse,
         checkpoint: AgentRunner.Checkpoint,
         turnIndex: Int,
-        nativeInvocations: [ToolInvocation.Result]
+        nativeInvocations: [ToolInvocation.Result],
+        nativeSemanticInvocations: [ModelSemanticInvocationResult]
     ) async throws -> AgentRunner.Checkpoint {
         var checkpoint = checkpoint
 
@@ -198,6 +217,10 @@ extension AgentLoop {
 
         try await applyNativeToolInvocations(
             nativeInvocations,
+            to: &checkpoint
+        )
+        try await applyNativeSemanticInvocations(
+            nativeSemanticInvocations,
             to: &checkpoint
         )
 

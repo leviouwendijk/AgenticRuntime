@@ -8,7 +8,7 @@ public struct ModeContextDefaults: Sendable, Codable, Hashable {
 
     public init(
         title: String = "Agentic mode context",
-        details: String = "Runtime mode metadata and loaded skill context."
+        details: String = "Runtime mode metadata and selected instruction context."
     ) {
         self.title = title
         self.details = details
@@ -22,17 +22,20 @@ public struct ModeContextApplication: Sendable, Codable, Hashable {
     public var composed: ComposedContext
     public var message: Message?
     public var metadata: [String: String]
+    public var instructionSnapshot: InstructionSnapshot?
 
     public init(
         plan: ContextCompositionPlan,
         composed: ComposedContext,
         message: Message?,
-        metadata: [String: String]
+        metadata: [String: String],
+        instructionSnapshot: InstructionSnapshot? = nil
     ) {
         self.plan = plan
         self.composed = composed
         self.message = message
         self.metadata = metadata
+        self.instructionSnapshot = instructionSnapshot
     }
 }
 
@@ -60,9 +63,7 @@ public extension ModeRuntimeApplication {
                 defaults: defaults,
                 additionalMetadata: additionalMetadata
             ),
-            sources: loadedSkills.map {
-                .skill($0)
-            } + additionalSources
+            sources: additionalSources
         )
     }
 
@@ -94,9 +95,15 @@ public extension ModeRuntimeApplication {
             additionalSources: additionalSources,
             additionalMetadata: additionalMetadata
         )
-        let text = composed.text.trimmingCharacters(
+        let composedText = composed.text.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
+        let instructionText = instructions.resolved.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        let text = [instructionText, composedText]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
 
         guard !text.isEmpty else {
             return nil
@@ -123,9 +130,15 @@ public extension ModeRuntimeApplication {
         let composed = try composer.compose(
             plan
         )
-        let text = composed.text.trimmingCharacters(
+        let composedText = composed.text.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
+        let instructionText = instructions.resolved.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        let text = [instructionText, composedText]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
         let message = text.isEmpty
             ? nil
             : Message(
@@ -139,7 +152,8 @@ public extension ModeRuntimeApplication {
             message: message,
             metadata: requestMetadata(
                 additionalMetadata: additionalMetadata
-            )
+            ),
+            instructionSnapshot: instructions.snapshot
         )
     }
 
@@ -234,11 +248,16 @@ public extension ModeRuntimeApplication {
         values["mode_budget_posture"] = selection.budgetPosture.rawValue
         values["mode_approval_strictness"] = selection.approvalStrictness.rawValue
         values["mode_autonomy"] = configuration.autonomyMode.rawValue
-        values["mode_loaded_skill_ids"] = loadedSkills
+        values["mode_selected_instruction_ids"] = selectedInstructions.references
             .map(\.identifier.rawValue)
             .joined(separator: ",")
-        values["mode_missing_skill_ids"] = missingSkillIdentifiers
+        values["mode_missing_instruction_ids"] = missingInstructionIdentifiers
             .map(\.rawValue)
+            .joined(separator: ",")
+        let snapshot = instructions.snapshot
+        values["mode_instruction_revision"] = snapshot.revision
+        values["mode_instruction_ids"] = snapshot.references
+            .map(\.identifier.rawValue)
             .joined(separator: ",")
 
         values.merge(

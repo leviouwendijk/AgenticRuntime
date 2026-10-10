@@ -53,7 +53,6 @@ public struct RuntimeDiagnostics:
 
     public let registeredTools: Int
     public let modelFacingTools: Int
-    public let skills: [AgentSkillIdentifier]
     public let launches: [ApplicationLaunchIdentifier]
 
     public let availableGateways: [AgentModelGatewayIdentifier]
@@ -70,7 +69,6 @@ public struct RuntimeDiagnostics:
         modelCallable: AgentCapabilitySet,
         registeredTools: Int,
         modelFacingTools: Int,
-        skills: [AgentSkillIdentifier],
         launches: [ApplicationLaunchIdentifier],
         availableGateways: [AgentModelGatewayIdentifier],
         unavailableGateways: [AgentModelGatewayIdentifier],
@@ -84,7 +82,6 @@ public struct RuntimeDiagnostics:
         self.modelCallable = modelCallable
         self.registeredTools = registeredTools
         self.modelFacingTools = modelFacingTools
-        self.skills = skills
         self.launches = launches
         self.availableGateways = availableGateways
         self.unavailableGateways = unavailableGateways
@@ -162,9 +159,6 @@ public extension AgenticRuntime {
             modelCallable: modelCallableCapabilities,
             registeredTools: installed.tools.count,
             modelFacingTools: installed.tools.modelFacingDefinitions.count,
-            skills: skills.skills_sorted.map(
-                \.identifier
-            ),
             launches: launches.map(
                 \.identifier
             ),

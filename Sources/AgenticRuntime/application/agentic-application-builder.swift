@@ -5,7 +5,6 @@ public enum AgenticApplicationComponent:
 {
     case catalog(Catalog)
     case tools([AgentToolRegistration])
-    case skills([AgentSkillRegistration])
     case programs([ProgramExecutionBinding])
     case inferences([InferenceBinding])
     case adapters([any InferenceAdapter])
@@ -50,16 +49,6 @@ public enum AgenticApplicationBuilder {
     ) -> [AgenticApplicationComponent] {
         [
             .tools(
-                expression
-            ),
-        ]
-    }
-
-    public static func buildExpression(
-        _ expression: [AgentSkillRegistration]
-    ) -> [AgenticApplicationComponent] {
-        [
-            .skills(
                 expression
             ),
         ]

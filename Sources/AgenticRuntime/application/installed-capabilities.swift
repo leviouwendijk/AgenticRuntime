@@ -6,6 +6,8 @@ import Primitives
 public struct InstalledCapabilities: Sendable {
     public private(set) var tools: ToolRegistry
     public private(set) var catalog: Catalog
+    /// Metadata-only declarations; not installed executable capabilities.
+    public var instructions: [InstructionDefinition] { catalog.instructions }
     public private(set) var adapters: InferenceAdapterCatalog
     private var programEntries: [ProgramIdentifier: ProgramExecutionBinding]
     private var inferenceEntries: [InferenceIdentifier: InferenceBinding]
@@ -61,7 +63,7 @@ public struct InstalledCapabilities: Sendable {
             case .program(let definition): reference = .program(definition.identifier)
             case .inference(let definition): reference = .inference(definition.identifier)
             case .agent(let definition): reference = .agent(definition.identifier)
-            case .adapter: continue
+            case .adapter, .instruction: continue
             }
             namespaces[reference] = namespace
         }
@@ -284,7 +286,7 @@ public struct InstalledCapabilities: Sendable {
                 for binding in bindings { try candidate.install(binding) }
             case .adapters(let adapters):
                 for adapter in adapters { try candidate.install(adapter) }
-            case .skills, .launches, .gateways, .modelProviders:
+            case .launches, .gateways, .modelProviders:
                 throw CapabilityInventoryError.notCapabilityInstallation
             }
         }

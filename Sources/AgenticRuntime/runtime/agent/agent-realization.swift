@@ -40,6 +40,11 @@ public struct AgentRealization:
         definition.instructions
     }
 
+    /// Exact content and authored references retained by AgentDefinition.
+    public var instructionSnapshot: InstructionSnapshot? {
+        definition.instructionSnapshot
+    }
+
     public var modelSelection: AgentModelSelection {
         definition.modelSelection
     }

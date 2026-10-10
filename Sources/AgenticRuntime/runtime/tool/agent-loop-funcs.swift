@@ -8,9 +8,9 @@ import Primitives
 extension AgentLoop {
     func requestWithCurrentState(
         from request: AgentRequest,
-        messages: [Message]
+        messages: [Message],
+        definitions: [ToolDescriptor]
     ) async throws -> AgentRequest {
-        let definitions = try await toolDefinitions()
 
         return AgentRequest(
             messages: messages,
@@ -22,8 +22,37 @@ extension AgentLoop {
         )
     }
 
-    func toolDefinitions() async throws -> [ToolDescriptor] {
-        try await inventory.modelFacingToolDefinitions()
+    /// Existing providers accept ToolDescriptor as their function transport.
+    /// Semantic Program/Inference identifiers are never executed as Tools:
+    /// dispatch uses the request-bound ModelCapabilityProjection instead.
+    func modelCapabilityDefinitions(
+        for projection: ModelCapabilityProjection
+    ) async throws -> [ToolDescriptor] {
+        let toolIDs = projection.entries.compactMap { entry -> ToolIdentifier? in
+            if case .tool(let identifier) = entry.target {
+                return identifier
+            }
+            return nil
+        }
+        let tools = await inventory.tools()
+        let actualTools = try tools.modelFacingDefinitions(for: toolIDs)
+        let toolsByName = Dictionary(
+            uniqueKeysWithValues: actualTools.map { ($0.name, $0) }
+        )
+        return try projection.entries.map { entry in
+            if case .tool = entry.target {
+                guard let tool = toolsByName[entry.function.name],
+                      tool.modelFunction == entry.function else {
+                    throw RuntimeModelToolAuthorizationError.invalidProjection
+                }
+                return tool
+            }
+            return ToolDescriptor(
+                name: entry.function.name,
+                description: entry.function.description,
+                input: entry.function.input
+            )
+        }
     }
 
     func toolCalls(

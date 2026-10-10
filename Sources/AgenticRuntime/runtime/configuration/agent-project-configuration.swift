@@ -9,7 +9,7 @@ public struct AgentProjectConfiguration: Sendable, Codable, Hashable {
     public var defaultModel: String?
     public var defaultSessionStorageMode: SessionStorageMode?
     public var workspaceRoot: String?
-    public var sharedSkills: [String]
+    public var sharedInstructions: [String]
     public var metadata: [String: String]
 
     public init(
@@ -20,7 +20,7 @@ public struct AgentProjectConfiguration: Sendable, Codable, Hashable {
         defaultModel: String? = nil,
         defaultSessionStorageMode: SessionStorageMode? = nil,
         workspaceRoot: String? = nil,
-        sharedSkills: [String] = [],
+        sharedInstructions: [String] = [],
         metadata: [String: String] = [:]
     ) {
         self.version = version
@@ -30,7 +30,7 @@ public struct AgentProjectConfiguration: Sendable, Codable, Hashable {
         self.defaultModel = defaultModel
         self.defaultSessionStorageMode = defaultSessionStorageMode
         self.workspaceRoot = workspaceRoot
-        self.sharedSkills = sharedSkills
+        self.sharedInstructions = sharedInstructions
         self.metadata = metadata
     }
 
@@ -105,9 +105,9 @@ public extension AgentProjectConfiguration {
             String.self,
             forKey: .workspaceRoot
         )
-        self.sharedSkills = try container.decodeIfPresent(
+        self.sharedInstructions = try container.decodeIfPresent(
             [String].self,
-            forKey: .sharedSkills
+            forKey: .sharedInstructions
         ) ?? []
         self.metadata = try container.decodeIfPresent(
             [String: String].self,

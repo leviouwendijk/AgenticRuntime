@@ -7,20 +7,25 @@ public actor AgentRunner {
     public let model: RuntimeServices.Model
     public let configuration: AgentRunner.Configuration
     public let tooling: RuntimeServices.Tooling
-    public let capabilityState: AgentCapabilityState
+    /// The inventory owns the only live capability authority for this runner.
     public let capabilities: CapabilityInventory
+
+    public var capabilityState: AgentCapabilityState {
+        capabilities.state
+    }
     public let runControl: Run.Control
     public let extensions: [any AgentHarnessExtension]
     public let recording: RuntimeServices.Recording
     public let contextServices: Context.Services?
     private var contextAllocators: [String: Context.Allocator] = [:]
 
+    /// An installed-capability inventory is the single source of live authority.
+    /// Callers cannot inject an unrelated capability state beside it.
     public init(
         model: RuntimeServices.Model,
         configuration: AgentRunner.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
-        capabilityState: AgentCapabilityState,
-        inventory: CapabilityInventory? = nil,
+        inventory: CapabilityInventory,
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         contextServices: Context.Services? = nil
@@ -28,16 +33,37 @@ public actor AgentRunner {
         self.model = model
         self.configuration = configuration
         self.tooling = tooling
-        self.capabilityState = capabilityState
-        self.capabilities = inventory ?? CapabilityInventory(
-            tools: tooling.registry,
-            catalog: tooling.catalog,
-            state: self.capabilityState
-        )
+        self.capabilities = inventory
         self.runControl = Run.Control()
         self.extensions = extensions
         self.recording = recording
         self.contextServices = contextServices
+    }
+
+    /// Tool-only callers may supply their capability state directly; the
+    /// inventory is constructed once and thereafter owns that state.
+    public init(
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        tooling: RuntimeServices.Tooling = .init(),
+        capabilityState: AgentCapabilityState,
+        extensions: [any AgentHarnessExtension] = [],
+        recording: RuntimeServices.Recording = .init(),
+        contextServices: Context.Services? = nil
+    ) {
+        self.init(
+            model: model,
+            configuration: configuration,
+            tooling: tooling,
+            inventory: CapabilityInventory(
+                tools: tooling.registry,
+                catalog: tooling.catalog,
+                state: capabilityState
+            ),
+            extensions: extensions,
+            recording: recording,
+            contextServices: contextServices
+        )
     }
 
     public func run(
@@ -203,7 +229,7 @@ extension AgentRunner {
             guard checkpoint.contextPolicy == configuration.contextPolicy else {
                 throw ContextExecutionError.checkpointPolicyChanged
             }
-            _ = await capabilityState.restore(checkpoint.capabilities)
+            _ = await capabilities.state.restore(checkpoint.capabilities)
         }
         if configuration.contextMode == .dynamic,
            configuration.compactionStrategy != nil {
@@ -225,7 +251,6 @@ extension AgentRunner {
             model: model,
             configuration: configuration,
             tooling: tooling,
-            capabilityState: capabilityState,
             inventory: capabilities,
             runControl: runControl,
             extensions: extensions,

@@ -7,8 +7,11 @@ internal struct AgentLoop: Sendable {
     let model: RuntimeServices.Model
     let configuration: AgentRunner.Configuration
     let tooling: RuntimeServices.Tooling
-    let capabilityState: AgentCapabilityState
     let inventory: CapabilityInventory
+
+    var capabilityState: AgentCapabilityState {
+        inventory.state
+    }
     let runControl: Run.Control
     let extensions: [any AgentHarnessExtension]
     let recording: RuntimeServices.Recording
@@ -19,7 +22,6 @@ internal struct AgentLoop: Sendable {
         model: RuntimeServices.Model,
         configuration: AgentRunner.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
-        capabilityState: AgentCapabilityState,
         inventory: CapabilityInventory,
         runControl: Run.Control = .init(),
         extensions: [any AgentHarnessExtension] = [],
@@ -30,7 +32,6 @@ internal struct AgentLoop: Sendable {
         self.model = model
         self.configuration = configuration
         self.tooling = tooling
-        self.capabilityState = capabilityState
         self.inventory = inventory
         self.runControl = runControl
         self.extensions = extensions
@@ -41,6 +42,43 @@ internal struct AgentLoop: Sendable {
 
     func currentTools() async -> ToolRegistry {
         await inventory.tools()
+    }
+
+    /// The dispatcher reuses the run's state, installed executable bindings,
+    /// Tool governance, model route, and registered inference adapters.
+    func modelDispatcher(
+        journal: AgentModelToolInvocationJournal? = nil
+    ) async -> CapabilityDispatcher {
+        let inferenceExecutor = InferenceExecutor(
+            modelInvoker: model.invoker,
+            adapters: await inventory.adapters()
+        )
+        let programTools = GovernedProgramToolExecutor(
+            registry: await inventory.tools(),
+            policy: configuration.toolExecutionPolicy,
+            recovery: configuration.recovery,
+            context: await makeToolContext(),
+            approvalHandler: tooling.approvalHandler
+        )
+        return CapabilityDispatcher(
+            inventory: inventory,
+            services: RuntimeServices(
+                model: model,
+                tooling: tooling,
+                recording: recording,
+                program: .init(
+                    inference: inferenceExecutor,
+                    tools: programTools
+                )
+            ),
+            configuration: configuration,
+            observationHandler: { observation in
+                try? await self.record(.tool_observation(observation))
+            },
+            resolutionObserver: { invocation in
+                await journal?.append(invocation)
+            }
+        )
     }
 
     func run(
@@ -57,7 +95,7 @@ internal struct AgentLoop: Sendable {
             runLimits: configuration.runLimits,
             contextMode: configuration.contextMode,
             contextPolicy: configuration.contextPolicy,
-            capabilities: await capabilityState.snapshot()
+            capabilities: await inventory.snapshot()
         )
 
         try await recordMessages(
