@@ -1,5 +1,4 @@
 import Agentic
-import AgenticUsage
 import Foundation
 
 public extension AgentRunner {

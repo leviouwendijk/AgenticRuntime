@@ -14,6 +14,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
 
     static let flows: [TestFlow] = [
         TestFlow(
+            "usage-absorption-cost-tracker",
+            tags: ["runtime", "usage", "pricing", "tokens", "migration"]
+        ) {
+            try AgenticProgramRuntimeFlowTesting.runUsageAbsorptionCostTracker()
+        },
+        TestFlow(
             "instruction-selection",
             tags: ["runtime", "instructions", "catalog", "selection"]
         ) {

@@ -31,10 +31,6 @@ let package = Package(
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/AgenticUsage.git",
-            branch: "master"
-        ),
-        .package(
             url: "https://github.com/leviouwendijk/Tokens.git",
             branch: "master"
         ),
@@ -102,10 +98,6 @@ let package = Package(
                 .product(
                     name: "Workspace",
                     package: "Workspace"
-                ),
-                .product(
-                    name: "AgenticUsage",
-                    package: "AgenticUsage"
                 ),
                 .product(
                     name: "Tokens",
