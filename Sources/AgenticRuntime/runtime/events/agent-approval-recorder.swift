@@ -1,4 +1,4 @@
-public actor AgentApprovalRecorder: AgentRunEventSink {
+public actor AgentApprovalRecorder: Run.EventSink {
     public let sessionID: String
     public let store: any AgentApprovalEventStore
 
@@ -10,18 +10,24 @@ public actor AgentApprovalRecorder: AgentRunEventSink {
         self.store = store
     }
 
-    public func recordRunEvent(
-        _ event: AgentRunEvent
+    public func record(
+        _ event: Run.Event
     ) async throws {
-        guard let approvalEvent = AgentApprovalEvent(
-            sessionID: sessionID,
-            runEvent: event
-        ) else {
+        switch event {
+        case .state(let state):
+            guard let approvalEvent = AgentApprovalEvent(
+                sessionID: sessionID,
+                runEvent: state
+            ) else {
+                return
+            }
+
+            try await store.append(
+                approvalEvent
+            )
+
+        case .tool_observation:
             return
         }
-
-        try await store.append(
-            approvalEvent
-        )
     }
 }

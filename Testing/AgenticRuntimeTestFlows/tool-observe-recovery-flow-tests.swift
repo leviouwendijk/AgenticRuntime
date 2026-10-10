@@ -117,7 +117,7 @@ private struct ObserveRecoveryModelInvoker: AgentModelInvoking {
 
     func buffered(
         _ invocation: AgentModelInvocation
-    ) async throws -> AgentModelInvocationResult {
+    ) async throws -> AgentModelInvocation.Result {
         let index = await state.record(
             invocation
         )
@@ -163,7 +163,7 @@ private struct ObserveRecoveryModelInvoker: AgentModelInvoking {
             )
         )
 
-        return AgentModelInvocationResult(
+        return AgentModelInvocation.Result(
             response: response,
             route: AgentModelRouteRecord(
                 route: routeResult.route,
@@ -177,7 +177,7 @@ private struct ObserveRecoveryModelInvoker: AgentModelInvoking {
 
     func stream(
         _ invocation: AgentModelInvocation
-    ) -> AsyncThrowingStream<AgentModelInvocationEvent, Error> {
+    ) -> AsyncThrowingStream<AgentModelInvocation.Event, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
@@ -259,6 +259,11 @@ extension AgenticProgramRuntimeFlowTesting {
             ),
             tooling: .init(
                 registry: registry
+            ),
+            capabilityState: AgentCapabilityState(
+                installed: .init(
+                    tools: registry.modelFacingDefinitions.map(\.identifier)
+                )
             )
         )
 
@@ -347,7 +352,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let terminalResults = invocations[1].request.messages
             .flatMap(\.content.blocks)
-            .compactMap { block -> ToolResult? in
+            .compactMap { block -> ToolCall.Response? in
                 guard case .tool_result(let result) = block else {
                     return nil
                 }
@@ -443,6 +448,11 @@ extension AgenticProgramRuntimeFlowTesting {
             ),
             tooling: .init(
                 registry: registry
+            ),
+            capabilityState: AgentCapabilityState(
+                installed: .init(
+                    tools: registry.modelFacingDefinitions.map(\.identifier)
+                )
             )
         )
 
@@ -476,7 +486,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let terminalResults = invocations[1].request.messages
             .flatMap(\.content.blocks)
-            .compactMap { block -> ToolResult? in
+            .compactMap { block -> ToolCall.Response? in
                 guard case .tool_result(let result) = block else {
                     return nil
                 }

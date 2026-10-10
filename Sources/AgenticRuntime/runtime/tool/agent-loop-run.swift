@@ -1,10 +1,10 @@
 import Agentic
 import Foundation
 
-extension ToolLoopExecutor {
+extension AgentLoop {
     func runLoop(
-        from initialCheckpoint: AgentHistoryCheckpoint
-    ) async throws -> AgentRunResult {
+        from initialCheckpoint: AgentRunner.Checkpoint
+    ) async throws -> AgentRunner.Result {
         var checkpoint = initialCheckpoint
 
         while true {
@@ -119,8 +119,8 @@ extension ToolLoopExecutor {
     }
 
     func performModelTurn(
-        from checkpoint: AgentHistoryCheckpoint
-    ) async throws -> AgentHistoryCheckpoint {
+        from checkpoint: AgentRunner.Checkpoint
+    ) async throws -> AgentRunner.Checkpoint {
         switch configuration.responseDelivery {
         case .buffered:
             return try await performBufferedModelTurn(
@@ -135,25 +135,21 @@ extension ToolLoopExecutor {
     }
 
     func performBufferedModelTurn(
-        from checkpoint: AgentHistoryCheckpoint
-    ) async throws -> AgentHistoryCheckpoint {
+        from checkpoint: AgentRunner.Checkpoint
+    ) async throws -> AgentRunner.Checkpoint {
         var checkpoint = checkpoint
 
         try await compactIfNeeded(
             &checkpoint
         )
 
-        var preparedRequest = try await requestWithCurrentState(
-            from: checkpoint.originalRequest,
-            messages: checkpoint.state.messages
+        let preparedRequest = try await prepareModelRequest(
+            from: try await requestWithCurrentState(
+                from: checkpoint.originalRequest,
+                messages: checkpoint.state.messages
+            ),
+            checkpoint: checkpoint
         )
-
-        for harnessExtension in extensions {
-            preparedRequest = try await harnessExtension.prepare(
-                request: preparedRequest,
-                state: checkpoint.state
-            )
-        }
 
         let turnIndex = checkpoint.state.iteration + 1
 
@@ -163,6 +159,7 @@ extension ToolLoopExecutor {
             turnIndex: turnIndex
         )
 
+        checkpoint.lastAdvertisedTools = preparedRequest.tools.map(\.identifier)
         let response: AgentResponse
         let journal = AgentModelToolInvocationJournal()
 
@@ -171,7 +168,8 @@ extension ToolLoopExecutor {
                 AgentModelInvocation(
                     request: preparedRequest,
                     selection: model.selection,
-                    context: await modelInvocationContext(
+                    context: try await modelInvocationContext(
+                        request: preparedRequest,
                         sessionID: checkpoint.id,
                         journal: journal
                     )
@@ -299,7 +297,7 @@ extension ToolLoopExecutor {
     }
 
     // func processToolCalls(
-    //     from checkpoint: AgentHistoryCheckpoint
+    //     from checkpoint: AgentRunner.Checkpoint
     // ) async throws -> ToolProcessingOutcome {
     //     var checkpoint = checkpoint
 
@@ -552,7 +550,7 @@ extension ToolLoopExecutor {
     //                     preflight: preflight,
     //                     requirement: requirement
     //                 )
-    //                 let suspension = AgentSuspension.approval(
+    //                 let suspension = Run.Suspension.approval(
     //                     pendingApproval
     //                 )
 

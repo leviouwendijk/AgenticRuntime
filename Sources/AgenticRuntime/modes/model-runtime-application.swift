@@ -2,7 +2,7 @@ import Agentic
 
 public struct ModeRuntimeApplication: Sendable {
     public var selection: ModeSelection
-    public var configuration: AgentRunnerConfiguration
+    public var configuration: AgentRunner.Configuration
     public var modelSelection: AgentModelSelection
     public var toolRegistry: ToolRegistry
     public var skillRegistry: SkillRegistry
@@ -13,7 +13,7 @@ public struct ModeRuntimeApplication: Sendable {
 
     public init(
         selection: ModeSelection,
-        configuration: AgentRunnerConfiguration,
+        configuration: AgentRunner.Configuration,
         modelSelection: AgentModelSelection,
         toolRegistry: ToolRegistry,
         skillRegistry: SkillRegistry,
@@ -33,33 +33,28 @@ public struct ModeRuntimeApplication: Sendable {
         self.metadata = metadata
     }
 
+    /// Build a mode application borrowing an already-established, authoritative
+    /// ``AgentCapabilityState`` (for example produced by
+    /// ``AgentRealization.makeCapabilityState()``).
+    ///
+    /// The mode supplies model routing, autonomy posture, loaded skills, and
+    /// metadata. It must NOT silently manufacture a fresh visibility authority:
+    /// that would discard an agent's authored visible capabilities. The caller
+    /// is therefore responsible for passing the single live capability state
+    /// that a realized agent has established.
     public init(
         selection: ModeSelection,
-        configuration: AgentRunnerConfiguration = .default,
+        configuration: AgentRunner.Configuration = .default,
         tools: ToolRegistry,
+        capabilityState: AgentCapabilityState,
         skills: SkillRegistry = .init(),
         metadata additionalMetadata: [String: String] = [:]
     ) throws {
-        _ = try tools.modelFacingDefinitions(
-            for: selection.exposedToolIdentifiers
-        )
         let selectedSkills = try skills.selecting(
             selection.loadedSkillIdentifiers
         )
         var effectiveConfiguration = configuration
         effectiveConfiguration.autonomyMode = selection.mode.autonomyMode
-        let installed = AgentCapabilitySet(
-            tools: tools.modelFacingDefinitions.map(
-                \.identifier
-            )
-        )
-        let capabilityState = AgentCapabilityState(
-            installed: installed,
-            available: installed,
-            visible: .init(
-                tools: selection.exposedToolIdentifiers
-            )
-        )
         let metadata = selection.metadata.merging(
             additionalMetadata
         ) { _, new in
@@ -83,15 +78,12 @@ public struct ModeRuntimeApplication: Sendable {
         selection.modeID
     }
 
-    public var toolDefinitions: [ToolDescriptor] {
-        let selected = Set(
-            selection.exposedToolIdentifiers
+    /// Project the current, Agent-authorized visible Tools, not the Mode's
+    /// historically declared exposed-tool selection.
+    public func modelFacingToolDefinitions() async throws -> [ToolDescriptor] {
+        let visible = await capabilityState.visible
+        return try toolRegistry.modelFacingDefinitions(
+            for: visible.tools
         )
-
-        return toolRegistry.modelFacingDefinitions.filter { definition in
-            selected.contains(
-                definition.identifier
-            )
-        }
     }
 }

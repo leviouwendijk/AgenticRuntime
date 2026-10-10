@@ -1,12 +1,37 @@
 import Agentic
 
-public actor AgentTranscriptRecorder: AgentRunEventSink {
+public actor AgentTranscriptRecorder: Run.EventSink {
     public let store: any TranscriptStore
 
     public init(
         store: any TranscriptStore
     ) {
         self.store = store
+    }
+
+    public func record(
+        _ event: Run.Event
+    ) async throws {
+        switch event {
+        case .state(let state):
+            guard shouldPersistAsNote(
+                state
+            ) else {
+                return
+            }
+
+            try await store.append(
+                .note(
+                    id: state.id,
+                    text: noteText(
+                        for: state
+                    )
+                )
+            )
+
+        case .tool_observation:
+            return
+        }
     }
 
     public func recordMessage(
@@ -26,29 +51,10 @@ public actor AgentTranscriptRecorder: AgentRunEventSink {
     }
 
     public func recordToolResult(
-        _ result: ToolResult
+        _ result: ToolCall.Response
     ) async throws {
         try await store.append(
             .tool_result(result)
-        )
-    }
-
-    public func recordRunEvent(
-        _ event: AgentRunEvent
-    ) async throws {
-        guard shouldPersistAsNote(
-            event
-        ) else {
-            return
-        }
-
-        try await store.append(
-            .note(
-                id: event.id,
-                text: noteText(
-                    for: event
-                )
-            )
         )
     }
 
@@ -63,7 +69,7 @@ public actor AgentTranscriptRecorder: AgentRunEventSink {
 
 private extension AgentTranscriptRecorder {
     func shouldPersistAsNote(
-        _ event: AgentRunEvent
+        _ event: Run.Event.State
     ) -> Bool {
         switch event.kind {
         case .assistant_response,
@@ -97,7 +103,7 @@ private extension AgentTranscriptRecorder {
     }
 
     func noteText(
-        for event: AgentRunEvent
+        for event: Run.Event.State
     ) -> String {
         var lines: [String] = [
             "run_event \(event.kind.rawValue)",

@@ -274,7 +274,7 @@ struct ProgramRecordingToolInvoker:
         var recovery: Recovery.Record?
 
         do {
-            let execution: ToolExecutionResult
+            let execution: ToolExecution.Result
 
             if let resumeControl,
                let resolution = try await resumeControl.resolution(

@@ -28,7 +28,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
     public var toolCall: ToolCall
     public var disposition: AgentToolUseDisposition
     public var preflight: ToolPreflight?
-    public var result: ToolResult?
+    public var result: ToolCall.Response?
     public var recovery: Recovery.Record?
     public var observations: [ToolResultObservation]
     public var updatedAt: Date
@@ -37,7 +37,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
         toolCall: ToolCall,
         disposition: AgentToolUseDisposition = .pending,
         preflight: ToolPreflight? = nil,
-        result: ToolResult? = nil,
+        result: ToolCall.Response? = nil,
         recovery: Recovery.Record? = nil,
         observations: [ToolResultObservation] = [],
         updatedAt: Date = Date()
@@ -61,7 +61,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
             toolCall: try values.decode(ToolCall.self, forKey: .toolCall),
             disposition: try values.decode(AgentToolUseDisposition.self, forKey: .disposition),
             preflight: try values.decodeIfPresent(ToolPreflight.self, forKey: .preflight),
-            result: try values.decodeIfPresent(ToolResult.self, forKey: .result),
+            result: try values.decodeIfPresent(ToolCall.Response.self, forKey: .result),
             recovery: try values.decodeIfPresent(Recovery.Record.self, forKey: .recovery),
             observations: try values.decodeIfPresent([ToolResultObservation].self, forKey: .observations) ?? [],
             updatedAt: try values.decode(Date.self, forKey: .updatedAt)
@@ -201,7 +201,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
         toolCallID: String,
         disposition: AgentToolUseDisposition,
         preflight: ToolPreflight? = nil,
-        result: ToolResult? = nil,
+        result: ToolCall.Response? = nil,
         recovery: Recovery.Record? = nil,
         observations: [ToolResultObservation] = [],
         now: Date = Date()

@@ -10,10 +10,10 @@ public struct AgentRunStateSnapshot:
     public let sessionID: String
     public let startedAt: Date
     public let updatedAt: Date
-    public let phase: AgentHistoryPhase
-    public let state: AgentLoopState
+    public let phase: AgentRunner.Phase
+    public let state: AgentRunner.State
     public let runLimits: AgentRunLimits
-    public let events: [AgentRunEvent]
+    public let events: [Run.Event.State]
     public let lastResponse: AgentResponse?
     public let partialResponse: AgentPartialResponse?
     public let toolBatch: AgentToolUseBatch?
@@ -27,7 +27,7 @@ public struct AgentRunStateSnapshot:
     public let capabilities: AgentCapabilityState.Snapshot
 
     init(
-        checkpoint: AgentHistoryCheckpoint
+        checkpoint: AgentRunner.Checkpoint
     ) {
         self.sessionID = checkpoint.id
         self.startedAt = checkpoint.startedAt

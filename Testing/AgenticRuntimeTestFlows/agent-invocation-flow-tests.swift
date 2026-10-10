@@ -119,7 +119,7 @@ private struct AgentInvocationModelInvoker:
 
     func buffered(
         _ invocation: AgentModelInvocation
-    ) async throws -> AgentModelInvocationResult {
+    ) async throws -> AgentModelInvocation.Result {
         await recorder.append(
             invocation
         )
@@ -132,7 +132,7 @@ private struct AgentInvocationModelInvoker:
     func stream(
         _ invocation: AgentModelInvocation
     ) -> AsyncThrowingStream<
-        AgentModelInvocationEvent,
+        AgentModelInvocation.Event,
         Error
     > {
         AsyncThrowingStream { continuation in
@@ -159,7 +159,7 @@ private struct AgentInvocationModelInvoker:
 
     private func result(
         for invocation: AgentModelInvocation
-    ) -> AgentModelInvocationResult {
+    ) -> AgentModelInvocation.Result {
         let response = AgentResponse(
             message: Message(
                 role: .assistant,
@@ -188,7 +188,7 @@ private struct AgentInvocationModelInvoker:
             profile: profile
         )
 
-        return AgentModelInvocationResult(
+        return AgentModelInvocation.Result(
             response: response,
             route: AgentModelRouteRecord(
                 route: route,
@@ -222,14 +222,14 @@ extension AgenticProgramRuntimeFlowTesting {
             application: application
         )
         let recorder = AgentInvocationRecorder()
-        let model = AgentRuntimeServices.Model(
+        let model = RuntimeServices.Model(
             invoker: AgentInvocationModelInvoker(
                 recorder: recorder
             ),
             selection: .executor
         )
         var baselineConfiguration =
-            AgentRunnerConfiguration.default
+            AgentRunner.Configuration.default
         baselineConfiguration.autonomyMode =
             .auto_observe
 

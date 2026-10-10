@@ -3,10 +3,10 @@ import Foundation
 import Primitives
 
 public struct ProgramRunner: Sendable {
-    public var services: AgentRuntimeServices
+    public var services: RuntimeServices
 
     public init(
-        services: AgentRuntimeServices = .init()
+        services: RuntimeServices = .init()
     ) {
         self.services = services
     }

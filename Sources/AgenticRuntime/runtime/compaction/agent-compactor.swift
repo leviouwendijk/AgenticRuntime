@@ -12,7 +12,7 @@ public struct AgentCompactor: Sendable {
 
     @discardableResult
     public func compact(
-        checkpoint: inout AgentHistoryCheckpoint
+        checkpoint: inout AgentRunner.Checkpoint
     ) -> CompactedHistory? {
         let messages = checkpoint.state.messages
 

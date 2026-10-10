@@ -186,7 +186,7 @@ private struct ProgramReplayInferenceExecutor:
 
     func execute(
         _ invocation: InferenceInvocation
-    ) async throws -> InferenceInvocationResult {
+    ) async throws -> InferenceInvocation.Response {
         let decoded = try JSONDecoder().decode(
             ProgramReplayInput.self,
             from: invocation.input

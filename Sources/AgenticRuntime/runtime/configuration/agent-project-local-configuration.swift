@@ -1,4 +1,5 @@
 import Foundation
+import IO
 
 public struct AgentProjectLocalConfiguration: Sendable, Codable, Hashable {
     public var version: Int
@@ -37,11 +38,7 @@ public struct AgentProjectLocalConfiguration: Sendable, Codable, Hashable {
     public func write(
         to url: URL
     ) throws {
-        try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(),
-            withIntermediateDirectories: true,
-            attributes: nil
-        )
+        try FileSystem.default.directory.create(url.deletingLastPathComponent())
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [

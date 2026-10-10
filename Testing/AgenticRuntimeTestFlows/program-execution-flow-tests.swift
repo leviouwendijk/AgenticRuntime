@@ -11,7 +11,7 @@ extension AgenticProgramRuntimeFlowTesting {
         async throws
         -> [TestDiagnostic]
     {
-        let services = AgentRuntimeServices(
+        let services = RuntimeServices(
             model: .init(
                 invoker: FixtureRuntimeServicesModelInvoker(),
                 selection: .reviewer
@@ -39,7 +39,7 @@ extension AgenticProgramRuntimeFlowTesting {
             FixtureOutput(
                 value: "tool:services"
             ),
-            "Program execution consumes its capability projection from AgentRuntimeServices"
+            "Program execution consumes its capability projection from RuntimeServices"
         )
         try Expect.equal(
             services.model?.selection,
@@ -454,13 +454,13 @@ private struct FixtureRuntimeServicesModelInvoker:
 {
     func buffered(
         _ invocation: AgentModelInvocation
-    ) async throws -> AgentModelInvocationResult {
+    ) async throws -> AgentModelInvocation.Result {
         throw FixtureRuntimeServicesModelError.unexpectedInvocation
     }
 
     func stream(
         _ invocation: AgentModelInvocation
-    ) -> AsyncThrowingStream<AgentModelInvocationEvent, Error> {
+    ) -> AsyncThrowingStream<AgentModelInvocation.Event, Error> {
         AsyncThrowingStream { continuation in
             continuation.finish(
                 throwing: FixtureRuntimeServicesModelError.unexpectedInvocation
@@ -536,7 +536,7 @@ private struct FixtureProgramToolExecutor:
     func invoke(
         _ identifier: ToolIdentifier,
         input: JSONValue
-    ) async throws -> ToolExecutionResult {
+    ) async throws -> ToolExecution.Result {
         if identifier.rawValue == "fixture.fail" {
             throw FixtureProgramToolError.requestedFailure
         }
@@ -545,8 +545,8 @@ private struct FixtureProgramToolExecutor:
             FixtureToolInput.self
         )
 
-        return ToolExecutionResult(
-            result: ToolResult(
+        return ToolExecution.Result(
+            result: ToolCall.Response(
                 call: .init(id: "fixture-\(identifier.rawValue)", tool: identifier),
                 output: try JSONValue.encoding(
                     FixtureOutput(
@@ -633,7 +633,7 @@ private struct FixtureProgramInferenceExecutor:
 {
     func execute(
         _ invocation: InferenceInvocation
-    ) async throws -> InferenceInvocationResult {
+    ) async throws -> InferenceInvocation.Response {
         let fixtureInput = try JSONDecoder().decode(
             FixtureInferenceInput.self,
             from: invocation.input

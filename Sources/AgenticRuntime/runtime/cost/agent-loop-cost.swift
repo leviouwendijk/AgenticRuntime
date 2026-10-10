@@ -1,10 +1,10 @@
 import Agentic
 import AgenticUsage
 
-extension ToolLoopExecutor {
+extension AgentLoop {
     func applyProjectedCost(
         for request: AgentRequest,
-        to checkpoint: inout AgentHistoryCheckpoint,
+        to checkpoint: inout AgentRunner.Checkpoint,
         turnIndex: Int
     ) async throws {
         guard let costTracker = recording.costTracker else {
@@ -36,7 +36,7 @@ extension ToolLoopExecutor {
     func applyActualCost(
         for request: AgentRequest,
         response: AgentResponse,
-        to checkpoint: inout AgentHistoryCheckpoint,
+        to checkpoint: inout AgentRunner.Checkpoint,
         turnIndex: Int
     ) async throws {
         guard let costTracker = recording.costTracker else {

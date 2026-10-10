@@ -4,9 +4,9 @@ import Workspace
 import AgenticStandard
 import Primitives
 
-extension ToolLoopExecutor {
+extension AgentLoop {
     func processToolCalls(
-        from checkpoint: AgentHistoryCheckpoint
+        from checkpoint: AgentRunner.Checkpoint
     ) async throws -> ToolProcessingOutcome {
         var checkpoint = checkpoint
 
@@ -57,19 +57,19 @@ extension ToolLoopExecutor {
             let invocation: ToolInvocation
 
             do {
-                let visible =
-                    await capabilityState.visible
-
-                guard visible.tools.contains(
+                let available = await capabilityState.available
+                guard checkpoint.lastAdvertisedTools?.contains(
                     toolCall.tool
-                ) else {
+                ) == true,
+                    available.tools.contains(toolCall.tool)
+                else {
                     throw AgentToolCallResolutionError
                         .toolNotVisible(
                             toolCall.tool
                         )
                 }
 
-                invocation = try tooling.registry.invocation(
+                invocation = try (await currentTools()).invocation(
                     for: toolCall
                 )
             } catch {
@@ -100,12 +100,12 @@ extension ToolLoopExecutor {
 
             do {
                 review = try await ToolInvoker(
-                    registry: tooling.registry,
+                    registry: (await currentTools()),
                     policy: configuration.toolExecutionPolicy,
                     recovery: configuration.recovery
                 ).review(
                     invocation,
-                    context: makeToolContext()
+                    context: await makeToolContext()
                 )
             } catch {
                 let result = try makeToolErrorResult(
@@ -164,9 +164,8 @@ extension ToolLoopExecutor {
             }
 
             if toolCall.tool == SystemIO.Tools.RequestPathGrant.identifier {
-                let execution = try await executeApprovedToolCall(
-                    toolCall,
-                    preflight: preflight
+                let execution = try await executeApprovedToolReview(
+                    review
                 )
                 let result = execution.result
 
@@ -222,9 +221,8 @@ extension ToolLoopExecutor {
                     to: &checkpoint
                 )
 
-                let execution = try await executeApprovedToolCall(
-                    toolCall,
-                    preflight: preflight
+                let execution = try await executeApprovedToolReview(
+                    review
                 )
                 let result = execution.result
 
@@ -327,9 +325,8 @@ extension ToolLoopExecutor {
                         to: &checkpoint
                     )
 
-                    let execution = try await executeApprovedToolCall(
-                        toolCall,
-                        preflight: preflight
+                    let execution = try await executeApprovedToolReview(
+                        review
                     )
                     let result = execution.result
 

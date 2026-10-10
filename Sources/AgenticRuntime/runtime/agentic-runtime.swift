@@ -6,58 +6,52 @@ public struct AgenticRuntime:
     Sendable
 {
     public let application: AgenticApplication
-    public let catalog: Catalog
-    public let tools: ToolRegistry
-    public let toolInventory: ToolInventory
+    public let installed: InstalledCapabilities
+    public var catalog: Catalog { installed.catalog }
+    public var adapters: InferenceAdapterCatalog { installed.adapters }
+
+    /// Construct an executor using precisely this application's installed adapters.
+    /// Model routing remains independent of adapter installation.
+    public func makeInferenceExecutor(
+        modelInvoker: any AgentModelInvoking,
+        defaultAdapterIdentifier: InferenceAdapterIdentifier? = nil
+    ) -> InferenceExecutor {
+        InferenceExecutor(
+            modelInvoker: modelInvoker,
+            adapters: installed.adapters,
+            defaultAdapterIdentifier: defaultAdapterIdentifier
+        )
+    }
+    public var tools: ToolRegistry { installed.tools }
     public let skills: SkillRegistry
-    public let programs: ProgramRegistry
-    public let agents: AgentRegistry
+    public var programs: InstalledCapabilities.Programs { installed.programs }
+    public var inferences: InstalledCapabilities.Inferences { installed.inferences }
+    public var agents: InstalledCapabilities.Agents { installed.agents }
+
+    /// Presentation metadata derived on demand from the installed Tool bindings
+    /// and authored collection grouping. It is not an execution registry or
+    /// a mutable source of capability authority.
+    public func toolPresentation() throws -> ToolInventory {
+        try ToolInventory.materialize(
+            registrations: application.toolRegistrations,
+            registry: installed.tools
+        )
+    }
+
     public let launches: [ApplicationLaunchEntry]
     public let gateways: GatewayCatalog
     public let profiles: ProfileCatalog
 
-    private let programExecutions:
-        [ProgramIdentifier: ProgramRegistration]
-
     public init(
         application: AgenticApplication
     ) async throws {
-        let tools = try Agentic.tool.registry {
-            application.toolRegistrations
-        }
-        let toolInventory = try ToolInventory.materialize(
-            registrations: application.toolRegistrations,
-            registry: tools
-        )
-
+        let installed = try InstalledCapabilities(application: application)
         let skills = try Agentic.skill.registry {
             application.skillRegistrations
         }
-
-        var programs = ProgramRegistry()
-        var programExecutions:
-            [ProgramIdentifier: ProgramRegistration] = [:]
-
-        programExecutions.reserveCapacity(
-            application.programRegistrations.count
-        )
-
-        for registration in application.programRegistrations {
-            try programs.register(
-                registration.registeredProgram
-            )
-            programExecutions[
-                registration.identifier
-            ] = registration
-        }
-
-        let agents = try AgentRegistry(
-            application.agentDefinitions
-        )
         let launches = try validateApplicationLaunchEntries(
             application.launchEntries,
-            agents: agents,
-            programs: programs
+            installed: installed
         )
 
         let modelCatalogs = try await ModelCatalogs(
@@ -66,16 +60,11 @@ public struct AgenticRuntime:
         )
 
         self.application = application
-        self.catalog = application.catalog
-        self.tools = tools
-        self.toolInventory = toolInventory
+        self.installed = installed
         self.skills = skills
-        self.programs = programs
-        self.agents = agents
         self.launches = launches
         self.gateways = modelCatalogs.gateways
         self.profiles = modelCatalogs.profiles
-        self.programExecutions = programExecutions
     }
 
     public func realizeAgent(
@@ -87,25 +76,57 @@ public struct AgenticRuntime:
 
         return AgentRealization.materialize(
             definition: definition,
-            catalog: catalog,
-            tools: tools,
-            programs: programs,
-            agents: agents
+            installed: installed
         )
+    }
+
+    /// Execute an installed Inference through Agentic's canonical executor.
+    public func executeInference(
+        identifiedBy identifier: InferenceIdentifier,
+        input: JSONValue,
+        realization: InferenceRealizationConfiguration? = nil,
+        using executor: any InferenceExecuting,
+        context: InferenceExecutionContext = .default
+    ) async throws -> InferenceInvocation.Response {
+        guard let registration = installed.inference(identifier) else {
+            throw InferenceRegistryError.unknownInference(identifier)
+        }
+        return try await registration.execute(
+            input: input,
+            realization: realization,
+            using: executor,
+            context: context
+        )
+    }
+
+    /// Compatibility entry point for state-only callers. Projection logic
+    /// lives in the installed bindings, not in this façade.
+    public func modelProjection(
+        for capabilityState: AgentCapabilityState
+    ) async throws -> ModelCapabilityProjection {
+        try installed.modelProjection(
+            visible: await capabilityState.snapshot().visible
+        )
+    }
+
+    /// Agent-local installation and exposure are read together from the
+    /// inventory, so newly installed or revoked bindings are not lost.
+    public func modelProjection(
+        for inventory: CapabilityInventory
+    ) async throws -> ModelCapabilityProjection {
+        try await inventory.modelProjection()
     }
 
     public func executeProgram(
         identifiedBy identifier: ProgramIdentifier,
         input: JSONValue,
         realization: JSONValue? = nil,
-        services: AgentRuntimeServices = .init(),
+        services: RuntimeServices = .init(),
         metadata: [String: String] = [:]
     ) async throws -> ProgramExecutionRecord {
-        guard let registration = programExecutions[
-            identifier
-        ] else {
+        guard let registration = installed.program(identifier) else {
             throw ProgramExecutionError
-                .registrationUnavailable(
+                .bindingUnavailable(
                     identifier
                 )
         }
@@ -121,15 +142,13 @@ public struct AgenticRuntime:
     public func resumeProgram(
         from checkpoint: ProgramCheckpoint,
         interaction response: Run.Interaction.Response,
-        services: AgentRuntimeServices = .init()
+        services: RuntimeServices = .init()
     ) async throws -> ProgramExecutionRecord {
         let identifier = checkpoint.programIdentifier
 
-        guard let registration = programExecutions[
-            identifier
-        ] else {
+        guard let registration = installed.program(identifier) else {
             throw ProgramExecutionError
-                .registrationUnavailable(
+                .bindingUnavailable(
                     identifier
                 )
         }

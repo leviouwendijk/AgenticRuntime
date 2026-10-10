@@ -1,4 +1,5 @@
 import Agentic
+import IO
 import Foundation
 
 public actor FilePreparedIntentStore: PreparedIntentStore {
@@ -17,9 +18,7 @@ public actor FilePreparedIntentStore: PreparedIntentStore {
             id: id
         )
 
-        guard FileManager.default.fileExists(
-            atPath: url.path
-        ) else {
+        guard FileSystem.default.exists(url) else {
             return nil
         }
 
@@ -38,18 +37,13 @@ public actor FilePreparedIntentStore: PreparedIntentStore {
     }
 
     public func list() async throws -> [PreparedIntent] {
-        guard FileManager.default.fileExists(
-            atPath: preparedIntentsdir.path
-        ) else {
+        guard FileSystem.default.exists(preparedIntentsdir) else {
             return []
         }
 
-        let urls = try FileManager.default.contentsOfDirectory(
-            at: preparedIntentsdir,
-            includingPropertiesForKeys: nil,
-            options: [
-                .skipsHiddenFiles
-            ]
+        let urls = try FileSystem.default.directory.contents(
+            preparedIntentsdir,
+            options: [.skipsHiddenFiles]
         )
 
         let intents = try urls.compactMap { url -> PreparedIntent? in
@@ -83,11 +77,7 @@ public actor FilePreparedIntentStore: PreparedIntentStore {
     public func save(
         _ intent: PreparedIntent
     ) async throws {
-        try FileManager.default.createDirectory(
-            at: preparedIntentsdir,
-            withIntermediateDirectories: true,
-            attributes: nil
-        )
+        try FileSystem.default.directory.create(preparedIntentsdir)
 
         var intent = intent
         intent.updatedAt = Date()
@@ -117,15 +107,11 @@ public actor FilePreparedIntentStore: PreparedIntentStore {
             id: id
         )
 
-        guard FileManager.default.fileExists(
-            atPath: url.path
-        ) else {
+        guard FileSystem.default.exists(url) else {
             return
         }
 
-        try FileManager.default.removeItem(
-            at: url
-        )
+        try FileSystem.default.remove(url)
     }
 }
 

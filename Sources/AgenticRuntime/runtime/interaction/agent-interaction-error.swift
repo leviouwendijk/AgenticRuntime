@@ -49,9 +49,3 @@ public extension Run.Interaction {
     }
 }
 
-@available(
-    *,
-    deprecated,
-    renamed: "Run.Interaction.Error"
-)
-public typealias AgentInteractionError = Run.Interaction.Error

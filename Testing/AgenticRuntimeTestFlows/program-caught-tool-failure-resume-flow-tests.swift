@@ -23,13 +23,13 @@ private struct ProgramCaughtToolFailureExecutor:
     func invoke(
         _ identifier: ToolIdentifier,
         input: JSONValue
-    ) async throws -> ToolExecutionResult {
+    ) async throws -> ToolExecution.Result {
         _ = input
         await probe.recordCall()
 
         throw ProgramToolFailure(
             tool: identifier,
-            result: ToolResult(
+            result: ToolCall.Response(
                 call: .init(id: "fixture-caught-tool-failure", tool: identifier),
                 output: .null,
                 isError: true
@@ -141,7 +141,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let failedStep = checkpoint.completedSteps[0]
         let failedResult = try Expect.notNil(
             failedStep.toolResult,
-            "caught tool failure retains its canonical ToolResult"
+            "caught tool failure retains its canonical ToolCall.Response"
         )
 
         try Expect.equal(

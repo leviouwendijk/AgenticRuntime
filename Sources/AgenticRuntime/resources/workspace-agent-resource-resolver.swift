@@ -1,4 +1,5 @@
 import Agentic
+import IO
 import Workspace
 import Foundation
 import Path
@@ -28,9 +29,7 @@ public struct WorkspaceAgentResourceResolver:
         )
         let authorized = authorization.authorizedPath
 
-        guard FileManager.default.fileExists(
-            atPath: authorized.absoluteURL.path
-        ) else {
+        guard FileSystem.default.exists(authorized.absoluteURL) else {
             throw WorkspaceAgentResourceResolutionError.missingResource(
                 authorized.presentationPath
             )

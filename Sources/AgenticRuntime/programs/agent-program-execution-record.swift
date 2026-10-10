@@ -88,7 +88,7 @@ public struct ProgramStepRecord:
     public var kind: ProgramStepKind
     public var input: JSONValue
     public var output: JSONValue?
-    public var toolResult: ToolResult?
+    public var toolResult: ToolCall.Response?
     public var inference: Inference
     public var recovery: Recovery.Record?
     public var suspension: Run.Suspension?
@@ -103,7 +103,7 @@ public struct ProgramStepRecord:
         kind: ProgramStepKind,
         input: JSONValue,
         output: JSONValue? = nil,
-        toolResult: ToolResult? = nil,
+        toolResult: ToolCall.Response? = nil,
         inference: Inference = .init(),
         recovery: Recovery.Record? = nil,
         suspension: Run.Suspension? = nil,

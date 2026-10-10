@@ -245,7 +245,7 @@ private struct MutationRecoveryModelInvoker: AgentModelInvoking {
 
     func buffered(
         _ invocation: AgentModelInvocation
-    ) async throws -> AgentModelInvocationResult {
+    ) async throws -> AgentModelInvocation.Result {
         let index = await state.record(
             invocation
         )
@@ -291,7 +291,7 @@ private struct MutationRecoveryModelInvoker: AgentModelInvoking {
             )
         )
 
-        return AgentModelInvocationResult(
+        return AgentModelInvocation.Result(
             response: response,
             route: AgentModelRouteRecord(
                 route: routeResult.route,
@@ -305,7 +305,7 @@ private struct MutationRecoveryModelInvoker: AgentModelInvoking {
 
     func stream(
         _ invocation: AgentModelInvocation
-    ) -> AsyncThrowingStream<AgentModelInvocationEvent, Error> {
+    ) -> AsyncThrowingStream<AgentModelInvocation.Event, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
@@ -332,7 +332,7 @@ private struct MutationRecoveryModelInvoker: AgentModelInvoking {
 
 private struct MutationRecoveryCaseResult {
     let probe: MutationRecoveryProbeSnapshot
-    let result: ToolResult
+    let result: ToolCall.Response
     let recovery: Recovery.Record
 }
 
@@ -400,6 +400,11 @@ private func runMutationRecoveryCase(
         ),
         tooling: .init(
             registry: registry
+        ),
+        capabilityState: AgentCapabilityState(
+            installed: .init(
+                tools: registry.modelFacingDefinitions.map(\.identifier)
+            )
         )
     )
 
@@ -433,7 +438,7 @@ private func runMutationRecoveryCase(
     )
     let terminalResults = secondInvocation.request.messages
         .flatMap(\.content.blocks)
-        .compactMap { block -> ToolResult? in
+        .compactMap { block -> ToolCall.Response? in
             guard case .tool_result(let result) = block else {
                 return nil
             }

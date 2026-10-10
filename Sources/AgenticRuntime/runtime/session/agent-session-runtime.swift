@@ -86,11 +86,12 @@ public struct AgentSessionRuntime: Sendable {
     }
 
     public func makeRunner(
-        model: AgentRuntimeServices.Model,
-        configuration: AgentRunnerConfiguration = .default,
-        tooling: AgentRuntimeServices.Tooling = .init(),
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        capabilityState: AgentCapabilityState,
+        tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init(),
+        recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
     ) throws -> AgentRunner {
         var resolvedConfiguration = configuration
@@ -107,6 +108,7 @@ public struct AgentSessionRuntime: Sendable {
             tooling: tooling.using(
                 workspace: try environment.workspace?.context()
             ),
+            capabilityState: capabilityState,
             extensions: extensions,
             recording: recording.resolving(
                 historyStore: stores.historyStore,
@@ -117,13 +119,14 @@ public struct AgentSessionRuntime: Sendable {
 
     public func run(
         _ request: AgentRequest,
-        model: AgentRuntimeServices.Model,
-        configuration: AgentRunnerConfiguration = .default,
-        tooling: AgentRuntimeServices.Tooling = .init(),
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        capabilityState: AgentCapabilityState,
+        tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init(),
+        recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try saveMetadata(
             metadata.withStatus(
                 .active
@@ -133,6 +136,7 @@ public struct AgentSessionRuntime: Sendable {
         let runner = try makeRunner(
             model: model,
             configuration: configuration,
+            capabilityState: capabilityState,
             tooling: tooling,
             extensions: extensions,
             recording: recording,
@@ -156,13 +160,14 @@ public struct AgentSessionRuntime: Sendable {
     }
 
     public func resume(
-        model: AgentRuntimeServices.Model,
-        configuration: AgentRunnerConfiguration = .default,
-        tooling: AgentRuntimeServices.Tooling = .init(),
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        capabilityState: AgentCapabilityState,
+        tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init(),
+        recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try saveMetadata(
             metadata.withStatus(
                 .active
@@ -172,6 +177,7 @@ public struct AgentSessionRuntime: Sendable {
         let runner = try makeRunner(
             model: model,
             configuration: configuration,
+            capabilityState: capabilityState,
             tooling: tooling,
             extensions: extensions,
             recording: recording,
@@ -195,20 +201,22 @@ public struct AgentSessionRuntime: Sendable {
 
     public func resume(
         userInput: String,
-        model: AgentRuntimeServices.Model,
-        configuration: AgentRunnerConfiguration = .default,
-        tooling: AgentRuntimeServices.Tooling = .init(),
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        capabilityState: AgentCapabilityState,
+        tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init(),
+        recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try await resume(
             answer: .text(
                 userInput
             ),
             model: model,
             configuration: configuration,
+            capabilityState: capabilityState,
             tooling: tooling,
             extensions: extensions,
             recording: recording,
@@ -219,20 +227,22 @@ public struct AgentSessionRuntime: Sendable {
 
     public func resume(
         answer: UserInputAnswer,
-        model: AgentRuntimeServices.Model,
-        configuration: AgentRunnerConfiguration = .default,
-        tooling: AgentRuntimeServices.Tooling = .init(),
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        capabilityState: AgentCapabilityState,
+        tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init(),
+        recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try await resume(
             reply: .answer(
                 answer
             ),
             model: model,
             configuration: configuration,
+            capabilityState: capabilityState,
             tooling: tooling,
             extensions: extensions,
             recording: recording,
@@ -243,14 +253,15 @@ public struct AgentSessionRuntime: Sendable {
 
     public func resume(
         reply: UserInputReply,
-        model: AgentRuntimeServices.Model,
-        configuration: AgentRunnerConfiguration = .default,
-        tooling: AgentRuntimeServices.Tooling = .init(),
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        capabilityState: AgentCapabilityState,
+        tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init(),
+        recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try saveMetadata(
             self.metadata.withStatus(
                 .active
@@ -260,6 +271,7 @@ public struct AgentSessionRuntime: Sendable {
         let runner = try makeRunner(
             model: model,
             configuration: configuration,
+            capabilityState: capabilityState,
             tooling: tooling,
             extensions: extensions,
             recording: recording,
@@ -353,7 +365,7 @@ private extension AgentSessionRuntime {
     }
 
     func status(
-        for result: AgentRunResult
+        for result: AgentRunner.Result
     ) -> AgentSessionStatus {
         if result.isAwaitingApproval {
             return .awaiting_approval

@@ -13,7 +13,7 @@ public extension AgentRunner {
         sessionID: String,
         mode: Run.Interruption.Mode,
         reason: String? = nil
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }
@@ -26,7 +26,7 @@ public extension AgentRunner {
             )
         }
 
-        let executor = try await makeToolLoopExecutor(
+        let executor = try await makeAgentLoop(
             restoring: checkpoint
         )
 

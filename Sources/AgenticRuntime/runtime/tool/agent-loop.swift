@@ -3,46 +3,51 @@ import AgenticUsage
 import Workspace
 import Foundation
 
-public struct ToolLoopExecutor: Sendable {
-    public let model: AgentRuntimeServices.Model
-    public let configuration: AgentRunnerConfiguration
-    public let tooling: AgentRuntimeServices.Tooling
-    public let capabilityState: AgentCapabilityState
-    public let runControl: Run.Control
-    @available(
-        *,
-        deprecated,
-        renamed: "runControl"
-    )
-    public var interruptionController: Run.Control {
-        runControl
-    }
-    public let extensions: [any AgentHarnessExtension]
-    public let recording: AgentRuntimeServices.Recording
+internal struct AgentLoop: Sendable {
+    let model: RuntimeServices.Model
+    let configuration: AgentRunner.Configuration
+    let tooling: RuntimeServices.Tooling
+    let capabilityState: AgentCapabilityState
+    let inventory: CapabilityInventory
+    let runControl: Run.Control
+    let extensions: [any AgentHarnessExtension]
+    let recording: RuntimeServices.Recording
+    let contextAllocator: Context.Allocator?
+    let contextServices: Context.Services?
 
-    public init(
-        model: AgentRuntimeServices.Model,
-        configuration: AgentRunnerConfiguration = .default,
-        tooling: AgentRuntimeServices.Tooling = .init(),
+    init(
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        tooling: RuntimeServices.Tooling = .init(),
         capabilityState: AgentCapabilityState,
+        inventory: CapabilityInventory,
         runControl: Run.Control = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init()
+        recording: RuntimeServices.Recording = .init(),
+        contextAllocator: Context.Allocator? = nil,
+        contextServices: Context.Services? = nil
     ) {
         self.model = model
         self.configuration = configuration
         self.tooling = tooling
         self.capabilityState = capabilityState
+        self.inventory = inventory
         self.runControl = runControl
         self.extensions = extensions
         self.recording = recording
+        self.contextAllocator = contextAllocator
+        self.contextServices = contextServices
     }
 
-    public func run(
+    func currentTools() async -> ToolRegistry {
+        await inventory.tools()
+    }
+
+    func run(
         _ request: AgentRequest,
         sessionID: String = UUID().uuidString
-    ) async throws -> AgentRunResult {
-        var checkpoint = AgentHistoryCheckpoint(
+    ) async throws -> AgentRunner.Result {
+        var checkpoint = AgentRunner.Checkpoint(
             id: sessionID,
             originalRequest: request,
             state: .init(
@@ -50,6 +55,8 @@ public struct ToolLoopExecutor: Sendable {
                 messages: request.messages
             ),
             runLimits: configuration.runLimits,
+            contextMode: configuration.contextMode,
+            contextPolicy: configuration.contextPolicy,
             capabilities: await capabilityState.snapshot()
         )
 
@@ -66,19 +73,19 @@ public struct ToolLoopExecutor: Sendable {
         )
     }
 
-    public func resume(
-        _ checkpoint: AgentHistoryCheckpoint
-    ) async throws -> AgentRunResult {
+    func resume(
+        _ checkpoint: AgentRunner.Checkpoint
+    ) async throws -> AgentRunner.Result {
         try await runLoop(
             from: checkpoint
         )
     }
 
-    public func resume(
-        _ checkpoint: AgentHistoryCheckpoint,
+    func resume(
+        _ checkpoint: AgentRunner.Checkpoint,
         userInput: String,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try await resumeWithUserInput(
             checkpoint,
             userInput: userInput,
@@ -86,11 +93,11 @@ public struct ToolLoopExecutor: Sendable {
         )
     }
 
-    public func resume(
-        _ checkpoint: AgentHistoryCheckpoint,
+    func resume(
+        _ checkpoint: AgentRunner.Checkpoint,
         answer: UserInputAnswer,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try await resumeWithUserInput(
             checkpoint,
             reply: .answer(
@@ -100,11 +107,11 @@ public struct ToolLoopExecutor: Sendable {
         )
     }
 
-    public func resume(
-        _ checkpoint: AgentHistoryCheckpoint,
+    func resume(
+        _ checkpoint: AgentRunner.Checkpoint,
         reply: UserInputReply,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try await resumeWithUserInput(
             checkpoint,
             reply: reply,
@@ -112,11 +119,11 @@ public struct ToolLoopExecutor: Sendable {
         )
     }
 
-    public func resume(
-        _ checkpoint: AgentHistoryCheckpoint,
+    func resume(
+        _ checkpoint: AgentRunner.Checkpoint,
         workspaceAccessResolution: WorkspaceAccessResolution,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try await resumeWithWorkspaceAccess(
             checkpoint,
             resolution: workspaceAccessResolution,
@@ -124,11 +131,11 @@ public struct ToolLoopExecutor: Sendable {
         )
     }
 
-    public func resume(
-        _ checkpoint: AgentHistoryCheckpoint,
+    func resume(
+        _ checkpoint: AgentRunner.Checkpoint,
         runLimitResolution: AgentRunLimitResolution,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try await resumeFromRunLimit(
             checkpoint,
             resolution: runLimitResolution,
@@ -136,10 +143,10 @@ public struct ToolLoopExecutor: Sendable {
         )
     }
 
-    public func resume(
-        _ checkpoint: AgentHistoryCheckpoint,
+    func resume(
+        _ checkpoint: AgentRunner.Checkpoint,
         interaction response: Run.Interaction.Response
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         guard checkpoint.id == response.sessionID else {
             throw Run.Interaction.Error.sessionMismatch(
                 expected: checkpoint.id,
@@ -201,7 +208,7 @@ public struct ToolLoopExecutor: Sendable {
     }
 }
 
-extension ToolLoopExecutor {
+extension AgentLoop {
     struct ToolDenialPayload: Encodable, Sendable {
         let kind: String
         let toolCallID: String
@@ -238,7 +245,7 @@ extension ToolLoopExecutor {
     }
 
     enum ToolProcessingOutcome {
-        case continueLoop(AgentHistoryCheckpoint)
-        case result(AgentRunResult)
+        case continueLoop(AgentRunner.Checkpoint)
+        case result(AgentRunner.Result)
     }
 }

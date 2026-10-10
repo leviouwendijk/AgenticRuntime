@@ -131,12 +131,20 @@ extension AgenticProgramRuntimeFlowTesting {
             "Removing availability also removes visibility."
         )
 
+        let persisted = AgentCapabilityState.Snapshot(
+            installed: .none,
+            available: installed,
+            visible: installed
+        )
+        let ignoredStaleRestore = await state.restore(persisted)
+        try Expect.equal(
+            ignoredStaleRestore,
+            constrained,
+            "A stale checkpoint cannot overwrite live availability changes."
+        )
         let restored = await state.restore(
-            .init(
-                installed: .none,
-                available: installed,
-                visible: installed
-            )
+            persisted,
+            overwritingLiveChanges: true
         )
 
         try Expect.equal(

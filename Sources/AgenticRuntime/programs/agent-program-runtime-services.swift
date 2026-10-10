@@ -10,19 +10,19 @@ public protocol ProgramToolExecuting: Sendable {
     func invoke(
         _ identifier: ToolIdentifier,
         input: JSONValue
-    ) async throws -> ToolExecutionResult
+    ) async throws -> ToolExecution.Result
 
     func resume(
         pendingApproval: PendingApproval,
         decision: ApprovalDecision
-    ) async throws -> ToolExecutionResult
+    ) async throws -> ToolExecution.Result
 }
 
 public extension ProgramToolExecuting {
     func resume(
         pendingApproval: PendingApproval,
         decision _: ApprovalDecision
-    ) async throws -> ToolExecutionResult {
+    ) async throws -> ToolExecution.Result {
         throw ProgramReplayError.tool_resume_unsupported(
             pendingApproval.toolCall.tool
         )

@@ -31,7 +31,7 @@ private final class DomainSink:
             components: [
                 .programs(
                     [
-                        ProgramRegistration(
+                        ProgramExecutionBinding(
                             program,
                             defaultRealization: realization
                         ),
@@ -41,18 +41,32 @@ private final class DomainSink:
         )
     }
 
-    func install(
-        _ agent: AgentDefinition
+    func install<I: Inference>(
+        _ inference: I.Type
     ) {
         installation = installation + .init(
             components: [
-                .agents(
-                    [
-                        agent,
-                    ]
-                ),
+                .inferences([InferenceBinding(inference)]),
             ]
         )
+    }
+
+    func install<A: Agent>(
+        _ agent: A.Type
+    ) {
+        installation = installation + .init(
+            components: [
+                .agents([AgentBinding(agent)]),
+            ]
+        )
+    }
+
+    func install<A: InferenceAdapter>(_ adapter: A) {
+        installation = installation + .init(components: [.adapters([adapter])])
+    }
+
+    func install<A: InferenceAdapterFor>(_ adapter: A) {
+        install(TypedInferenceAdapter(adapter))
     }
 }
 
@@ -209,7 +223,7 @@ public func install<ProgramType: Program>(
 ) -> Installation {
     install(
         [
-            ProgramRegistration(
+            ProgramExecutionBinding(
                 program,
                 defaultRealization: realization
             ),
@@ -218,7 +232,7 @@ public func install<ProgramType: Program>(
 }
 
 public func install(
-    _ registration: ProgramRegistration
+    _ registration: ProgramExecutionBinding
 ) -> Installation {
     install(
         [
@@ -228,7 +242,7 @@ public func install(
 }
 
 public func install(
-    _ registrations: [ProgramRegistration]
+    _ registrations: [ProgramExecutionBinding]
 ) -> Installation {
     .init(
         components: [
@@ -239,32 +253,59 @@ public func install(
     )
 }
 
-public func install<AgentType: Agent>(
-    _ agent: AgentType.Type
+/// Install an executable typed Inference separately from its Catalog declaration.
+/// This does not change Agent visibility or availability; realization does that.
+public func install<InferenceType: Inference>(
+    _ inference: InferenceType.Type,
+    realization: InferenceRealizationConfiguration? = nil
 ) -> Installation {
     install(
-        agent.definition
+        InferenceBinding(
+            inference,
+            defaultRealization: realization
+        )
     )
 }
 
 public func install(
-    _ definition: AgentDefinition
+    _ registration: InferenceBinding
 ) -> Installation {
-    install(
-        [
-            definition,
-        ]
-    )
+    install([registration])
 }
 
 public func install(
-    _ definitions: [AgentDefinition]
+    _ registrations: [InferenceBinding]
 ) -> Installation {
     .init(
         components: [
-            .agents(
-                definitions
-            ),
+            .inferences(registrations),
         ]
     )
+}
+
+/// Adapters are installation infrastructure; this does not grant model exposure.
+public func install<A: InferenceAdapter>(_ adapter: A) -> Installation {
+    .init(components: [.adapters([adapter])])
+}
+
+public func install<A: InferenceAdapterFor>(_ adapter: A) -> Installation {
+    install(TypedInferenceAdapter(adapter))
+}
+
+public func install<AgentType: Agent>(
+    _ agent: AgentType.Type
+) -> Installation {
+    install(AgentBinding(agent))
+}
+
+public func install(
+    _ binding: AgentBinding
+) -> Installation {
+    install([binding])
+}
+
+public func install(
+    _ bindings: [AgentBinding]
+) -> Installation {
+    .init(components: [.agents(bindings)])
 }

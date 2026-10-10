@@ -71,6 +71,34 @@ private enum InstallationAgentFixture:
     )
 }
 
+private struct DomainAdapterFixtureInference: Inference {
+    typealias Input = String
+    typealias Output = String
+    static let definition = InferenceDefinition(
+        identifier: "fixture.domain_adapter_inference",
+        purpose: "Typed adapter Domain installation smoke test."
+    )
+}
+
+@Domain
+private enum AdapterInstallationDomain {}
+
+extension AdapterInstallationDomain.Adapters {
+    @Adapter
+    struct DomainEcho: InferenceAdapterFor {
+        typealias Target = DomainAdapterFixtureInference
+        func prepare(
+            input: String,
+            realization _: InferenceRealizationConfiguration
+        ) throws -> PreparedInference<String> {
+            PreparedInference(
+                adaptation: .init(request: AgentRequest(messages: [])),
+                decode: { _ in input }
+            )
+        }
+    }
+}
+
 extension AgenticProgramRuntimeFlowTesting {
     static func runApplicationInstallationComposition()
         async throws
@@ -85,11 +113,15 @@ extension AgenticProgramRuntimeFlowTesting {
         let agentInstallation = install(
             InstallationAgentFixture.self
         )
+        let adapterInstallation = install(NativeStructuredAdapter())
+        let derivedAdapterInstallation = install(AdapterInstallationDomain.self)
 
         let preset =
             toolInstallation
             + programInstallation
             + agentInstallation
+            + adapterInstallation
+            + derivedAdapterInstallation
 
         let application = Agentic.application(
             "fixture.installation_composition"
@@ -120,16 +152,19 @@ extension AgenticProgramRuntimeFlowTesting {
             "Installation composition contributes granular Tool registrations"
         )
         try Expect.equal(
-            application.programRegistrations.count,
+            application.programBindings.count,
             1,
             "Installation composition contributes granular Program registrations"
         )
         try Expect.equal(
+            application.agentBindings.map(\.reference),
+            [InstallationAgentFixture.reference],
+            "Installation composition retains executable Agent bindings"
+        )
+        try Expect.equal(
             application.agentDefinitions,
-            [
-                InstallationAgentFixture.definition,
-            ],
-            "Installation composition preserves installed Agent definitions"
+            [InstallationAgentFixture.definition],
+            "Agent definitions are a view derived from installed bindings"
         )
         try Expect.equal(
             application.launchEntries.count,
@@ -163,8 +198,8 @@ extension AgenticProgramRuntimeFlowTesting {
             "install(Installation) preserves composed Tool contributions"
         )
         try Expect.equal(
-            wrappedApplication.programRegistrations.count,
-            application.programRegistrations.count,
+            wrappedApplication.programBindings.count,
+            application.programBindings.count,
             "install(Installation) preserves composed Program contributions"
         )
         try Expect.equal(
@@ -176,6 +211,16 @@ extension AgenticProgramRuntimeFlowTesting {
         let runtime = try await AgenticRuntime(
             application: application
         )
+        try Expect.equal(runtime.adapters.count, 2,
+            "Explicit and @Adapter domain-derived adapters both install")
+        try Expect.true(
+            application.catalog.adapters.contains(where: {
+                $0.identifier == AdapterInstallationDomain.Adapters.DomainEcho.definition.identifier
+            }),
+            "Domain adapter discovered without manually maintained registries"
+        )
+        try Expect.equal(runtime.installed.capabilities.inferences.count, 0,
+            "Installing an adapter does not implicitly install an Inference")
 
         try Expect.equal(
             runtime.tools.inspect(
@@ -202,6 +247,28 @@ extension AgenticProgramRuntimeFlowTesting {
             ) != nil,
             true,
             "Runtime materializes an installed Agent definition into AgentRegistry"
+        )
+        try Expect.equal(
+            runtime.installed.capabilities.programs,
+            [InstallationProgramFixture.definition.identifier],
+            "Materialized installation is the authoritative executable Program index"
+        )
+        try Expect.equal(
+            runtime.installed.program(InstallationProgramFixture.definition.identifier) != nil,
+            true,
+            "Execution binding resolves directly from the application installation"
+        )
+        let agentInventory = CapabilityInventory(
+            installed: runtime.installed,
+            state: AgentCapabilityState(installed: runtime.installed.capabilities)
+        )
+        let inheritedProgram = await agentInventory.program(
+            InstallationProgramFixture.definition.identifier
+        )
+        try Expect.equal(
+            inheritedProgram != nil,
+            true,
+            "Agent inventory resolves a shared application binding"
         )
         try Expect.equal(
             runtime.launches,
@@ -251,7 +318,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ),
             .field(
                 "programs",
-                String(application.programRegistrations.count)
+                String(application.programBindings.count)
             ),
             .field(
                 "agents",

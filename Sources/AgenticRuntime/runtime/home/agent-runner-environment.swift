@@ -4,14 +4,14 @@ import Foundation
 
 public extension AgentRunner {
     init(
-        model: AgentRuntimeServices.Model,
+        model: RuntimeServices.Model,
         environment: AgentRuntimeEnvironment,
         sessionID: String,
-        configuration: AgentRunnerConfiguration = .default,
-        tooling: AgentRuntimeServices.Tooling = .init(),
-        capabilityState: AgentCapabilityState? = nil,
+        configuration: AgentRunner.Configuration = .default,
+        tooling: RuntimeServices.Tooling = .init(),
+        capabilityState: AgentCapabilityState,
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init(),
+        recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
     ) throws {
         let stores = try AgentRuntimeStoreResolver(

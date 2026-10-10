@@ -75,7 +75,7 @@ public struct GovernedProgramToolExecutor:
     public func invoke(
         _ identifier: ToolIdentifier,
         input: JSONValue
-    ) async throws -> ToolExecutionResult {
+    ) async throws -> ToolExecution.Result {
         let invocation = ToolInvocation(
             id: "program-\(UUID().uuidString)",
             tool: identifier,
@@ -97,7 +97,7 @@ public struct GovernedProgramToolExecutor:
     public func resume(
         pendingApproval: PendingApproval,
         decision: ApprovalDecision
-    ) async throws -> ToolExecutionResult {
+    ) async throws -> ToolExecution.Result {
         let identifier = pendingApproval.toolCall.tool
 
         switch decision {
@@ -160,7 +160,7 @@ public struct GovernedProgramToolExecutor:
         _ invocation: ToolInvocation.Result,
         identifier: ToolIdentifier,
         source: String
-    ) throws -> ToolExecutionResult {
+    ) throws -> ToolExecution.Result {
         switch invocation.outcome {
         case .executed(let execution):
             guard !execution.result.isError else {

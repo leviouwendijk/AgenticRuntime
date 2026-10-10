@@ -38,7 +38,8 @@ extension AgenticProgramRuntimeFlowTesting {
             model: .init(
                 invoker: invoker,
                 selection: selection
-            )
+            ),
+            capabilityState: AgentCapabilityState(installed: .none)
         )
         let result = try await runner.run(
             request,
@@ -72,7 +73,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             result.response?.message.content.text,
             "fixture-response",
-            "Runtime consumes the AgentModelInvocationResult response"
+            "Runtime consumes the AgentModelInvocation.Result response"
         )
 
         return [
@@ -108,7 +109,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 ),
             ]
         )
-        var configuration = AgentRunnerConfiguration.default
+        var configuration = AgentRunner.Configuration.default
         configuration.responseDelivery = .stream
 
         let runner = AgentRunner(
@@ -116,7 +117,8 @@ extension AgenticProgramRuntimeFlowTesting {
                 invoker: invoker,
                 selection: selection
             ),
-            configuration: configuration
+            configuration: configuration,
+            capabilityState: AgentCapabilityState(installed: .none)
         )
         let result = try await runner.run(
             request,
@@ -179,7 +181,8 @@ extension AgenticProgramRuntimeFlowTesting {
             selection: ModeSelection(
                 mode: mode
             ),
-            tools: .init()
+            tools: .init(),
+            capabilityState: AgentCapabilityState(installed: .none)
         )
         let recorder = FixtureModelInvocationRecorder()
         let invoker = FixtureModelInvoker(
@@ -247,6 +250,7 @@ extension AgenticProgramRuntimeFlowTesting {
                     recorder: modelRecorder
                 )
             ),
+            capabilityState: AgentCapabilityState(installed: .none),
             recording: .init(
                 eventSinks: [
                     eventSink,
@@ -277,7 +281,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             messages.last?.content.text,
             "fixture-response",
-            "ToolLoopExecutor receives recording services from AgentRunner"
+            "AgentRunner propagates recording services into Agent execution"
         )
 
         return [
@@ -293,7 +297,7 @@ extension AgenticProgramRuntimeFlowTesting {
     }
 }
 
-private actor FixtureRuntimeEventSink: AgentRunEventSink {
+private actor FixtureRuntimeEventSink: Run.EventSink {
     private var messages: [Message] = []
 
     func recordMessage(
@@ -330,7 +334,7 @@ private struct FixtureModelInvoker: AgentModelInvoking {
 
     func buffered(
         _ invocation: AgentModelInvocation
-    ) async throws -> AgentModelInvocationResult {
+    ) async throws -> AgentModelInvocation.Result {
         await recorder.append(
             invocation
         )
@@ -342,7 +346,7 @@ private struct FixtureModelInvoker: AgentModelInvoking {
 
     func stream(
         _ invocation: AgentModelInvocation
-    ) -> AsyncThrowingStream<AgentModelInvocationEvent, Error> {
+    ) -> AsyncThrowingStream<AgentModelInvocation.Event, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 await recorder.append(
@@ -377,7 +381,7 @@ private struct FixtureModelInvoker: AgentModelInvoking {
 private func fixtureInvocationResult(
     for invocation: AgentModelInvocation,
     routeResult: AgentModelRouteResult? = nil
-) -> AgentModelInvocationResult {
+) -> AgentModelInvocation.Result {
     let response = AgentResponse(
         message: Message(
             role: .assistant,
@@ -392,7 +396,7 @@ private func fixtureInvocationResult(
         for: invocation.selection
     )
 
-    return AgentModelInvocationResult(
+    return AgentModelInvocation.Result(
         response: response,
         route: AgentModelRouteRecord(
             route: routeResult.route,

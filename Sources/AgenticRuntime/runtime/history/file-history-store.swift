@@ -1,4 +1,5 @@
 import Foundation
+import IO
 
 public actor FileHistoryStore: AgentHistoryStore {
     public let sessionsdir: URL
@@ -11,14 +12,12 @@ public actor FileHistoryStore: AgentHistoryStore {
 
     public func loadCheckpoint(
         sessionID: String
-    ) async throws -> AgentHistoryCheckpoint? {
+    ) async throws -> AgentRunner.Checkpoint? {
         let url = checkpointURL(
             for: sessionID
         )
 
-        guard FileManager.default.fileExists(
-            atPath: url.path
-        ) else {
+        guard FileSystem.default.exists(url) else {
             return nil
         }
 
@@ -31,23 +30,19 @@ public actor FileHistoryStore: AgentHistoryStore {
         }
 
         return try JSONDecoder().decode(
-            AgentHistoryCheckpoint.self,
+            AgentRunner.Checkpoint.self,
             from: data
         )
     }
 
     public func saveCheckpoint(
-        _ checkpoint: AgentHistoryCheckpoint
+        _ checkpoint: AgentRunner.Checkpoint
     ) async throws {
         let url = checkpointURL(
             for: checkpoint.id
         )
 
-        try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(),
-            withIntermediateDirectories: true,
-            attributes: nil
-        )
+        try FileSystem.default.directory.create(url.deletingLastPathComponent())
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(
@@ -67,15 +62,11 @@ public actor FileHistoryStore: AgentHistoryStore {
             for: sessionID
         )
 
-        guard FileManager.default.fileExists(
-            atPath: url.path
-        ) else {
+        guard FileSystem.default.exists(url) else {
             return
         }
 
-        try FileManager.default.removeItem(
-            at: url
-        )
+        try FileSystem.default.remove(url)
     }
 }
 

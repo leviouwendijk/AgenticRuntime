@@ -7,7 +7,7 @@ import Workspace
 /// Conversation, Program, and future child/task runners consume this common
 /// substrate or one of its strong capability projections rather than defining
 /// parallel Runtime service universes.
-public struct AgentRuntimeServices: Sendable {
+public struct RuntimeServices: Sendable {
     /// Model invocation capability used by Runtime execution paths that perform
     /// semantic model work.
     ///
@@ -38,7 +38,7 @@ public struct AgentRuntimeServices: Sendable {
     /// Governed tool execution capabilities shared by agent execution paths.
     ///
     /// Model-visible Tool selection is not stored here. It is projected from
-    /// the live AgentCapabilityState by the runner.
+    /// the live `AgentCapabilityState` by the runner.
     public struct Tooling: Sendable {
         public var registry: ToolRegistry
         public var workspace: WorkspaceContext?
@@ -94,13 +94,13 @@ public struct AgentRuntimeServices: Sendable {
     /// Run persistence, observation, and accounting capabilities.
     public struct Recording: Sendable {
         public var historyStore: (any AgentHistoryStore)?
-        public var eventSinks: [any AgentRunEventSink]
+        public var eventSinks: [any Run.EventSink]
         public var stateSinks: [any AgentRunStateSink]
         public var costTracker: AgentCostTracker?
 
         public init(
             historyStore: (any AgentHistoryStore)? = nil,
-            eventSinks: [any AgentRunEventSink] = [],
+            eventSinks: [any Run.EventSink] = [],
             stateSinks: [any AgentRunStateSink] = [],
             costTracker: AgentCostTracker? = nil
         ) {
@@ -114,7 +114,7 @@ public struct AgentRuntimeServices: Sendable {
         /// projection while retaining caller-provided observers and accounting.
         public func resolving(
             historyStore: (any AgentHistoryStore)?,
-            eventSinks: [any AgentRunEventSink]
+            eventSinks: [any Run.EventSink]
         ) -> Self {
             .init(
                 historyStore: historyStore ?? self.historyStore,
@@ -168,3 +168,4 @@ public struct AgentRuntimeServices: Sendable {
         self.metadata = metadata
     }
 }
+

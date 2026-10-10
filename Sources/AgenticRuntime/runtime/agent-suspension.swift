@@ -271,18 +271,4 @@ public extension Run {
 
 // MARK: - Deprecated compatibility aliases
 
-@available(
-    *,
-    deprecated,
-    renamed: "Run.Suspension"
-)
-public typealias AgentSuspension =
-    Run.Suspension
 
-@available(
-    *,
-    deprecated,
-    renamed: "Run.Suspension.Reason"
-)
-public typealias AgentSuspensionReason =
-    Run.Suspension.Reason

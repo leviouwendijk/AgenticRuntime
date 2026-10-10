@@ -35,6 +35,10 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/leviouwendijk/Tokens.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/leviouwendijk/Primitives.git",
             branch: "master"
         ),
@@ -56,6 +60,10 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/leviouwendijk/AgenticIO.git",
+            branch: "master"
+        ),
+        .package(
+            url: "https://github.com/leviouwendijk/IO.git",
             branch: "master"
         ),
         .package(
@@ -100,8 +108,16 @@ let package = Package(
                     package: "AgenticUsage"
                 ),
                 .product(
+                    name: "Tokens",
+                    package: "Tokens"
+                ),
+                .product(
                     name: "AgenticIO",
                     package: "AgenticIO"
+                ),
+                .product(
+                    name: "IO",
+                    package: "IO"
                 ),
                 .product(
                     name: "Primitives",
@@ -164,6 +180,10 @@ let package = Package(
                 .product(
                     name: "AgenticIO",
                     package: "AgenticIO"
+                ),
+                .product(
+                    name: "IO",
+                    package: "IO"
                 ),
                 .product(
                     name: "Path",

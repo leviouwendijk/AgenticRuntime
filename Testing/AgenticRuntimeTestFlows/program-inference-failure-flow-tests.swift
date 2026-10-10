@@ -108,7 +108,7 @@ private struct RuntimeInferenceFailureExecutor:
 
     func execute(
         _ invocation: InferenceInvocation
-    ) async throws -> InferenceInvocationResult {
+    ) async throws -> InferenceInvocation.Response {
         let fixture = try JSONDecoder().decode(
             RuntimeInferenceFailureInput.self,
             from: invocation.input

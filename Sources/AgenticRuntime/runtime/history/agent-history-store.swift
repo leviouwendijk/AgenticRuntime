@@ -1,10 +1,10 @@
 public protocol AgentHistoryStore: Sendable {
     func loadCheckpoint(
         sessionID: String
-    ) async throws -> AgentHistoryCheckpoint?
+    ) async throws -> AgentRunner.Checkpoint?
 
     func saveCheckpoint(
-        _ checkpoint: AgentHistoryCheckpoint
+        _ checkpoint: AgentRunner.Checkpoint
     ) async throws
 
     func deleteCheckpoint(

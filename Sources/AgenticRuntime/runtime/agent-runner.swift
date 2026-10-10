@@ -4,52 +4,47 @@ import Workspace
 import Foundation
 
 public actor AgentRunner {
-    public let model: AgentRuntimeServices.Model
-    public let configuration: AgentRunnerConfiguration
-    public let tooling: AgentRuntimeServices.Tooling
+    public let model: RuntimeServices.Model
+    public let configuration: AgentRunner.Configuration
+    public let tooling: RuntimeServices.Tooling
     public let capabilityState: AgentCapabilityState
+    public let capabilities: CapabilityInventory
     public let runControl: Run.Control
-    @available(
-        *,
-        deprecated,
-        renamed: "runControl"
-    )
-    public var interruptionController: Run.Control {
-        runControl
-    }
     public let extensions: [any AgentHarnessExtension]
-    public let recording: AgentRuntimeServices.Recording
+    public let recording: RuntimeServices.Recording
+    public let contextServices: Context.Services?
+    private var contextAllocators: [String: Context.Allocator] = [:]
 
     public init(
-        model: AgentRuntimeServices.Model,
-        configuration: AgentRunnerConfiguration = .default,
-        tooling: AgentRuntimeServices.Tooling = .init(),
-        capabilityState: AgentCapabilityState? = nil,
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        tooling: RuntimeServices.Tooling = .init(),
+        capabilityState: AgentCapabilityState,
+        inventory: CapabilityInventory? = nil,
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init()
+        recording: RuntimeServices.Recording = .init(),
+        contextServices: Context.Services? = nil
     ) {
         self.model = model
         self.configuration = configuration
         self.tooling = tooling
-        self.capabilityState =
-            capabilityState
-            ?? AgentCapabilityState(
-                installed: AgentCapabilitySet(
-                    tools: tooling.registry
-                        .modelFacingDefinitions
-                        .map(\.identifier)
-                )
-            )
+        self.capabilityState = capabilityState
+        self.capabilities = inventory ?? CapabilityInventory(
+            tools: tooling.registry,
+            catalog: tooling.catalog,
+            state: self.capabilityState
+        )
         self.runControl = Run.Control()
         self.extensions = extensions
         self.recording = recording
+        self.contextServices = contextServices
     }
 
     public func run(
         _ request: AgentRequest,
         sessionID: String = UUID().uuidString
-    ) async throws -> AgentRunResult {
-        let executor = try await makeToolLoopExecutor()
+    ) async throws -> AgentRunner.Result {
+        let executor = try await makeAgentLoop(sessionID: sessionID)
 
         return try await executor.run(
             request,
@@ -59,7 +54,7 @@ public actor AgentRunner {
 
     public func resume(
         sessionID: String
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }
@@ -97,7 +92,7 @@ public actor AgentRunner {
 
         case .ready_for_model,
              .processing_tool_calls:
-            let executor = try await makeToolLoopExecutor(
+            let executor = try await makeAgentLoop(
                 restoring: checkpoint
             )
 
@@ -143,7 +138,7 @@ public actor AgentRunner {
         sessionID: String,
         userInput: String,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try await resume(
             sessionID: sessionID,
             answer: .text(
@@ -157,7 +152,7 @@ public actor AgentRunner {
         sessionID: String,
         answer: UserInputAnswer,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try await resume(
             sessionID: sessionID,
             reply: .answer(
@@ -171,7 +166,7 @@ public actor AgentRunner {
         sessionID: String,
         reply: UserInputReply,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }
@@ -184,7 +179,7 @@ public actor AgentRunner {
             )
         }
 
-        let executor = try await makeToolLoopExecutor(
+        let executor = try await makeAgentLoop(
             restoring: checkpoint
         )
 
@@ -197,29 +192,81 @@ public actor AgentRunner {
 }
 
 extension AgentRunner {
-    func makeToolLoopExecutor(
-        restoring checkpoint: AgentHistoryCheckpoint? = nil
-    ) async throws -> ToolLoopExecutor {
+    func makeAgentLoop(
+        restoring checkpoint: AgentRunner.Checkpoint? = nil,
+        sessionID: String? = nil
+    ) async throws -> AgentLoop {
         if let checkpoint {
-            _ = await capabilityState.restore(
-                checkpoint.capabilities
+            guard checkpoint.contextMode == configuration.contextMode else {
+                throw ContextExecutionError.checkpointModeChanged
+            }
+            guard checkpoint.contextPolicy == configuration.contextPolicy else {
+                throw ContextExecutionError.checkpointPolicyChanged
+            }
+            _ = await capabilityState.restore(checkpoint.capabilities)
+        }
+        if configuration.contextMode == .dynamic,
+           configuration.compactionStrategy != nil {
+            throw ContextExecutionError.incompatibleCompaction
+        }
+        let identity = checkpoint?.id ?? sessionID
+        let contextAllocator: Context.Allocator?
+        if configuration.contextMode == .dynamic, let identity {
+            contextAllocator = try await contextAllocatorForSession(
+                identity,
+                restoring: checkpoint?.contextWorkingSet,
+                transitions: checkpoint?.contextTransitions ?? []
             )
+        } else {
+            contextAllocator = nil
         }
 
-        return ToolLoopExecutor(
+        return AgentLoop(
             model: model,
             configuration: configuration,
             tooling: tooling,
             capabilityState: capabilityState,
+            inventory: capabilities,
             runControl: runControl,
             extensions: extensions,
-            recording: recording
+            recording: recording,
+            contextAllocator: contextAllocator,
+            contextServices: contextServices
         )
     }
 
+    private func contextAllocatorForSession(
+        _ sessionID: String,
+        restoring saved: Context.WorkingSet?,
+        transitions: [Context.Transition]
+    ) async throws -> Context.Allocator {
+        if let previous = contextAllocators[sessionID] {
+            return previous
+        }
+        let allocator = try Context.Allocator(policy: configuration.contextPolicy)
+        if let saved {
+            guard saved.id == sessionID else {
+                throw ContextAllocatorError.unknownWorkingSet(saved.id)
+            }
+            try await allocator.restore(saved, transitions: transitions)
+        } else {
+            try await allocator.createWorkingSet(id: sessionID)
+        }
+        contextAllocators[sessionID] = allocator
+        return allocator
+    }
+
+    /// Trusted host API. This is not a model-callable capability or a source grant.
+    public func contextAllocator(for sessionID: String) async throws -> Context.Allocator {
+        guard configuration.contextMode == .dynamic else {
+            throw ContextExecutionError.requiresDynamicMode
+        }
+        return try await contextAllocatorForSession(sessionID, restoring: nil, transitions: [])
+    }
+
     func suspendedResult(
-        from checkpoint: AgentHistoryCheckpoint
-    ) throws -> AgentRunResult {
+        from checkpoint: AgentRunner.Checkpoint
+    ) throws -> AgentRunner.Result {
         guard let suspension = checkpoint.resolvedSuspension else {
             throw AgentHistoryError.corruptedCheckpoint(
                 "suspended checkpoint without suspension payload"
@@ -241,11 +288,11 @@ extension AgentRunner {
 
 public extension AgentRunner {
     init(
-        model: AgentRuntimeServices.Model,
+        model: RuntimeServices.Model,
         modeApplication: ModeRuntimeApplication,
-        tooling: AgentRuntimeServices.Tooling = .init(),
+        tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init()
+        recording: RuntimeServices.Recording = .init()
     ) {
         self.init(
             model: model.selecting(
@@ -262,13 +309,13 @@ public extension AgentRunner {
     }
 
     init(
-        model: AgentRuntimeServices.Model,
+        model: RuntimeServices.Model,
         environment: AgentRuntimeEnvironment,
         sessionID: String,
         modeApplication: ModeRuntimeApplication,
-        tooling: AgentRuntimeServices.Tooling = .init(),
+        tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
-        recording: AgentRuntimeServices.Recording = .init(),
+        recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
     ) throws {
         try self.init(

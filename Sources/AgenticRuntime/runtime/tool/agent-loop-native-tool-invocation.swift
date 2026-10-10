@@ -1,10 +1,10 @@
 import Agentic
 import Primitives
 
-extension ToolLoopExecutor {
+extension AgentLoop {
     func applyNativeToolInvocations(
         _ invocations: [ToolInvocation.Result],
-        to checkpoint: inout AgentHistoryCheckpoint
+        to checkpoint: inout AgentRunner.Checkpoint
     ) async throws {
         for invocation in invocations {
             guard let result = invocation.execution?.result else {
@@ -148,7 +148,7 @@ extension ToolLoopExecutor {
     func suspendForNativeApproval(
         _ review: ToolInvocation.Review,
         invocations: [ToolInvocation.Result],
-        checkpoint: inout AgentHistoryCheckpoint
+        checkpoint: inout AgentRunner.Checkpoint
     ) async throws {
         checkpoint.state.iteration += 1
 
@@ -277,7 +277,7 @@ extension ToolLoopExecutor {
 
     func finishNativeCapabilityBoundary(
         invocations: [ToolInvocation.Result],
-        checkpoint: inout AgentHistoryCheckpoint
+        checkpoint: inout AgentRunner.Checkpoint
     ) async throws {
         checkpoint.state.iteration += 1
 

@@ -24,7 +24,7 @@ extension AgenticProgramRuntimeFlowTesting {
         }
 
         try Expect.equal(
-            application.programRegistrations.count,
+            application.programBindings.count,
             1,
             "application DSL captures installed program registrations"
         )
@@ -117,7 +117,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 input: input
             )
         } catch ProgramExecutionError
-            .registrationUnavailable {
+            .bindingUnavailable {
             unknownRejected = true
         }
 

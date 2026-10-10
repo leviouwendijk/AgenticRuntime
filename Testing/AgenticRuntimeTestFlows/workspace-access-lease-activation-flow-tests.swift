@@ -1,4 +1,5 @@
 import AgenticIO
+import IO
 import AgenticRuntime
 import Workspace
 import Foundation
@@ -32,18 +33,9 @@ extension AgenticProgramRuntimeFlowTesting {
             isDirectory: false
         )
 
-        try FileManager.default.createDirectory(
-            at: projectRoot,
-            withIntermediateDirectories: true
-        )
-        try FileManager.default.createDirectory(
-            at: turnRoot,
-            withIntermediateDirectories: true
-        )
-        try FileManager.default.createDirectory(
-            at: sessionRoot,
-            withIntermediateDirectories: true
-        )
+        try FileSystem.default.directory.create(projectRoot)
+        try FileSystem.default.directory.create(turnRoot)
+        try FileSystem.default.directory.create(sessionRoot)
         try "turn fixture\n".write(
             to: turnFile,
             atomically: true,
@@ -51,9 +43,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
 
         defer {
-            try? FileManager.default.removeItem(
-                at: fixtureRoot
-            )
+            try? FileSystem.default.remove(fixtureRoot)
         }
 
         let projectRootID = PathAccessRootIdentifier(

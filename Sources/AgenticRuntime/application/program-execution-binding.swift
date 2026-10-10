@@ -1,17 +1,41 @@
 import Agentic
 import Foundation
 import Primitives
+import Schema
 
-public struct ProgramRegistration:
-    Sendable
+public struct ProgramExecutionBinding:
+    CapabilityBinding
 {
-    public let registeredProgram: RegisteredProgram
+    public let program: ProgramBinding
+
+    public var reference: CapabilityReference {
+        program.reference
+    }
+
+    /// The Core Program binding remains the source of this typed contract.
+    public var capabilityContract: CapabilityContract {
+        program.capabilityContract
+    }
+
+    public var semanticInputSchema: JSONSchema {
+        capabilityContract.input
+    }
+
+    public var semanticOutputSchema: JSONSchema {
+        capabilityContract.output
+    }
+
+    public var modelFacingInputSchema: JSONSchema {
+        CapabilityModelInputSchema.envelope(
+            semanticInput: semanticInputSchema
+        )
+    }
 
     private let executeHandler:
         @Sendable (
             JSONValue,
             JSONValue?,
-            AgentRuntimeServices,
+            RuntimeServices,
             [String: String]
         ) async throws -> ProgramExecutionRecord
 
@@ -19,14 +43,14 @@ public struct ProgramRegistration:
         @Sendable (
             ProgramCheckpoint,
             Run.Interaction.Response,
-            AgentRuntimeServices
+            RuntimeServices
         ) async throws -> ProgramExecutionRecord
 
     public init<ProgramType: Program>(
         _ program: ProgramType,
         defaultRealization: ProgramRealization<ProgramType>? = nil
     ) {
-        self.registeredProgram = RegisteredProgram(
+        self.program = ProgramBinding(
             program
         )
 
@@ -82,17 +106,17 @@ public struct ProgramRegistration:
     }
 
     public var identifier: ProgramIdentifier {
-        registeredProgram.identifier
+        program.identifier
     }
 
     public var definition: ProgramDefinition {
-        registeredProgram.definition
+        program.definition
     }
 
     public func execute(
         input: JSONValue,
         realization: JSONValue? = nil,
-        services: AgentRuntimeServices = .init(),
+        services: RuntimeServices = .init(),
         metadata: [String: String] = [:]
     ) async throws -> ProgramExecutionRecord {
         try await executeHandler(
@@ -106,7 +130,7 @@ public struct ProgramRegistration:
     public func resume(
         from checkpoint: ProgramCheckpoint,
         interaction response: Run.Interaction.Response,
-        services: AgentRuntimeServices = .init()
+        services: RuntimeServices = .init()
     ) async throws -> ProgramExecutionRecord {
         try await resumeHandler(
             checkpoint,
@@ -121,14 +145,14 @@ public enum ProgramExecutionError:
     Sendable,
     LocalizedError
 {
-    case registrationUnavailable(
+    case bindingUnavailable(
         ProgramIdentifier
     )
 
     public var errorDescription: String? {
         switch self {
-        case .registrationUnavailable(let identifier):
-            return "No Runtime execution registration is installed for program '\(identifier.rawValue)'."
+        case .bindingUnavailable(let identifier):
+            return "No Runtime execution binding is installed for program '\(identifier.rawValue)'."
         }
     }
 }

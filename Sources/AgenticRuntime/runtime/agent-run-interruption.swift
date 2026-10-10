@@ -69,26 +69,5 @@ public extension Run {
 
 // MARK: - Deprecated compatibility aliases
 
-@available(
-    *,
-    deprecated,
-    renamed: "Run.Interruption.Mode"
-)
-public typealias AgentRunInterruptionMode =
-    Run.Interruption.Mode
 
-@available(
-    *,
-    deprecated,
-    renamed: "Run.Interruption"
-)
-public typealias AgentRunInterruptionRequest =
-    Run.Interruption
 
-@available(
-    *,
-    deprecated,
-    renamed: "Run.Control"
-)
-public typealias AgentRunInterruptionController =
-    Run.Control

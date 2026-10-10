@@ -149,7 +149,7 @@ public extension ModeRuntimeApplication {
         composer: ContextComposer = .init(),
         generationConfiguration: AgentGenerationConfiguration = .default,
         additionalMetadata: [String: String] = [:]
-    ) throws -> AgentRequest {
+    ) async throws -> AgentRequest {
         var messages: [Message] = []
 
         if let system,
@@ -180,7 +180,7 @@ public extension ModeRuntimeApplication {
 
         return AgentRequest(
             messages: messages,
-            tools: toolDefinitions,
+            tools: try await modelFacingToolDefinitions(),
             generationConfiguration: generationConfiguration,
             metadata: requestMetadata(
                 additionalMetadata: additionalMetadata
@@ -194,7 +194,7 @@ public extension ModeRuntimeApplication {
         composer: ContextComposer = .init(),
         generationConfiguration: AgentGenerationConfiguration = .default,
         additionalMetadata: [String: String] = [:]
-    ) throws -> AgentRequest {
+    ) async throws -> AgentRequest {
         var messages = baseMessages
 
         if let context = try contextMessage(
@@ -215,7 +215,7 @@ public extension ModeRuntimeApplication {
 
         return AgentRequest(
             messages: messages,
-            tools: toolDefinitions,
+            tools: try await modelFacingToolDefinitions(),
             generationConfiguration: generationConfiguration,
             metadata: requestMetadata(
                 additionalMetadata: additionalMetadata

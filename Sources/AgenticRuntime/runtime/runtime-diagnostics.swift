@@ -111,12 +111,7 @@ public extension AgenticRuntime {
             )
         )
 
-        let installedCapabilities = AgentRealization
-            .installedCapabilities(
-                tools: tools,
-                programs: programs,
-                agents: agents
-            )
+        let installedCapabilities = installed.capabilities
 
         // Provider function/tool projection currently supports Tool definitions.
         // Programs, Inferences, and Agents become non-empty here when their
@@ -135,8 +130,9 @@ public extension AgenticRuntime {
 
         var warnings: [RuntimeDiagnosticWarning] = []
 
-        if !catalogCapabilities.inferences.isEmpty,
-           installedCapabilities.inferences.isEmpty
+        if !Set(catalogCapabilities.inferences)
+            .subtracting(installedCapabilities.inferences)
+            .isEmpty
         {
             warnings.append(
                 .catalog_inferences_not_executable
@@ -164,8 +160,8 @@ public extension AgenticRuntime {
             catalog: catalogCapabilities,
             installed: installedCapabilities,
             modelCallable: modelCallableCapabilities,
-            registeredTools: toolInventory.entries.count,
-            modelFacingTools: toolInventory.modelFacingEntries.count,
+            registeredTools: installed.tools.count,
+            modelFacingTools: installed.tools.modelFacingDefinitions.count,
             skills: skills.skills_sorted.map(
                 \.identifier
             ),

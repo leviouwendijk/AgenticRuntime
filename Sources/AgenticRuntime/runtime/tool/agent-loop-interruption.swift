@@ -1,11 +1,11 @@
 import Agentic
 
-extension ToolLoopExecutor {
+extension AgentLoop {
     func interrupt(
-        _ checkpoint: AgentHistoryCheckpoint,
+        _ checkpoint: AgentRunner.Checkpoint,
         mode: Run.Interruption.Mode,
         reason: String? = nil
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         var checkpoint = checkpoint
 
         try await applyInterruption(
@@ -40,7 +40,7 @@ extension ToolLoopExecutor {
     }
 
     func applyInterruption(
-        to checkpoint: inout AgentHistoryCheckpoint,
+        to checkpoint: inout AgentRunner.Checkpoint,
         request: Run.Interruption
     ) async throws {
         try await closeOutstandingToolCallsForInterruption(
@@ -70,7 +70,7 @@ extension ToolLoopExecutor {
     }
 
     func interruptStreamingTurn(
-        checkpoint: inout AgentHistoryCheckpoint,
+        checkpoint: inout AgentRunner.Checkpoint,
         accumulator: AgentStreamAccumulator,
         request: Run.Interruption
     ) async throws {
@@ -108,7 +108,7 @@ extension ToolLoopExecutor {
     }
 
     private func closeOutstandingToolCallsForInterruption(
-        in checkpoint: inout AgentHistoryCheckpoint
+        in checkpoint: inout AgentRunner.Checkpoint
     ) async throws {
         if checkpoint.toolBatch == nil,
            let response = checkpoint.lastResponse,

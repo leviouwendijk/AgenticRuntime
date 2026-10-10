@@ -1,4 +1,5 @@
 import Foundation
+import IO
 
 public actor FileApprovalEventStore: AgentApprovalEventStore {
     public let fileURL: URL
@@ -10,9 +11,7 @@ public actor FileApprovalEventStore: AgentApprovalEventStore {
     }
 
     public func loadEvents() async throws -> [AgentApprovalEvent] {
-        guard FileManager.default.fileExists(
-            atPath: fileURL.path
-        ) else {
+        guard FileSystem.default.exists(fileURL) else {
             return []
         }
 
@@ -60,9 +59,7 @@ public actor FileApprovalEventStore: AgentApprovalEventStore {
             event
         )
 
-        if !FileManager.default.fileExists(
-            atPath: fileURL.path
-        ) {
+        if !FileSystem.default.exists(fileURL) {
             try data.write(
                 to: fileURL,
                 options: .atomic
@@ -98,11 +95,7 @@ public actor FileApprovalEventStore: AgentApprovalEventStore {
 
 private extension FileApprovalEventStore {
     func ensureParentDirectoryExists() throws {
-        try FileManager.default.createDirectory(
-            at: fileURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true,
-            attributes: nil
-        )
+        try FileSystem.default.directory.create(fileURL.deletingLastPathComponent())
     }
 
     func appendNewline() throws {

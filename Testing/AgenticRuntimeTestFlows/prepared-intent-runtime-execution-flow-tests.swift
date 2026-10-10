@@ -1,4 +1,5 @@
 import Agentic
+import IO
 import AgenticRuntime
 import Foundation
 import TestFlows
@@ -16,9 +17,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 )
 
         defer {
-            try? FileManager.default.removeItem(
-                at: preparedIntentsdir
-            )
+            try? FileSystem.default.remove(preparedIntentsdir)
         }
 
         let manager = PreparedIntentManager(

@@ -13,6 +13,42 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
     static let title = "Agentic program runtime flow tests"
 
     static let flows: [TestFlow] = [
+        TestFlow(
+            "context-allocator",
+            tags: ["runtime", "context", "allocator", "working-set", "budget"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runContextAllocator()
+        },
+        TestFlow(
+            "context-inference-preparation",
+            tags: ["runtime", "context", "inference", "budget", "token-estimation"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runContextInferencePreparation()
+        },
+        TestFlow(
+            "context-evidence-resolution",
+            tags: ["runtime", "context", "evidence", "session", "authorization"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runContextEvidenceResolution()
+        },
+        TestFlow(
+            "context-invocation-audit",
+            tags: ["runtime", "context", "inference", "audit", "usage"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runContextInvocationAudit()
+        },
+        TestFlow(
+            "context-allocator-roles",
+            tags: ["runtime", "context", "allocator", "roles", "models"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runContextAllocatorRoles()
+        },
+        TestFlow(
+            "context-dynamic-mode",
+            tags: ["runtime", "context", "dynamic", "history", "checkpoint"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runContextDynamicMode()
+        },
         TestFlow("tool-observation-history", tags: ["runtime", "observations", "persistence"]) {
             try AgenticProgramRuntimeFlowTesting.runToolObservationHistory()
         },
@@ -46,6 +82,36 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runAgentRealization()
         },
         TestFlow(
+            "inference-installation",
+            tags: ["agentic-runtime", "inference", "installation", "execution", "realization"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runInferenceInstallation()
+        },
+        TestFlow(
+            "agent-owned-capability-inventory-live-mutation",
+            tags: ["agentic-runtime", "agent", "capabilities", "live", "installation"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runLiveCapabilityInventory()
+        },
+        TestFlow(
+            "capability-dispatch",
+            tags: ["agentic-runtime", "capabilities", "inference", "authorization"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runCapabilityDispatch()
+        },
+        TestFlow(
+            "capability-contract-alignment",
+            tags: ["agentic-runtime", "capabilities", "typed", "contract"]
+        ) {
+            try AgenticProgramRuntimeFlowTesting.runCapabilityContractAlignment()
+        },
+        TestFlow(
+            "model-capability-projection",
+            tags: ["agentic-runtime", "capabilities", "projection", "model"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runModelCapabilityProjection()
+        },
+        TestFlow(
             "runtime-diagnostics",
             tags: [
                 "agentic-runtime",
@@ -71,6 +137,20 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
         ) {
             try await AgenticProgramRuntimeFlowTesting
                 .runAgentInvocation()
+        },
+        TestFlow(
+            "agent-authored-visible-capabilities-survive-runtime-launch",
+            tags: [
+                "agentic-runtime",
+                "agent",
+                "mode",
+                "capabilities",
+                "visibility",
+                "launch",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runAuthoredVisibleCapabilitiesSurviveLaunch()
         },
         TestFlow(
             "program-execution-record",

@@ -74,7 +74,7 @@ public struct AgentRuntimeStoreResolver: Sendable {
 private extension AgentRuntimeStoreResolver {
     func transcriptEventSinks(
         sessionID: String
-    ) throws -> [any AgentRunEventSink] {
+    ) throws -> [any Run.EventSink] {
         guard let transcriptfile = environment.transcriptfile(
             sessionID: sessionID
         ) else {
@@ -150,7 +150,7 @@ private extension AgentRuntimeStoreResolver {
     func approvalEventSinks(
         sessionID: String,
         approvalEventStore: (any AgentApprovalEventStore)?
-    ) -> [any AgentRunEventSink] {
+    ) -> [any Run.EventSink] {
         guard let approvalEventStore else {
             return []
         }

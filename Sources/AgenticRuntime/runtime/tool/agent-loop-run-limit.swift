@@ -1,6 +1,6 @@
-extension ToolLoopExecutor {
+extension AgentLoop {
     func runLimitExhaustion(
-        in checkpoint: AgentHistoryCheckpoint
+        in checkpoint: AgentRunner.Checkpoint
     ) -> AgentRunLimitExhaustion? {
         guard let limit = checkpoint.runLimits.iterations,
               checkpoint.state.iteration >= limit
@@ -16,8 +16,8 @@ extension ToolLoopExecutor {
 
     func suspendForRunLimit(
         _ exhaustion: AgentRunLimitExhaustion,
-        checkpoint: inout AgentHistoryCheckpoint
-    ) async throws -> AgentRunResult {
+        checkpoint: inout AgentRunner.Checkpoint
+    ) async throws -> AgentRunner.Result {
         let suspension = Run.Suspension.run_limit(
             exhaustion
         )
@@ -46,10 +46,10 @@ extension ToolLoopExecutor {
     }
 
     func resumeFromRunLimit(
-        _ checkpoint: AgentHistoryCheckpoint,
+        _ checkpoint: AgentRunner.Checkpoint,
         resolution: AgentRunLimitResolution,
         metadata: [String: String]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         var checkpoint = checkpoint
         _ = metadata
 

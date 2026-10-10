@@ -24,8 +24,16 @@ public struct AgenticApplication:
     public let catalog: Catalog
     public let toolRegistrations: [AgentToolRegistration]
     public let skillRegistrations: [AgentSkillRegistration]
-    public let programRegistrations: [ProgramRegistration]
-    public let agentDefinitions: [AgentDefinition]
+    public let programBindings: [ProgramExecutionBinding]
+    public let inferenceBindings: [InferenceBinding]
+    public let adapterRegistrations: [any InferenceAdapter]
+    public let agentBindings: [AgentBinding]
+
+    /// Compatibility view for consumers that inspect authored definitions.
+    /// Does not own a second set of installed Agents.
+    public var agentDefinitions: [AgentDefinition] {
+        agentBindings.map(\.definition)
+    }
     public let launchEntries: [ApplicationLaunchEntry]
     public let gatewayFactories: [AgentModelGatewayFactory]
     public let modelProviders: [any AgentModelProvider]
@@ -39,8 +47,10 @@ public struct AgenticApplication:
         var catalog = Catalog.none
         var toolRegistrations: [AgentToolRegistration] = []
         var skillRegistrations: [AgentSkillRegistration] = []
-        var programRegistrations: [ProgramRegistration] = []
-        var agentDefinitions: [AgentDefinition] = []
+        var programBindings: [ProgramExecutionBinding] = []
+        var inferenceBindings: [InferenceBinding] = []
+        var adapterRegistrations: [any InferenceAdapter] = []
+        var agentBindings: [AgentBinding] = []
         var launchEntries: [ApplicationLaunchEntry] = []
         var gatewayFactories: [AgentModelGatewayFactory] = []
         var modelProviders: [any AgentModelProvider] = []
@@ -61,14 +71,20 @@ public struct AgenticApplication:
                 )
 
             case .programs(let registrations):
-                programRegistrations.append(
+                programBindings.append(
                     contentsOf: registrations
                 )
 
-            case .agents(let definitions):
-                agentDefinitions.append(
-                    contentsOf: definitions
+            case .inferences(let registrations):
+                inferenceBindings.append(
+                    contentsOf: registrations
                 )
+
+            case .adapters(let registrations):
+                adapterRegistrations.append(contentsOf: registrations)
+
+            case .agents(let bindings):
+                agentBindings.append(contentsOf: bindings)
 
             case .launches(let entries):
                 launchEntries.append(
@@ -93,8 +109,10 @@ public struct AgenticApplication:
         self.catalog = catalog
         self.toolRegistrations = toolRegistrations
         self.skillRegistrations = skillRegistrations
-        self.programRegistrations = programRegistrations
-        self.agentDefinitions = agentDefinitions
+        self.programBindings = programBindings
+        self.inferenceBindings = inferenceBindings
+        self.adapterRegistrations = adapterRegistrations
+        self.agentBindings = agentBindings
         self.launchEntries = launchEntries
         self.gatewayFactories = gatewayFactories
         self.modelProviders = modelProviders

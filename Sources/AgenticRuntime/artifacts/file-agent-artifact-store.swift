@@ -1,4 +1,5 @@
 import Agentic
+import IO
 import Foundation
 
 public actor FileAgentArtifactStore: AgentArtifactStore {
@@ -50,11 +51,7 @@ public actor FileAgentArtifactStore: AgentArtifactStore {
             id: id
         )
 
-        try FileManager.default.createDirectory(
-            at: artifactdir,
-            withIntermediateDirectories: true,
-            attributes: nil
-        )
+        try FileSystem.default.directory.create(artifactdir)
 
         try contentData.write(
             to: contentURL(
@@ -85,27 +82,17 @@ public actor FileAgentArtifactStore: AgentArtifactStore {
         latestFirst: Bool = true,
         limit: Int? = nil
     ) async throws -> [AgentArtifact] {
-        guard FileManager.default.fileExists(
-            atPath: artifactdir.path
-        ) else {
+        guard FileSystem.default.exists(artifactdir) else {
             return []
         }
 
-        let urls = try FileManager.default.contentsOfDirectory(
-            at: artifactdir,
-            includingPropertiesForKeys: nil,
-            options: [
-                .skipsHiddenFiles
-            ]
+        let urls = try FileSystem.default.directory.contents(
+            artifactdir,
+            options: [.skipsHiddenFiles]
         )
 
         var artifacts = try urls.compactMap { url -> AgentArtifact? in
-            var isDirectory: ObjCBool = false
-
-            guard FileManager.default.fileExists(
-                atPath: url.path,
-                isDirectory: &isDirectory
-            ), isDirectory.boolValue else {
+            guard (try? FileInspector(FileSystem.default.resolve(url)).inspect().kind) == .directory else {
                 return nil
             }
 
@@ -114,9 +101,7 @@ public actor FileAgentArtifactStore: AgentArtifactStore {
                 isDirectory: false
             )
 
-            guard FileManager.default.fileExists(
-                atPath: metadataURL.path
-            ) else {
+            guard FileSystem.default.exists(metadataURL) else {
                 return nil
             }
 
@@ -178,9 +163,7 @@ public actor FileAgentArtifactStore: AgentArtifactStore {
             id: id
         )
 
-        guard FileManager.default.fileExists(
-            atPath: metadataURL.path
-        ) else {
+        guard FileSystem.default.exists(metadataURL) else {
             return nil
         }
 

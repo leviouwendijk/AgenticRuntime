@@ -2,12 +2,12 @@ import Agentic
 import AgenticIO
 import Primitives
 
-extension ToolLoopExecutor {
+extension AgentLoop {
     func resumeWithWorkspaceAccess(
-        _ checkpoint: AgentHistoryCheckpoint,
+        _ checkpoint: AgentRunner.Checkpoint,
         resolution: WorkspaceAccessResolution,
         metadata: [String: String]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         var checkpoint = checkpoint
 
         guard checkpoint.phase == .suspended
@@ -42,7 +42,7 @@ extension ToolLoopExecutor {
             new
         }
 
-        let result = ToolResult(
+        let result = ToolCall.Response(
             call: ToolCall.Reference(
                 id: toolCallID,
                 tool: ToolIdentifier(toolName)

@@ -1,4 +1,5 @@
 import Agentic
+import IO
 import Foundation
 import Macros
 import Schema
@@ -100,20 +101,14 @@ public struct AgentSessionCatalog: Sendable {
             throw AgentSessionCatalogError.durableStorageRequired
         }
 
-        guard FileManager.default.fileExists(
-            atPath: sessionsdir.path
-        ) else {
+        guard FileSystem.default.exists(sessionsdir) else {
             return []
         }
 
-        let urls = try FileManager.default.contentsOfDirectory(
-            at: sessionsdir,
-            includingPropertiesForKeys: [
-                .isDirectoryKey
-            ],
-            options: [
-                .skipsHiddenFiles
-            ]
+        let urls = try FileSystem.default.directory.contents(
+            sessionsdir,
+            properties: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
         )
 
         let summaries = try urls.compactMap { url -> AgentSessionSummary? in
@@ -166,9 +161,7 @@ public struct AgentSessionCatalog: Sendable {
         guard let sessiondir = environment.sessiondir(
             sessionID: sessionID
         ),
-              FileManager.default.fileExists(
-                atPath: sessiondir.path
-              )
+              FileSystem.default.exists(sessiondir)
         else {
             throw AgentSessionCatalogError.sessionNotFound(
                 sessionID
@@ -492,17 +485,11 @@ private extension AgentSessionCatalog {
         guard let url = environment.artifactdir(
             sessionID: sessionID
         ),
-              FileManager.default.fileExists(
-                atPath: url.path
-              ),
-              let urls = try? FileManager.default.contentsOfDirectory(
-                at: url,
-                includingPropertiesForKeys: [
-                    .isDirectoryKey
-                ],
-                options: [
-                    .skipsHiddenFiles
-                ]
+              FileSystem.default.exists(url),
+              let urls = try? FileSystem.default.directory.contents(
+                  url,
+                  properties: [.isDirectoryKey],
+                  options: [.skipsHiddenFiles]
               )
         else {
             return 0
@@ -513,13 +500,8 @@ private extension AgentSessionCatalog {
                 return false
             }
 
-            return FileManager.default.fileExists(
-                atPath: url
-                    .appendingPathComponent(
-                        "artifact.json",
-                        isDirectory: false
-                    )
-                    .path
+            return FileSystem.default.exists(
+                url.appendingPathComponent( "artifact.json", isDirectory: false ) 
             )
         }.count
     }
@@ -528,15 +510,10 @@ private extension AgentSessionCatalog {
         sessionID: String
     ) -> Int {
         guard let url = environment.preparedintentsdir(),
-              FileManager.default.fileExists(
-                atPath: url.path
-              ),
-              let urls = try? FileManager.default.contentsOfDirectory(
-                at: url,
-                includingPropertiesForKeys: nil,
-                options: [
-                    .skipsHiddenFiles
-                ]
+              FileSystem.default.exists(url),
+              let urls = try? FileSystem.default.directory.contents(
+                  url,
+                  options: [.skipsHiddenFiles]
               )
         else {
             return 0
@@ -567,9 +544,7 @@ private extension AgentSessionCatalog {
             return false
         }
 
-        return FileManager.default.fileExists(
-            atPath: url.path
-        )
+        return FileSystem.default.exists(url)
     }
 
     func isDirectory(

@@ -110,7 +110,7 @@ public extension Run {
                     default:
                         throw DecodingError.dataCorruptedError(
                             in: container,
-                            debugDescription: "Unsupported AgentInteraction.Resolution kind '\(rawValue)'."
+                            debugDescription: "Unsupported Run.Interaction.Resolution kind '\(rawValue)'."
                         )
                     }
                 }
@@ -287,12 +287,6 @@ public extension Run {
     }
 }
 
-@available(
-    *,
-    deprecated,
-    renamed: "Run.Interaction"
-)
-public typealias AgentInteraction = Run.Interaction
 
 public extension Run.Suspension.Reason {
     var interactionKind: Run.Interaction.Kind {

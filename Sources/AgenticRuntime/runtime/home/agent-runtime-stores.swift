@@ -7,7 +7,7 @@ public struct AgentRuntimeStores: Sendable {
     public let approvalEventStore: (any AgentApprovalEventStore)?
     public let artifactStore: (any AgentArtifactStore)?
     public let preparedIntentStore: (any PreparedIntentStore)?
-    public let eventSinks: [any AgentRunEventSink]
+    public let eventSinks: [any Run.EventSink]
     public let sessionsdir: URL?
     public let transcriptsdir: URL?
     public let approvalsdir: URL?
@@ -20,7 +20,7 @@ public struct AgentRuntimeStores: Sendable {
         approvalEventStore: (any AgentApprovalEventStore)? = nil,
         artifactStore: (any AgentArtifactStore)? = nil,
         preparedIntentStore: (any PreparedIntentStore)? = nil,
-        eventSinks: [any AgentRunEventSink] = [],
+        eventSinks: [any Run.EventSink] = [],
         sessionsdir: URL? = nil,
         transcriptsdir: URL? = nil,
         approvalsdir: URL? = nil,

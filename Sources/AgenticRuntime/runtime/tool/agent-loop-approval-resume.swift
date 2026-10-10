@@ -1,11 +1,11 @@
 import Agentic
 
-public extension ToolLoopExecutor {
+extension AgentLoop {
     func resume(
-        _ checkpoint: AgentHistoryCheckpoint,
+        _ checkpoint: AgentRunner.Checkpoint,
         approvalDecision: ApprovalDecision,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         try await resumeApproval(
             checkpoint,
             decision: approvalDecision,
@@ -14,12 +14,12 @@ public extension ToolLoopExecutor {
     }
 }
 
-extension ToolLoopExecutor {
+extension AgentLoop {
     func resumeApproval(
-        _ checkpoint: AgentHistoryCheckpoint,
+        _ checkpoint: AgentRunner.Checkpoint,
         decision: ApprovalDecision,
         metadata: [String: String]
-    ) async throws -> AgentRunResult {
+    ) async throws -> AgentRunner.Result {
         var checkpoint = checkpoint
 
         guard let pendingApproval = checkpoint.resolvedSuspension?.pendingApproval else {
@@ -42,7 +42,8 @@ extension ToolLoopExecutor {
             )
 
             let execution = try await executeApprovedToolCall(
-                pendingApproval
+                pendingApproval,
+                advertisedTools: checkpoint.lastAdvertisedTools
             )
             let result = execution.result
 

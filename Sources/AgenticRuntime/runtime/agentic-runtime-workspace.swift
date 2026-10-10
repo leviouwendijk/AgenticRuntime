@@ -1,4 +1,5 @@
 import Agentic
+import IO
 import Foundation
 import Path
 import Workspace
@@ -54,13 +55,7 @@ public enum AgenticRuntimeWorkspace {
             .standardizedFileURL
             .resolvingSymlinksInPath()
 
-        var isDirectory: ObjCBool = false
-
-        guard FileManager.default.fileExists(
-            atPath: rootURL.path,
-            isDirectory: &isDirectory
-        ),
-        isDirectory.boolValue
+        guard (try? FileInspector(rootURL).inspect().kind) == .directory
         else {
             throw AgenticRuntimeError.invalidWorkspace(
                 rootURL.path

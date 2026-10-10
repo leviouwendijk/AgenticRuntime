@@ -62,7 +62,7 @@ public struct AgentApprovalEvent:
 public extension AgentApprovalEvent {
     init?(
         sessionID: String,
-        runEvent: AgentRunEvent
+        runEvent: Run.Event.State
     ) {
         let kind: Kind
         let decision: ApprovalDecision?

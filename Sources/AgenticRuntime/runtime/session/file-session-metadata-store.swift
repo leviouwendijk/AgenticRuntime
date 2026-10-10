@@ -1,4 +1,5 @@
 import Foundation
+import IO
 
 public struct FileSessionMetadataStore: AgentSessionMetadataStore {
     public let sessionsdir: URL
@@ -16,9 +17,7 @@ public struct FileSessionMetadataStore: AgentSessionMetadataStore {
             for: sessionID
         )
 
-        guard FileManager.default.fileExists(
-            atPath: url.path
-        ) else {
+        guard FileSystem.default.exists(url) else {
             return nil
         }
 
@@ -43,11 +42,7 @@ public struct FileSessionMetadataStore: AgentSessionMetadataStore {
             for: metadata.sessionID
         )
 
-        try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(),
-            withIntermediateDirectories: true,
-            attributes: nil
-        )
+        try FileSystem.default.directory.create(url.deletingLastPathComponent())
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [
@@ -72,15 +67,11 @@ public struct FileSessionMetadataStore: AgentSessionMetadataStore {
             for: sessionID
         )
 
-        guard FileManager.default.fileExists(
-            atPath: url.path
-        ) else {
+        guard FileSystem.default.exists(url) else {
             return
         }
 
-        try FileManager.default.removeItem(
-            at: url
-        )
+        try FileSystem.default.remove(url)
     }
 }
 

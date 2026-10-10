@@ -1,27 +1,23 @@
 import Agentic
 import Foundation
 
-extension ToolLoopExecutor {
+extension AgentLoop {
     func performStreamingModelTurn(
-        from checkpoint: AgentHistoryCheckpoint
-    ) async throws -> AgentHistoryCheckpoint {
+        from checkpoint: AgentRunner.Checkpoint
+    ) async throws -> AgentRunner.Checkpoint {
         var checkpoint = checkpoint
 
         try await compactIfNeeded(
             &checkpoint
         )
 
-        var preparedRequest = try await requestWithCurrentState(
-            from: checkpoint.originalRequest,
-            messages: checkpoint.state.messages
+        let preparedRequest = try await prepareModelRequest(
+            from: try await requestWithCurrentState(
+                from: checkpoint.originalRequest,
+                messages: checkpoint.state.messages
+            ),
+            checkpoint: checkpoint
         )
-
-        for harnessExtension in extensions {
-            preparedRequest = try await harnessExtension.prepare(
-                request: preparedRequest,
-                state: checkpoint.state
-            )
-        }
 
         let turnIndex = checkpoint.state.iteration + 1
 
@@ -37,6 +33,7 @@ extension ToolLoopExecutor {
         var checkpointState = AgentStreamCheckpointState()
         let journal = AgentModelToolInvocationJournal()
 
+        checkpoint.lastAdvertisedTools = preparedRequest.tools.map(\.identifier)
         checkpoint.phase = .receiving_model_response
         checkpoint.partialResponse = accumulator.partial
 
@@ -58,7 +55,8 @@ extension ToolLoopExecutor {
             let invocation = AgentModelInvocation(
                 request: preparedRequest,
                 selection: model.selection,
-                context: await modelInvocationContext(
+                context: try await modelInvocationContext(
+                    request: preparedRequest,
                     sessionID: checkpoint.id,
                     journal: journal
                 )
@@ -190,10 +188,10 @@ extension ToolLoopExecutor {
     private func finalizeStreamingModelTurn(
         preparedRequest: AgentRequest,
         response: AgentResponse,
-        checkpoint: AgentHistoryCheckpoint,
+        checkpoint: AgentRunner.Checkpoint,
         turnIndex: Int,
         nativeInvocations: [ToolInvocation.Result]
-    ) async throws -> AgentHistoryCheckpoint {
+    ) async throws -> AgentRunner.Checkpoint {
         var checkpoint = checkpoint
 
         checkpoint.state.iteration += 1
@@ -257,7 +255,7 @@ extension ToolLoopExecutor {
     }
 
     private func failStreamingTurn(
-        checkpoint: inout AgentHistoryCheckpoint,
+        checkpoint: inout AgentRunner.Checkpoint,
         accumulator: AgentStreamAccumulator,
         error: Error
     ) async throws {
@@ -296,7 +294,7 @@ extension ToolLoopExecutor {
     private func recordStreamProgress(
         _ event: AgentStreamEvent,
         accumulator: AgentStreamAccumulator,
-        checkpoint: inout AgentHistoryCheckpoint,
+        checkpoint: inout AgentRunner.Checkpoint,
         checkpointState: inout AgentStreamCheckpointState
     ) async throws {
         checkpointState.record(
@@ -387,7 +385,7 @@ private struct AgentStreamCheckpointState {
     func checkpointEvent(
         accumulator: AgentStreamAccumulator,
         iteration: Int
-    ) -> AgentRunEvent {
+    ) -> Run.Event.State {
         .init(
             kind: .assistant_delta,
             iteration: iteration,

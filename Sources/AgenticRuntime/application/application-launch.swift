@@ -82,8 +82,7 @@ public enum ApplicationLaunchResolutionError:
 
 func validateApplicationLaunchEntries(
     _ entries: [ApplicationLaunchEntry],
-    agents: AgentRegistry,
-    programs: ProgramRegistry
+    installed: InstalledCapabilities
 ) throws -> [ApplicationLaunchEntry] {
     var identifiers: Set<ApplicationLaunchIdentifier> = []
 
@@ -99,9 +98,7 @@ func validateApplicationLaunchEntries(
 
         switch entry.launch {
         case .agent(let identifier):
-            guard agents.definition(
-                identifiedBy: identifier
-            ) != nil else {
+            guard installed.agentBinding(identifier) != nil else {
                 throw ApplicationLaunchResolutionError
                     .agentNotInstalled(
                         identifier
@@ -109,9 +106,7 @@ func validateApplicationLaunchEntries(
             }
 
         case .program(let identifier):
-            guard programs.registeredProgram(
-                identifiedBy: identifier
-            ) != nil else {
+            guard installed.program(identifier) != nil else {
                 throw ApplicationLaunchResolutionError
                     .programNotInstalled(
                         identifier

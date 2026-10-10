@@ -1,10 +1,10 @@
 import Agentic
 import Primitives
 
-extension ToolLoopExecutor {
+extension AgentLoop {
     func toolBatch(
         from response: AgentResponse,
-        checkpoint: AgentHistoryCheckpoint
+        checkpoint: AgentRunner.Checkpoint
     ) -> AgentToolUseBatch {
         checkpoint.toolBatch ?? AgentToolUseBatch(
             response: response
@@ -13,14 +13,14 @@ extension ToolLoopExecutor {
 
     func storeToolBatch(
         _ batch: AgentToolUseBatch,
-        to checkpoint: inout AgentHistoryCheckpoint
+        to checkpoint: inout AgentRunner.Checkpoint
     ) {
         checkpoint.toolBatch = batch
         checkpoint.touch()
     }
 
     func finishToolBatch(
-        on checkpoint: inout AgentHistoryCheckpoint
+        on checkpoint: inout AgentRunner.Checkpoint
     ) {
         if var batch = checkpoint.toolBatch {
             batch.completeIfTerminal()
@@ -37,12 +37,12 @@ extension ToolLoopExecutor {
     }
 
     func appendToolResult(
-        _ result: ToolResult,
+        _ result: ToolCall.Response,
         for toolCall: ToolCall,
         disposition: AgentToolUseDisposition,
         recovery: Recovery.Record? = nil,
         observations: [ToolResultObservation] = [],
-        to checkpoint: inout AgentHistoryCheckpoint,
+        to checkpoint: inout AgentRunner.Checkpoint,
         summary: String
     ) async throws {
         if var batch = checkpoint.toolBatch {
@@ -81,7 +81,7 @@ extension ToolLoopExecutor {
     func markToolPreflight(
         _ preflight: ToolPreflight,
         for toolCall: ToolCall,
-        on checkpoint: inout AgentHistoryCheckpoint
+        on checkpoint: inout AgentRunner.Checkpoint
     ) {
         guard var batch = checkpoint.toolBatch else {
             return
@@ -100,7 +100,7 @@ extension ToolLoopExecutor {
     func suspendToolBatch(
         for toolCall: ToolCall,
         disposition: AgentToolUseDisposition,
-        on checkpoint: inout AgentHistoryCheckpoint
+        on checkpoint: inout AgentRunner.Checkpoint
     ) {
         guard var batch = checkpoint.toolBatch else {
             return
@@ -118,7 +118,7 @@ extension ToolLoopExecutor {
 
     func appendSkippedSiblings(
         after toolCallID: String,
-        to checkpoint: inout AgentHistoryCheckpoint,
+        to checkpoint: inout AgentRunner.Checkpoint,
         disposition: AgentToolUseDisposition,
         reason: String
     ) async throws {
@@ -158,8 +158,8 @@ extension ToolLoopExecutor {
         for toolCall: ToolCall,
         disposition: AgentToolUseDisposition,
         reason: String
-    ) -> ToolResult {
-        ToolResult(
+    ) -> ToolCall.Response {
+        ToolCall.Response(
             call: toolCall.reference,
             output: .object([
                 "kind": .string("tool_error"),

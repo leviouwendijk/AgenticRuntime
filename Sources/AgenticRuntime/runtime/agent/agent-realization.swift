@@ -61,58 +61,23 @@ public struct AgentRealization:
 extension AgentRealization {
     static func materialize(
         definition: AgentDefinition,
-        catalog: Catalog,
-        tools: ToolRegistry,
-        programs: ProgramRegistry,
-        agents: AgentRegistry
+        installed: InstalledCapabilities
     ) -> Self {
-        let requestedAvailable = catalog.resolve(
+        let requestedAvailable = installed.catalog.resolve(
             definition.capabilities.available
         )
-        let requestedVisible = catalog.resolve(
+        let requestedVisible = installed.catalog.resolve(
             definition.capabilities.visible
         )
-        let installed = installedCapabilities(
-            tools: tools,
-            programs: programs,
-            agents: agents
-        )
-        let available = requestedAvailable.intersecting(
-            installed
-        )
-        let visible = requestedVisible.intersecting(
-            available
-        )
-
+        let available = requestedAvailable.intersecting(installed.capabilities)
+        let visible = requestedVisible.intersecting(available)
         return .init(
             definition: definition,
             requestedAvailable: requestedAvailable,
             requestedVisible: requestedVisible,
-            installed: installed,
+            installed: installed.capabilities,
             available: available,
             visible: visible
-        )
-    }
-
-    static func installedCapabilities(
-        tools: ToolRegistry,
-        programs: ProgramRegistry,
-        agents: AgentRegistry
-    ) -> AgentCapabilitySet {
-        AgentCapabilitySet(
-            tools: tools.modelFacingDefinitions.map(
-                \.identifier
-            ),
-            programs: programs.definitions.map(
-                \.identifier
-            ),
-            // There is not yet a Runtime-wide executable Inference registry.
-            // Semantic Catalog declarations therefore cannot become invocation
-            // authority merely by appearing in an Agent capability selection.
-            inferences: [],
-            agents: agents.definitions.map(
-                \.identifier
-            )
         )
     }
 }

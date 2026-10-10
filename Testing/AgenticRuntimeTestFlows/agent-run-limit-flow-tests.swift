@@ -1,4 +1,5 @@
 import Agentic
+import IO
 import AgenticRuntime
 import Foundation
 import TestFlows
@@ -15,14 +16,14 @@ private struct RunLimitNeverInvoker:
 {
     func buffered(
         _ invocation: AgentModelInvocation
-    ) async throws -> AgentModelInvocationResult {
+    ) async throws -> AgentModelInvocation.Result {
         _ = invocation
         throw RunLimitFixtureError.unexpected_model_invocation
     }
 
     func stream(
         _ invocation: AgentModelInvocation
-    ) -> AsyncThrowingStream<AgentModelInvocationEvent, Error> {
+    ) -> AsyncThrowingStream<AgentModelInvocation.Event, Error> {
         _ = invocation
 
         return AsyncThrowingStream { continuation in
@@ -45,9 +46,7 @@ extension AgenticProgramRuntimeFlowTesting {
             )
 
         defer {
-            try? FileManager.default.removeItem(
-                at: sessionsdir
-            )
+            try? FileSystem.default.remove(sessionsdir)
         }
 
         let historyStore = FileHistoryStore(
@@ -69,7 +68,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let suspension = Run.Suspension.run_limit(
             exhaustion
         )
-        let checkpoint = AgentHistoryCheckpoint(
+        let checkpoint = AgentRunner.Checkpoint(
             id: sessionID,
             originalRequest: request,
             state: .init(
@@ -97,6 +96,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 ),
                 historyPersistenceMode: .checkpointmutation
             ),
+            capabilityState: AgentCapabilityState(installed: .none),
             recording: .init(
                 historyStore: historyStore
             )
@@ -156,7 +156,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.equal(
             result.events.last?.kind,
-            Optional(AgentRunEvent.Kind.run_limit_stopped),
+            Optional(Run.Event.State.Kind.run_limit_stopped),
             "run-limit stop records a distinct terminal interruption event"
         )
 
@@ -191,7 +191,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.equal(
             persisted.events.last?.kind,
-            Optional(AgentRunEvent.Kind.run_limit_stopped),
+            Optional(Run.Event.State.Kind.run_limit_stopped),
             "durable checkpoint retains the explicit stop event"
         )
 

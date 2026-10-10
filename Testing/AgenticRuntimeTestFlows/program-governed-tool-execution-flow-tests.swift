@@ -249,7 +249,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             reviewExecution.record.steps[0].suspension != nil,
             true,
-            "approval-required Program tool step preserves AgentSuspension"
+            "approval-required Program tool step preserves Run.Suspension"
         )
         try Expect.equal(
             reviewExecution.record.failure == nil,
