@@ -10,62 +10,47 @@ public struct AgentCompactor: Sendable {
         self.strategy = strategy
     }
 
-    @discardableResult
-    public func compact(
-        checkpoint: inout AgentRunner.Checkpoint
-    ) -> CompactedHistory? {
-        let messages = checkpoint.state.messages
-
-        guard strategy.trigger.shouldCompact(
-            messages: messages
-        ) else {
+    /// Only the request projection is compacted. Checkpoint history is canonical.
+    /// Source messages remain accessible in their original order and with IDs.
+    public func project(
+        messages: [Message],
+        iteration: Int
+    ) -> Projection? {
+        guard strategy.trigger.shouldCompact(messages: messages) else {
             return nil
         }
+        let prefix = leadingSystemPreservationCount(in: messages)
+        let upperBound = max(prefix, messages.count - strategy.retention.preserveRecentMessageCount)
+        guard upperBound > prefix else { return nil }
 
-        let preservedPrefixCount = leadingSystemPreservationCount(
-            in: messages
-        )
-
-        let tailCount = strategy.retention.preserveRecentMessageCount
-        let compactableUpperBound = max(
-            preservedPrefixCount,
-            messages.count - tailCount
-        )
-
-        guard compactableUpperBound > preservedPrefixCount else {
-            return nil
-        }
-
-        let compactable = Array(
-            messages[preservedPrefixCount..<compactableUpperBound]
-        )
-
+        // Cut at a user-turn boundary, never inside a tool exchange.
+        guard let boundary = (prefix...upperBound).reversed().first(where: {
+            $0 < messages.count && messages[$0].role == .user
+        }), boundary > prefix else { return nil }
+        let compactable = Array(messages[prefix..<boundary])
         guard compactable.count >= strategy.trigger.minimumCompactedMessageCount else {
             return nil
         }
-
-        let retainedTail = Array(
-            messages[compactableUpperBound..<messages.count]
-        )
-
-        let summaryMessage = makeSummaryMessage(
-            compacting: compactable,
-            iteration: checkpoint.state.iteration
-        )
-
-        checkpoint.state.messages =
-            Array(messages[..<preservedPrefixCount])
-            + [summaryMessage]
-            + retainedTail
-
-        return .init(
-            summaryMessageID: summaryMessage.id,
+        let summary = makeSummaryMessage(compacting: compactable, iteration: iteration)
+        let projected = Array(messages[..<prefix]) + [summary] + Array(messages[boundary...])
+        let report = CompactedHistory(
+            summaryMessageID: summary.id,
             replacedMessageCount: compactable.count,
-            retainedMessageCount: checkpoint.state.messages.count,
-            estimatedCharactersCompacted: strategy.trigger.approximateCharacterCount(
-                in: compactable
-            )
+            retainedMessageCount: projected.count,
+            estimatedCharactersCompacted: strategy.trigger.approximateCharacterCount(in: compactable)
         )
+        return Projection(messages: projected, history: report)
+    }
+
+    public struct Projection: Sendable {
+        public let messages: [Message]
+        public let history: CompactedHistory
+    }
+
+    /// Compatibility entry point: reports a projected compaction but does
+    /// NOT mutate checkpoint.state.messages.
+    public func compact(checkpoint: AgentRunner.Checkpoint) -> CompactedHistory? {
+        project(messages: checkpoint.state.messages, iteration: checkpoint.state.iteration)?.history
     }
 }
 
@@ -100,7 +85,7 @@ private extension AgentCompactor {
         compacting messages: [Message],
         iteration: Int
     ) -> Message {
-        let id = "agentic.compaction.\(UUID().uuidString)"
+        let id = "agentic.compaction.\(iteration).\(messages.count)"
 
         var lines: [String] = [
             "[agentic.compaction]",

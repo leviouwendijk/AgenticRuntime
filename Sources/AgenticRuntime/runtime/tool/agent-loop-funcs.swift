@@ -9,11 +9,19 @@ extension AgentLoop {
     func requestWithCurrentState(
         from request: AgentRequest,
         messages: [Message],
-        definitions: [ToolDescriptor]
+        definitions: [ToolDescriptor],
+        iteration: Int
     ) async throws -> AgentRequest {
-
+        let projected: [Message]
+        if configuration.contextMode == .accumulating,
+           let strategy = configuration.compactionStrategy {
+            projected = AgentCompactor(strategy: strategy)
+                .project(messages: messages, iteration: iteration)?.messages ?? messages
+        } else {
+            projected = messages
+        }
         return AgentRequest(
-            messages: messages,
+            messages: projected,
             tools: definitions,
             generationConfiguration: request.generationConfiguration,
             responseFormat: request.responseFormat,
@@ -388,7 +396,7 @@ extension AgentLoop {
         )
 
         guard let compacted = compactor.compact(
-            checkpoint: &checkpoint
+            checkpoint: checkpoint
         ) else {
             return
         }
@@ -397,7 +405,7 @@ extension AgentLoop {
             kind: .compaction,
             iteration: checkpoint.state.iteration,
             messageID: compacted.summaryMessageID,
-            summary: "compacted \(compacted.replacedMessageCount) earlier message(s)"
+            summary: "projected \(compacted.replacedMessageCount) earlier message(s) for inference"
         )
 
         try await appendRunEvent(

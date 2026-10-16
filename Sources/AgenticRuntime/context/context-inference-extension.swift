@@ -12,6 +12,9 @@ public extension Context {
         public let modelContextLimit: Int
         public let delivery: InferenceDelivery
         public let audit: (any InferenceAuditRecording)?
+        /// Optional governed source of already-validated allocations.
+        /// Callers may invoke a ContextPreparationProgram upstream.
+        public let preparation: (any Context.PreparationSelecting)?
         private var mostRecent: InferencePreparation?
 
         public init(
@@ -20,7 +23,8 @@ public extension Context {
             resolver: any RecordResolving,
             modelContextLimit: Int,
             delivery: InferenceDelivery = .supplement,
-            audit: (any InferenceAuditRecording)? = nil
+            audit: (any InferenceAuditRecording)? = nil,
+            preparation: (any Context.PreparationSelecting)? = nil
         ) {
             self.allocator = allocator
             self.workingSetID = workingSetID
@@ -28,6 +32,7 @@ public extension Context {
             self.modelContextLimit = modelContextLimit
             self.delivery = delivery
             self.audit = audit
+            self.preparation = preparation
         }
 
         public func prepare(
@@ -35,6 +40,13 @@ public extension Context {
             state: AgentRunner.State
         ) async throws -> AgentRequest {
             mostRecent = nil
+            if let preparation {
+                let allocations = try await preparation.allocations(for: request)
+                if !allocations.isEmpty {
+                    try await allocator.apply(allocations.map { .allocate($0) },
+                                              to: workingSetID)
+                }
+            }
             let frame = try await allocator.prepareFrame(
                 for: workingSetID,
                 using: resolver,

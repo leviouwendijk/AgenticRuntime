@@ -153,7 +153,8 @@ extension AgentLoop {
             from: try await requestWithCurrentState(
                 from: checkpoint.originalRequest,
                 messages: checkpoint.state.messages,
-                definitions: advertisedTools
+                definitions: advertisedTools,
+                iteration: checkpoint.state.iteration
             ),
             checkpoint: checkpoint
         )
