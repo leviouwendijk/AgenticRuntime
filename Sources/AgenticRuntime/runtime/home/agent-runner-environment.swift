@@ -36,7 +36,7 @@ public extension AgentRunner {
             model: model,
             configuration: resolvedConfiguration,
             tooling: tooling.using(
-                workspace: try environment.workspace?.context()
+                workspace: try environment.workspace?.context(execution: environment.workspaceExecution)
             ),
             capabilityState: capabilityState,
             extensions: extensions,

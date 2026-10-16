@@ -2,10 +2,12 @@ import Agentic
 import Workspace
 import Foundation
 import Path
+import IO
 
 public struct AgentRuntimeEnvironment: Sendable {
     public let home: AgentHome
     public let workspace: Workspace?
+    public let workspaceExecution: WorkspaceExecution
     public let projectDiscovery: AgentProjectDiscovery?
     public let projectConfiguration: AgentProjectConfiguration?
     public let projectLocalConfiguration: AgentProjectLocalConfiguration?
@@ -14,6 +16,7 @@ public struct AgentRuntimeEnvironment: Sendable {
     public init(
         home: AgentHome,
         workspace: Workspace? = nil,
+        workspaceExecution: WorkspaceExecution = .init(io: .blocking, mutations: .immediate),
         projectDiscovery: AgentProjectDiscovery? = nil,
         projectConfiguration: AgentProjectConfiguration? = nil,
         projectLocalConfiguration: AgentProjectLocalConfiguration? = nil,
@@ -21,6 +24,7 @@ public struct AgentRuntimeEnvironment: Sendable {
     ) {
         self.home = home
         self.workspace = workspace
+        self.workspaceExecution = workspaceExecution
         self.projectDiscovery = projectDiscovery
         self.projectConfiguration = projectConfiguration
         self.projectLocalConfiguration = projectLocalConfiguration
@@ -33,6 +37,7 @@ public extension AgentRuntimeEnvironment {
         explicitHome: AgentHome? = nil,
         explicitHomeRootURL: URL? = nil,
         explicitWorkspace: Workspace? = nil,
+        workspaceExecution: WorkspaceExecution = .init(io: .blocking, mutations: .immediate),
         currentdir: URL = URL(
             fileURLWithPath: FileManager.default.currentDirectoryPath,
             isDirectory: true
@@ -78,6 +83,7 @@ public extension AgentRuntimeEnvironment {
         return .init(
             home: home,
             workspace: workspace,
+            workspaceExecution: workspaceExecution,
             projectDiscovery: projectDiscovery,
             projectConfiguration: projectConfiguration,
             projectLocalConfiguration: projectLocalConfiguration,
