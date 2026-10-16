@@ -321,6 +321,56 @@ extension AgenticProgramRuntimeFlowTesting {
         let domainRuntime = try await AgenticRuntime(
             application: domainApplication
         )
+        let overrideApplication = try Agentic.application(
+            "fixture.domain_installation_overrides"
+        ) {
+            try install(
+                InstallationCatalogDomainFixture.self,
+                overrides: .init(
+                    replacing: install(
+                        InstallationCatalogDomainFixture.Tools.SemanticOnly(
+                            value: "injected"
+                        )
+                    ),
+                    omitting: .init(tools: [boundIdentifier])
+                )
+            )
+        }
+        let overrideRuntime = try await AgenticRuntime(
+            application: overrideApplication
+        )
+        try Expect.equal(
+            overrideRuntime.tools.inspect(identifiedBy: boundIdentifier) == nil,
+            true,
+            "Omission suppresses derived executable bindings without removing catalog metadata"
+        )
+        try Expect.equal(
+            overrideRuntime.tools.inspect(identifiedBy: semanticOnlyIdentifier) != nil,
+            true,
+            "Injection realizes semantic-only Domain Tools"
+        )
+        try Expect.equal(
+            overrideRuntime.catalog.tools.contains { $0.identifier == boundIdentifier },
+            true,
+            "Omission retains authored Domain discovery"
+        )
+
+        let replacedDefault = try Agentic.application(
+            "fixture.domain_installation_replace_default"
+        ) {
+            try install(
+                InstallationCatalogDomainFixture.self,
+                overrides: .init(replacing: install(
+                    InstallationCatalogDomainFixture.Tools.Bound()
+                ))
+            )
+        }
+        let replacementRuntime = try await AgenticRuntime(application: replacedDefault)
+        try Expect.equal(
+            replacementRuntime.tools.inspect(identifiedBy: boundIdentifier) != nil,
+            true,
+            "Explicit replacement suppresses the derived default before materialization"
+        )
 
         try Expect.equal(
             domainRuntime.tools.inspect(
