@@ -33,12 +33,14 @@ public struct SessionCatalogToolSet: AgentToolProvider {
             ReadAgentArtifactTool(
                 catalog: catalog
             )
+#if AGENTIC_ENABLE_DEFERRED_INTENTS
             ListAgentPreparedIntentsTool(
                 catalog: catalog
             )
             ReadAgentPreparedIntentTool(
                 catalog: catalog
             )
+#endif // AGENTIC_ENABLE_DEFERRED_INTENTS
         }
     }
 }

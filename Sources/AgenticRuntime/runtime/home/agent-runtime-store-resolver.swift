@@ -44,7 +44,12 @@ public struct AgentRuntimeStoreResolver: Sendable {
             sessionID: sessionID
         )
 
+#if AGENTIC_ENABLE_DEFERRED_INTENTS
         let preparedIntentStore = try preparedIntentStore()
+#else
+        // Deferred queue intentionally not installed. Conversation checkpoints remain enabled.
+        let preparedIntentStore: (any PreparedIntentStore)? = nil
+#endif
 
         let eventSinks =
             try transcriptEventSinks(
@@ -133,6 +138,7 @@ private extension AgentRuntimeStoreResolver {
         )
     }
 
+#if AGENTIC_ENABLE_DEFERRED_INTENTS
     func preparedIntentStore() throws -> (any PreparedIntentStore)? {
         guard let preparedIntentsdir = environment.preparedintentsdir() else {
             return nil
@@ -146,6 +152,7 @@ private extension AgentRuntimeStoreResolver {
             preparedIntentsdir: preparedIntentsdir
         )
     }
+#endif // AGENTIC_ENABLE_DEFERRED_INTENTS
 
     func approvalEventSinks(
         sessionID: String,

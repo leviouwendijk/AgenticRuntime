@@ -1,3 +1,5 @@
+// FROZEN: deferred queue (not conversational or ToolPlan execution).
+#if AGENTIC_ENABLE_DEFERRED_INTENTS
 import Agentic
 
 public extension PreparedIntentManager {
@@ -15,3 +17,5 @@ public extension PreparedIntentManager {
         )
     }
 }
+
+#endif // AGENTIC_ENABLE_DEFERRED_INTENTS

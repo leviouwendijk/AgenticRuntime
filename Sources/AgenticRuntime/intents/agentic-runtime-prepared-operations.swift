@@ -1,3 +1,5 @@
+// FROZEN: deferred queue (not conversational or ToolPlan execution).
+#if AGENTIC_ENABLE_DEFERRED_INTENTS
 import Agentic
 import AgenticIO
 
@@ -16,3 +18,5 @@ public enum AgenticRuntimePreparedOperations {
         return registry
     }
 }
+
+#endif // AGENTIC_ENABLE_DEFERRED_INTENTS

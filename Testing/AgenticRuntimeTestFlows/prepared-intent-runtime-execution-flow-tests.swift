@@ -1,3 +1,5 @@
+// FROZEN: deferred queue (not conversational or ToolPlan execution).
+#if AGENTIC_ENABLE_DEFERRED_INTENTS
 import Agentic
 import IO
 import AgenticRuntime
@@ -222,3 +224,5 @@ private struct RuntimePreparedOperationFixture:
         )
     }
 }
+
+#endif // AGENTIC_ENABLE_DEFERRED_INTENTS

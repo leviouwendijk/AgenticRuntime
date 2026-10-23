@@ -383,6 +383,7 @@ private extension AgentSessionRuntime {
     }
 }
 
+#if AGENTIC_ENABLE_DEFERRED_INTENTS
 public extension AgentSessionRuntime {
     func preparedIntentManager() throws -> PreparedIntentManager {
         guard let preparedIntentStore = stores.preparedIntentStore else {
@@ -427,3 +428,4 @@ public extension AgentSessionRuntime {
         )
     }
 }
+#endif // AGENTIC_ENABLE_DEFERRED_INTENTS

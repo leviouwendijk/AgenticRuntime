@@ -1,3 +1,5 @@
+// FROZEN: deferred queue (not conversational or ToolPlan execution).
+#if AGENTIC_ENABLE_DEFERRED_INTENTS
 import Agentic
 import Primitives
 import Schema
@@ -97,3 +99,5 @@ public struct ReviewPreparedIntentTool: Tool {
             )
     }
 }
+
+#endif // AGENTIC_ENABLE_DEFERRED_INTENTS

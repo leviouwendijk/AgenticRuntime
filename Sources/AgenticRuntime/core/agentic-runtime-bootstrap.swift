@@ -70,6 +70,7 @@ public extension Agentic {
     static let runtime: RuntimeBootstrapAPI = .init()
 }
 
+#if AGENTIC_ENABLE_DEFERRED_INTENTS
 public extension Agentic.RuntimeBootstrapAPI {
     func preparedIntentManager(
         environment: AgentRuntimeEnvironment
@@ -79,6 +80,7 @@ public extension Agentic.RuntimeBootstrapAPI {
         )
     }
 }
+#endif // AGENTIC_ENABLE_DEFERRED_INTENTS
 
 public extension Agentic.RuntimeBootstrapAPI {
     func pricingCatalog(

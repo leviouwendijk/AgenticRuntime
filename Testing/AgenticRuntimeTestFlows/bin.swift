@@ -419,6 +419,7 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting
                 .runToolClassificationPropagation()
         },
+/* FROZEN: independent durable prepared-intent queue is not required by the conversation or ToolPlan bridge.
         TestFlow(
             "prepared-intent-runtime-execution",
             tags: [
@@ -432,6 +433,7 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting
                 .runPreparedIntentRuntimeExecution()
         },
+*/
         TestFlow(
             "workspace-access-lease-activation",
             tags: [

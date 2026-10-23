@@ -1,3 +1,5 @@
+// FROZEN: deferred queue (not conversational or ToolPlan execution).
+#if AGENTIC_ENABLE_DEFERRED_INTENTS
 import Agentic
 import Foundation
 
@@ -71,3 +73,5 @@ public struct PreparedIntentExecutor: Sendable {
 public enum PreparedIntentExecutionError: Error, Sendable {
     case missing_result(PreparedIntentIdentifier)
 }
+
+#endif // AGENTIC_ENABLE_DEFERRED_INTENTS
