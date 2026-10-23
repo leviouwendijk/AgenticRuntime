@@ -639,8 +639,8 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.equal(
             resumedMutation.snapshot.preflights,
-            2,
-            "approval resume performs original and stale-approval preflight reviews"
+            1,
+            "approval resume consumes original preparation without a second preflight"
         )
         let resumedRecovery = try Expect.notNil(
             resumedMutation.recovery,

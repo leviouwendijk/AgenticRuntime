@@ -485,7 +485,8 @@ extension AgentLoop {
                     let pendingApproval = PendingApproval(
                         toolCall: toolCall,
                         preflight: preflight,
-                        requirement: requirement
+                        requirement: requirement,
+                        preparedOperation: review.preparedOperation
                     )
 
                     suspendToolBatch(

@@ -149,16 +149,18 @@ extension AgentLoop {
         let invocation = try (await currentTools()).invocation(
             for: pendingApproval.toolCall
         )
-        let freshReview = try await invoker.review(
-            invocation,
-            context: await makeToolContext()
-        )
-
-        guard freshReview.preflight == pendingApproval.preflight,
-              freshReview.requirement == pendingApproval.requirement
-        else {
+        // The approved plan is the one captured by the checkpoint, not a
+        // freshly generated preflight/plan with a different identity.
+        let requirement = invoker.policy.evaluate(pendingApproval.preflight)
+        guard requirement == pendingApproval.requirement else {
             throw RuntimeApprovedToolInvocationError.stale_preflight
         }
+        let freshReview = ToolInvocation.Review(
+            invocation: invocation,
+            preflight: pendingApproval.preflight,
+            requirement: pendingApproval.requirement,
+            preparedOperation: pendingApproval.preparedOperation
+        )
 
         return try await executeApprovedToolReview(
             freshReview

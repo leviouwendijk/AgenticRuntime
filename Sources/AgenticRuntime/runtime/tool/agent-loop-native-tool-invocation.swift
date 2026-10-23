@@ -210,7 +210,8 @@ extension AgentLoop {
         let pendingApproval = PendingApproval(
             toolCall: call,
             preflight: review.preflight,
-            requirement: review.requirement
+            requirement: review.requirement,
+            preparedOperation: review.preparedOperation
         )
 
         checkpoint.state.messages.append(

@@ -110,6 +110,50 @@ extension AgenticProgramRuntimeFlowTesting {
             "Runtime persists the prepared-operation result envelope as execution evidence"
         )
 
+        // Distinct store actors referencing the same backing directory must
+        // arbitrate one claim, not merely serialize within one actor instance.
+        let concurrent_intent = try await manager.create(
+            .init(invocation: prepared)
+        )
+        _ = try await manager.review(
+            id: concurrent_intent.id,
+            decision: .approve
+        )
+        let independent_manager = PreparedIntentManager(
+            store: FilePreparedIntentStore(preparedIntentsdir: preparedIntentsdir)
+        )
+        let claim_registry = registry
+        let winners = await withTaskGroup(of: Bool.self) { group in
+            for index in 0..<2 {
+                group.addTask {
+                    let owner = index == 0 ? manager : independent_manager
+                    return (try? await owner.execute(
+                        id: concurrent_intent.id,
+                        using: claim_registry
+                    )) != nil
+                }
+            }
+            var count = 0
+            for await won in group where won { count += 1 }
+            return count
+        }
+        try Expect.equal(
+            winners,
+            1,
+            "separate file-store instances cannot claim one approved execution twice"
+        )
+        let persisted = try await independent_manager.get(concurrent_intent.id)
+        try Expect.equal(
+            persisted.executionAttempt?.id,
+            persisted.executionRecord?.attemptID,
+            "durable claim identity survives independent store reload"
+        )
+        try Expect.equal(
+            persisted.status,
+            .executed,
+            "losing executor cannot overwrite terminal evidence"
+        )
+
         let runtimeRegistry =
             try AgenticRuntimePreparedOperations.registry()
 

@@ -11,13 +11,18 @@ private actor ProgramReplayProbe {
     private var inferenceExecutions = 0
     private var mutationExecutions = 0
     private var tailExecutions = 0
-    private var preflightRevision = "v1"
+    private var resourceRevision = "v1"
 
     func recordInference() {
         inferenceExecutions += 1
     }
 
-    func recordMutation() {
+    func recordMutation(expectedRevision: String) throws {
+        // Compare the prepared snapshot and perform the effect as one actor
+        // operation, so a concurrent revision change cannot slip between them.
+        guard resourceRevision == expectedRevision else {
+            throw ProgramReplayMutationError.stale_precondition
+        }
         mutationExecutions += 1
     }
 
@@ -25,14 +30,14 @@ private actor ProgramReplayProbe {
         tailExecutions += 1
     }
 
-    func setPreflightRevision(
+    func setResourceRevision(
         _ revision: String
     ) {
-        preflightRevision = revision
+        resourceRevision = revision
     }
 
     func revision() -> String {
-        preflightRevision
+        resourceRevision
     }
 
     func counts() -> (
@@ -212,6 +217,26 @@ private struct ProgramReplayInferenceExecutor:
     }
 }
 
+/// Fixture snapshot captured at preparation and consumed without replanning.
+private struct ProgramReplayMutationPlan: Sendable, Codable, Hashable {
+    let input: ProgramReplayToolInput
+    let resourceRevision: String
+}
+
+private enum ProgramReplayMutationError: Error, Sendable, LocalizedError {
+    case mismatched_input
+    case stale_precondition
+
+    var errorDescription: String? {
+        switch self {
+        case .mismatched_input:
+            "Prepared mutation input does not match the reviewed invocation."
+        case .stale_precondition:
+            "Prepared mutation resource changed; the stale prepared plan was not executed."
+        }
+    }
+}
+
 private struct ProgramReplayMutationTool:
     Tool
 {
@@ -232,17 +257,43 @@ private struct ProgramReplayMutationTool:
 
     let probe: ProgramReplayProbe
 
+    private static let preparedSchema = PreparedOperation.Schema(
+        identifier: "fixture.program_replay.mutation",
+        version: .init(major: 0, minor: 1, patch: 0)
+    )
+
+    private func review(resourceRevision: String) -> ToolPreflight {
+        ToolPreflight(
+            tool: identifier,
+            risk: risk,
+            summary: "Program replay mutation at resource revision \(resourceRevision)"
+        )
+    }
+
     func preflight(
         _ input: Input,
         in _: ToolContext
     ) async throws -> ToolPreflight {
         _ = input
         let revision = await probe.revision()
+        return review(resourceRevision: revision)
+    }
 
-        return ToolPreflight(
-            tool: identifier,
-            risk: risk,
-            summary: "Program replay mutation preflight \(revision)"
+    func prepare(
+        _ input: Input,
+        in _: ToolContext
+    ) async throws -> CapabilityPreparation<ToolPreflight> {
+        let revision = await probe.revision()
+        let plan = ProgramReplayMutationPlan(
+            input: input,
+            resourceRevision: revision
+        )
+        return .init(
+            review: review(resourceRevision: revision),
+            operation: .init(
+                schema: Self.preparedSchema,
+                plan: try JSONValue.encoding(plan)
+            )
         )
     }
 
@@ -250,11 +301,32 @@ private struct ProgramReplayMutationTool:
         _ input: Input,
         in _: ToolContext
     ) async throws -> Output {
-        await probe.recordMutation()
+        _ = input
+        throw ToolPreparationError.prepared_operation_required
+    }
 
-        return .init(
-            value: "mutated:\(input.value)"
+    func call(
+        _ input: Input,
+        prepared operation: PreparedOperation.Envelope?,
+        in _: ToolContext
+    ) async throws -> Output {
+        guard let operation else {
+            throw ToolPreparationError.prepared_operation_required
+        }
+        guard operation.schema == Self.preparedSchema else {
+            throw PreparedOperation.EnvelopeError.schema_mismatch(
+                expected: Self.preparedSchema,
+                actual: operation.schema
+            )
+        }
+        let plan = try operation.plan.decode(ProgramReplayMutationPlan.self)
+        guard plan.input == input else {
+            throw ProgramReplayMutationError.mismatched_input
+        }
+        try await probe.recordMutation(
+            expectedRevision: plan.resourceRevision
         )
+        return .init(value: "mutated:\(input.value)")
     }
 }
 
@@ -380,6 +452,16 @@ extension AgenticProgramRuntimeFlowTesting {
             roundTrippedCheckpoint,
             checkpoint,
             "raw Program checkpoint survives persistence round-trip"
+        )
+        guard case .approval(let preparedApproval) =
+                roundTrippedCheckpoint.suspension.reason
+        else {
+            throw ProgramReplayFixtureError.missing_interaction_request
+        }
+        try Expect.equal(
+            preparedApproval.preparedOperation != nil,
+            true,
+            "approval checkpoint retains exact serializable mutation plan"
         )
 
         let approved = try await approvedRunner.resume(
@@ -551,7 +633,7 @@ extension AgenticProgramRuntimeFlowTesting {
             throw ProgramReplayFixtureError.missing_interaction_request
         }
 
-        await staleProbe.setPreflightRevision("v2")
+        await staleProbe.setResourceRevision("v2")
 
         let stale = try await staleRunner.resume(
             ProgramReplayProgram(),
@@ -566,14 +648,12 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             stale.record.outcome,
             .failed,
-            "preflight drift invalidates stored approval"
+            "changed mutation precondition rejects checkpointed plan without replanning"
         )
         try Expect.equal(
-            stale.record.failure?.message.contains(
-                "stale approval was not executed"
-            ) == true,
+            stale.record.failure != nil,
             true,
-            "stale approval preserves its semantic failure"
+            "stale prepared operation retains a failure record"
         )
         try Expect.equal(
             staleCounts.inference,
@@ -583,7 +663,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             staleCounts.mutation,
             0,
-            "stale approval never executes mutation"
+            "stale mutation snapshot never executes effect"
         )
         try Expect.equal(
             staleCounts.tail,

@@ -127,18 +127,16 @@ public struct GovernedProgramToolExecutor:
                 tool: pendingApproval.toolCall.tool,
                 arguments: pendingApproval.toolCall.input
             )
-            let freshReview = try await invoker.review(
-                invocation,
-                context: context
-            )
-
-            guard freshReview.preflight == pendingApproval.preflight,
-                  freshReview.requirement == pendingApproval.requirement
-            else {
-                throw ProgramToolGovernanceError.stale_approval(
-                    identifier
-                )
+            let requirement = invoker.policy.evaluate(pendingApproval.preflight)
+            guard requirement == pendingApproval.requirement else {
+                throw ProgramToolGovernanceError.stale_approval(identifier)
             }
+            let freshReview = ToolInvocation.Review(
+                invocation: invocation,
+                preflight: pendingApproval.preflight,
+                requirement: pendingApproval.requirement,
+                preparedOperation: pendingApproval.preparedOperation
+            )
 
             let invocationResult = try await invoker.invoke(
                 freshReview,
@@ -183,7 +181,8 @@ public struct GovernedProgramToolExecutor:
                             input: invocation.review.invocation.arguments
                         ),
                         preflight: invocation.review.preflight,
-                        requirement: invocation.review.requirement
+                        requirement: invocation.review.requirement,
+                        preparedOperation: invocation.review.preparedOperation
                     ),
                     metadata: [
                         "source": source,

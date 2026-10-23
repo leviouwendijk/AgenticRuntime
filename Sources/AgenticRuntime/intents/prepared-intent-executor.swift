@@ -41,91 +41,33 @@ public struct PreparedIntentExecutor: Sendable {
         id: PreparedIntentIdentifier,
         context: PreparedOperation.Context = .init()
     ) async throws -> PreparedIntentExecution {
-        let startedAt = Date()
-        let intent = try await manager.executableIntent(
-            id: id
-        )
-        var metadata = intent.metadata
-
-        metadata.merge(
-            context.metadata
-        ) { _, new in
-            new
-        }
-
+        // One authoritative PreparedIntentManager execution path owns the
+        // transition into .executing and its terminal execution record.
+        let prepared_intent = try await manager.get(id)
+        var metadata = prepared_intent.metadata
+        metadata.merge(context.metadata) { _, new in new }
         metadata["execution_mode"] = "prepared_operation"
-        metadata["prepared_intent_id"] = intent.id.rawValue
-        metadata["operation_identifier"] =
-            intent.operation.schema.identifier.rawValue
-
-        let operationContext = PreparedOperation.Context(
+        metadata["prepared_intent_id"] = id.rawValue
+        metadata["operation_identifier"] = prepared_intent.operation.schema.identifier.rawValue
+        let merged = PreparedOperation.Context(
             workspace: context.workspace,
-            sessionID:
-                intent.sessionID
-                ?? context.sessionID
-                ?? sessionID,
-            preparedIntentID: intent.id,
+            sessionID: context.sessionID ?? sessionID,
+            preparedIntentID: id,
             metadata: metadata
         )
-
-        do {
-            let result = try await registry.execute(
-                intent.operation,
-                context: operationContext
-            )
-            let executed = try await manager.recordExecution(
-                id: intent.id,
-                record: .init(
-                    intentID: intent.id,
-                    operation: intent.operation.schema,
-                    status: .succeeded,
-                    summary: "Executed prepared operation '\(intent.operation.schema.identifier.rawValue)'.",
-                    startedAt: startedAt,
-                    completedAt: Date(),
-                    result: result,
-                    metadata: metadata
-                )
-            )
-
-            return .init(
-                intent: executed,
-                result: result
-            )
-        } catch {
-            _ = try? await manager.recordExecution(
-                id: intent.id,
-                record: .init(
-                    intentID: intent.id,
-                    operation: intent.operation.schema,
-                    status: .failed,
-                    summary: "Prepared operation '\(intent.operation.schema.identifier.rawValue)' failed.",
-                    startedAt: startedAt,
-                    completedAt: Date(),
-                    result: nil,
-                    errorMessage: errorText(
-                        error
-                    ),
-                    metadata: metadata
-                )
-            )
-
-            throw error
+        let intent = try await manager.execute(
+            id: id,
+            using: registry,
+            context: merged
+        )
+        guard let result = intent.executionResult else {
+            throw PreparedIntentExecutionError.missing_result(id)
         }
+        return .init(intent: intent, result: result)
     }
+
 }
 
-private extension PreparedIntentExecutor {
-    func errorText(
-        _ error: any Error
-    ) -> String {
-        if let localized = error as? any LocalizedError,
-           let description = localized.errorDescription
-        {
-            return description
-        }
-
-        return String(
-            describing: error
-        )
-    }
+public enum PreparedIntentExecutionError: Error, Sendable {
+    case missing_result(PreparedIntentIdentifier)
 }
