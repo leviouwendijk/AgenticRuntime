@@ -328,6 +328,110 @@ extension AgenticProgramRuntimeFlowTesting {
             "Runtime returns the response produced through the realized root Agent"
         )
 
+        // The semantic dispatcher must route a trusted Host Agent invocation
+        // through the same realized runner, rather than treating Agent as a
+        // permanent unsupported capability kind.
+        let dispatcher = CapabilityDispatcher(
+            runtime: runtime,
+            capabilityState: AgentCapabilityState(
+                installed: runtime.installed.capabilities
+            ),
+            services: RuntimeServices(model: model),
+            configuration: baselineConfiguration
+        )
+        let hostOutcome = try await dispatcher.invoke(
+            .agent(
+                identifier: AgentInvocationRootFixture.definition.identifier,
+                request: AgentRequest(messages: [
+                    Message(role: .user, text: "invoke through capability dispatcher")
+                ]),
+                sessionID: "fixture-dispatched-root-agent"
+            ),
+            origin: .host
+        )
+        guard case .agent(let dispatchedResult) = hostOutcome else {
+            try Expect.equal(false, true, "Host Agent invocation must return Agent outcome")
+            return []
+        }
+        try Expect.equal(
+            dispatchedResult.sessionID,
+            "fixture-dispatched-root-agent",
+            "Host Agent dispatch preserves explicitly supplied run identity"
+        )
+        try Expect.equal(
+            dispatchedResult.response?.message.content.text,
+            "fixture-agent-response",
+            "Host Agent dispatch executes the realized Agent"
+        )
+        let invocationAfterHostDispatch = await recorder.snapshot()
+        try Expect.equal(
+            invocationAfterHostDispatch.count,
+            2,
+            "Host Agent dispatch performs a model turn through the existing invoker"
+        )
+        try Expect.equal(
+            invocationAfterHostDispatch.last?.selection,
+            AgentInvocationRootFixture.modelSelection,
+            "Dispatched Agent retains authored model routing"
+        )
+        try Expect.equal(
+            invocationAfterHostDispatch.last?.request.tools.map(\.identifier),
+            [AgentInvocationAllowedTool.definition.identifier],
+            "Dispatched Agent retains its realized visibility boundary"
+        )
+
+        var delegationDenied = false
+        do {
+            _ = try await dispatcher.invoke(
+                .agent(
+                    identifier: AgentInvocationRootFixture.definition.identifier,
+                    request: AgentRequest(messages: []),
+                    sessionID: "fixture-unguarded-child"
+                ),
+                origin: .delegated_agent
+            )
+        } catch CapabilityInvocationError.agentRequiresDelegation(let identifier) {
+            delegationDenied = true
+            try Expect.equal(
+                identifier,
+                AgentInvocationRootFixture.definition.identifier,
+                "Unguarded child calls fail with their semantic Agent identifier"
+            )
+        }
+        try Expect.true(delegationDenied, "Unguarded child Agent execution stays fail-closed")
+        let invocationsAfterRejectedChild = await recorder.snapshot()
+        try Expect.equal(
+            invocationsAfterRejectedChild.count,
+            2,
+            "Refused child Agent invocation must never reach the model"
+        )
+
+        let withoutModel = CapabilityDispatcher(
+            runtime: runtime,
+            capabilityState: AgentCapabilityState(
+                installed: runtime.installed.capabilities
+            )
+        )
+        var missingModelDenied = false
+        do {
+            _ = try await withoutModel.invoke(
+                .agent(
+                    identifier: AgentInvocationRootFixture.definition.identifier,
+                    request: AgentRequest(messages: []),
+                    sessionID: "fixture-missing-agent-model"
+                ),
+                origin: .host
+            )
+        } catch CapabilityInvocationError.missingAgentModel(let identifier) {
+            missingModelDenied = true
+            try Expect.equal(
+                identifier,
+                AgentInvocationRootFixture.definition.identifier,
+                "Root Agent invocation reports the exact missing model dependency"
+            )
+        }
+        try Expect.true(missingModelDenied, "Host Agent invocation without model fails closed")
+
         return [
             .field(
                 "model_purpose",

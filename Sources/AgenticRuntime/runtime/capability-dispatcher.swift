@@ -78,6 +78,7 @@ public enum CapabilityInvocationError: Error, Sendable {
     case notAvailable(CapabilityInvocation.Target)
     case notAdvertised(CapabilityInvocation.Target)
     case missingInferenceExecutor(InferenceIdentifier)
+    case missingAgentModel(AgentIdentifier)
     case agentRequiresDelegation(AgentIdentifier)
 }
 
@@ -270,13 +271,30 @@ public struct CapabilityDispatcher: Sendable {
                 )
             )
 
-        case .agent(let identifier, _, _):
-            // A visible Agent is not necessarily delegable. Do not start a
-            // detached root run masquerading as a child: the delegation pass
-            // must provide parent identity, budgets, reentry and run lineage.
-            throw CapabilityInvocationError.agentRequiresDelegation(
-                identifier
-            )
+        case .agent(let identifier, let request, let sessionID):
+            // Root launch is a trusted Host authority, not delegated child
+            // execution. Delegation remains fail-closed until parent lineage,
+            // limits, reentry and resumable child identity are governed.
+            guard case .host = origin else {
+                throw CapabilityInvocationError.agentRequiresDelegation(
+                    identifier
+                )
+            }
+            guard let runtime else {
+                throw CapabilityInvocationError.notInstalled(target)
+            }
+            guard let model = services.model else {
+                throw CapabilityInvocationError.missingAgentModel(identifier)
+            }
+            return .agent(try await runtime.runAgent(
+                identifiedBy: identifier,
+                request: request,
+                model: model,
+                configuration: configuration,
+                tooling: services.tooling,
+                recording: services.recording,
+                sessionID: sessionID
+            ))
         }
     }
 }
