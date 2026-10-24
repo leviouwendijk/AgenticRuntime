@@ -137,6 +137,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runRuntimeDiagnostics()
         },
         TestFlow(
+            "agent-delegation-admission",
+            tags: ["agentic-runtime", "delegation", "lineage", "authority", "limits"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runAgentDelegationAdmission()
+        },
+        TestFlow(
             "agent-invocation",
             tags: [
                 "agentic-runtime",
