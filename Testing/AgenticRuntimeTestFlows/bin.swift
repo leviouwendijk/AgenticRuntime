@@ -61,6 +61,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
         ) {
             try AgenticProgramRuntimeFlowTesting.runContextCompactionProjection()
         },
+        TestFlow("execution-trace-projection", tags: ["runtime", "trace", "tree"]) {
+            try AgenticProgramRuntimeFlowTesting.runExecutionTraceProjection()
+        },
+        TestFlow("execution-trace-difference", tags: ["runtime", "trace", "difference"]) {
+            try AgenticProgramRuntimeFlowTesting.runExecutionTraceDifference()
+        },
         TestFlow("tool-observation-history", tags: ["runtime", "observations", "persistence"]) {
             try AgenticProgramRuntimeFlowTesting.runToolObservationHistory()
         },

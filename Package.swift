@@ -39,6 +39,10 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/leviouwendijk/Difference.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/leviouwendijk/Schema.git",
             branch: "master"
         ),
@@ -155,6 +159,10 @@ let package = Package(
                     name: "Errors",
                     package: "Errors"
                 ),
+                .product(
+                    name: "Difference",
+                    package: "Difference"
+                ),
             ]
         ),
         .executableTarget(
@@ -200,6 +208,10 @@ let package = Package(
                 .product(
                     name: "Macros",
                     package: "Macros"
+                ),
+                .product(
+                    name: "Difference",
+                    package: "Difference"
                 ),
                 .product(
                     name: "TestFlows",
