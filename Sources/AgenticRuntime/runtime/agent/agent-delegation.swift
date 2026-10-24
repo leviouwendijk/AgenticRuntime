@@ -41,6 +41,10 @@ public actor AgentDelegation {
         case concurrencyLimitExceeded(AgentIdentifier)
         case activeDescendants(String)
         case nonterminalResult(String)
+        case executionAlreadyStarted(String)
+        case executionInProgress(String)
+        case executionNotStarted(String)
+        case resultIdentityMismatch(expected: String, actual: String)
     }
 
     private struct Entry: Sendable {
@@ -48,8 +52,11 @@ public actor AgentDelegation {
         let realization: AgentRealization
         let capabilities: AgentCapabilityState
         var settled: Bool
+        var runner: AgentRunner? = nil
+        var executing: Bool = false
     }
 
+    private let runtime: AgenticRuntime
     private let installed: InstalledCapabilities
     private var entries: [String: Entry]
 
@@ -68,6 +75,7 @@ public actor AgentDelegation {
             parentSessionID: nil,
             depth: 0
         )
+        self.runtime = runtime
         installed = runtime.installed
         entries = [
             sessionID: Entry(
@@ -192,6 +200,9 @@ public actor AgentDelegation {
         guard !entry.settled else {
             throw Failure.settledSession(sessionID)
         }
+        guard !entry.executing else {
+            throw Failure.executionInProgress(sessionID)
+        }
         guard !entries.values.contains(where: {
             !$0.settled && isDescendant($0.session, of: sessionID)
         }) else {
@@ -199,6 +210,111 @@ public actor AgentDelegation {
         }
         entry.settled = true
         entries[sessionID] = entry
+    }
+
+    /// Trusted Runtime path: admit, construct, and execute the child using the
+    /// exact realization and live capability actor retained by this tree.
+    /// The child's runner is retained for subsequent checkpoint resumption.
+    /// Suspension and interruption never settle its reservation.
+    public func run(
+        _ agent: AgentIdentifier,
+        request: AgentRequest,
+        from parentSessionID: String,
+        sessionID: String,
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        tooling: RuntimeServices.Tooling = .init(),
+        recording: RuntimeServices.Recording = .init()
+    ) async throws -> AgentRunner.Result {
+        let session = try await begin(
+            agent,
+            from: parentSessionID,
+            sessionID: sessionID
+        )
+        guard var entry = entries[session.id] else {
+            throw Failure.unknownSession(session.id)
+        }
+        entry.runner = runtime.makeAgentRunner(
+            realization: entry.realization,
+            capabilityState: entry.capabilities,
+            model: model,
+            configuration: configuration,
+            tooling: tooling,
+            recording: recording
+        )
+        entries[session.id] = entry
+        return try await perform(session.id) { runner in
+            try await runner.run(request, sessionID: session.id)
+        }
+    }
+
+    /// Continue the same admitted child runner rather than starting another
+    /// root Agent. The runner owns its checkpoint restoration semantics.
+    public func resume(_ sessionID: String) async throws -> AgentRunner.Result {
+        try await perform(sessionID) { runner in
+            try await runner.resume(sessionID: sessionID)
+        }
+    }
+
+    public func resume(
+        _ sessionID: String,
+        reply: UserInputReply,
+        metadata: [String: String] = [:]
+    ) async throws -> AgentRunner.Result {
+        try await perform(sessionID) { runner in
+            try await runner.resume(
+                sessionID: sessionID,
+                reply: reply,
+                metadata: metadata
+            )
+        }
+    }
+
+    /// Never allow concurrent calls to execute the same admitted session.
+    /// A thrown runner error retains the reservation, since its checkpoint
+    /// may still require repair or resumption. No implicit root retry occurs.
+    private func perform(
+        _ sessionID: String,
+        operation: @Sendable (AgentRunner) async throws -> AgentRunner.Result
+    ) async throws -> AgentRunner.Result {
+        guard var entry = entries[sessionID] else {
+            throw Failure.unknownSession(sessionID)
+        }
+        guard !entry.settled else {
+            throw Failure.settledSession(sessionID)
+        }
+        guard !entry.executing else {
+            throw Failure.executionInProgress(sessionID)
+        }
+        guard let runner = entry.runner else {
+            throw Failure.executionNotStarted(sessionID)
+        }
+        entry.executing = true
+        entries[sessionID] = entry
+        do {
+            let result = try await operation(runner)
+            guard result.sessionID == sessionID else {
+                throw Failure.resultIdentityMismatch(
+                    expected: sessionID,
+                    actual: result.sessionID
+                )
+            }
+            guard var current = entries[sessionID] else {
+                throw Failure.unknownSession(sessionID)
+            }
+            current.executing = false
+            entries[sessionID] = current
+            if result.isCompleted || result.isFailed {
+                try settle(result)
+            }
+            return result
+        } catch {
+            if var current = entries[sessionID] {
+                current.executing = false
+                entries[sessionID] = current
+            }
+            throw error
+        }
     }
 
     private func lineage(from id: String) throws -> [Entry] {

@@ -407,3 +407,151 @@ extension AgenticProgramRuntimeFlowTesting {
         return []
     }
 }
+
+private actor DelegatedExecutionRecorder {
+    private var invocations: [AgentModelInvocation] = []
+
+    func append(_ invocation: AgentModelInvocation) {
+        invocations.append(invocation)
+    }
+
+    func snapshot() -> [AgentModelInvocation] { invocations }
+}
+
+private struct DelegatedExecutionModel: AgentModelInvoking {
+    let recorder: DelegatedExecutionRecorder
+
+    func buffered(
+        _ invocation: AgentModelInvocation
+    ) async throws -> AgentModelInvocation.Result {
+        await recorder.append(invocation)
+        return result(for: invocation)
+    }
+
+    func stream(
+        _ invocation: AgentModelInvocation
+    ) -> AsyncThrowingStream<AgentModelInvocation.Event, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                await recorder.append(invocation)
+                continuation.yield(.completed(result(for: invocation)))
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private func result(
+        for invocation: AgentModelInvocation
+    ) -> AgentModelInvocation.Result {
+        let response = AgentResponse(
+            message: Message(role: .assistant, text: "delegated child completed"),
+            stopReason: .end_turn
+        )
+        let profile = AgentModelProfile(
+            identifier: "fixture.delegation.profile",
+            gatewayIdentifier: "fixture.delegation.gateway",
+            model: "fixture-model",
+            purposes: [invocation.selection.purpose],
+            capabilities: [.text, .reasoning, .structured_output]
+        )
+        let route = AgentModelRoute(
+            purpose: invocation.selection.purpose,
+            profile: profile
+        )
+        return AgentModelInvocation.Result(
+            response: response,
+            route: AgentModelRouteRecord(
+                route: route,
+                requestMetadata: invocation.metadata,
+                responseMetadata: response.metadata,
+                usage: response.usage
+            )
+        )
+    }
+}
+
+extension AgenticProgramRuntimeFlowTesting {
+    static func runAgentDelegationExecution() async throws -> [TestDiagnostic] {
+        let application = Agentic.application("fixture.delegation.execution") {
+            install(DelegationRootFixture.self)
+            install(DelegationIntermediateFixture.self)
+            install(DelegationLeafFixture.self)
+            install(DelegationExcludedFixture.self)
+        }
+        let runtime = try await AgenticRuntime(application: application)
+        let root = try runtime.makeAgentRunner(
+            identifiedBy: DelegationRootFixture.identifier,
+            model: .init(invoker: DelegatedExecutionModel(recorder: .init()))
+        )
+        let root_state = await root.capabilityState
+        let admission = try AgentDelegation(
+            runtime: runtime,
+            root: DelegationRootFixture.identifier,
+            sessionID: "real-parent",
+            capabilityState: root_state
+        )
+        let recorder = DelegatedExecutionRecorder()
+        let model = RuntimeServices.Model(invoker: DelegatedExecutionModel(recorder: recorder))
+        let child = try await admission.run(
+            DelegationLeafFixture.identifier,
+            request: .init(messages: [Message(role: .user, text: "execute as child")]),
+            from: "real-parent",
+            sessionID: "real-child",
+            model: model
+        )
+        try Expect.true(child.isCompleted, "Governed child executes to completion")
+        try Expect.equal(child.sessionID, "real-child", "Reserved child identity reaches AgentRunner")
+        try Expect.equal(
+            child.response?.message.content.text,
+            "delegated child completed",
+            "Child result returns from governed runner"
+        )
+        let calls = await recorder.snapshot()
+        try Expect.equal(calls.count, 1, "Delegation executes exactly one model invocation")
+        try Expect.equal(
+            calls.first?.request.tools.count,
+            0,
+            "Child model projection respects its own authored visibility"
+        )
+        let lineage = await admission.session("real-child")
+        try Expect.equal(lineage?.parentSessionID, "real-parent", "Executed child keeps parent lineage")
+
+        var denied_duplicate = false
+        do {
+            _ = try await admission.run(
+                DelegationLeafFixture.identifier,
+                request: .init(messages: []),
+                from: "real-parent",
+                sessionID: "real-child",
+                model: model
+            )
+        } catch AgentDelegation.Failure.duplicateSession {
+            denied_duplicate = true
+        }
+        try Expect.true(denied_duplicate, "Executed child cannot be launched twice")
+
+        var denied_resumption = false
+        do {
+            _ = try await admission.resume("real-child")
+        } catch AgentDelegation.Failure.settledSession {
+            denied_resumption = true
+        }
+        try Expect.true(denied_resumption, "Terminal child cannot resume")
+
+        var denied_no_runner = false
+        _ = try await admission.begin(
+            DelegationIntermediateFixture.identifier,
+            from: "real-parent",
+            sessionID: "admitted-only"
+        )
+        do {
+            _ = try await admission.resume("admitted-only")
+        } catch AgentDelegation.Failure.executionNotStarted {
+            denied_no_runner = true
+        }
+        try Expect.true(denied_no_runner, "Admission alone cannot invent a runner")
+
+        return []
+    }
+}

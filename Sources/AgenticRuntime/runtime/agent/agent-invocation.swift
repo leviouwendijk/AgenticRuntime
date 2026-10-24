@@ -13,23 +13,42 @@ public extension AgenticRuntime {
         let realization = try realizeAgent(
             identifiedBy: identifier
         )
+        return makeAgentRunner(
+            realization: realization,
+            capabilityState: realization.makeCapabilityState(),
+            model: model,
+            configuration: configuration,
+            tooling: tooling,
+            extensions: extensions,
+            recording: recording,
+            modelPreferences: modelPreferences
+        )
+    }
 
-        let state = realization.makeCapabilityState()
-        var modelSelection = realization.modelSelection
-        modelSelection.preferences = modelSelection.preferences.overriding(
+    /// The same realized Agent and capability actor that admission checked must
+    /// be installed in its runner. This is an internal Runtime seam, not a
+    /// caller-controlled override of an Agent's authored permissions.
+    internal func makeAgentRunner(
+        realization: AgentRealization,
+        capabilityState: AgentCapabilityState,
+        model: RuntimeServices.Model,
+        configuration: AgentRunner.Configuration = .default,
+        tooling: RuntimeServices.Tooling = .init(),
+        extensions: [any AgentHarnessExtension] = [],
+        recording: RuntimeServices.Recording = .init(),
+        modelPreferences: AgentModelPreferences = .init()
+    ) -> AgentRunner {
+        var selection = realization.modelSelection
+        selection.preferences = selection.preferences.overriding(
             with: modelPreferences
         )
         return AgentRunner(
-            model: model.selecting(
-                modelSelection
-            ),
+            model: model.selecting(selection),
             configuration: configuration,
-            tooling: tooling.using(
-                registry: tools
-            ),
+            tooling: tooling.using(registry: tools),
             inventory: CapabilityInventory(
                 installed: installed,
-                state: state
+                state: capabilityState
             ),
             extensions: extensions,
             recording: recording
