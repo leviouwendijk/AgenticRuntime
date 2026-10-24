@@ -108,7 +108,8 @@ extension AgentLoop {
                 state: checkpoint.state,
                 events: checkpoint.events,
                 toolUses: checkpoint.resolvedToolUses,
-                costRecord: checkpoint.costRecord
+                costRecord: checkpoint.costRecord,
+                invocations: checkpoint.invocations
             )
         }
     }

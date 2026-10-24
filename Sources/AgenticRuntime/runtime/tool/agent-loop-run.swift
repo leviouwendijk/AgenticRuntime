@@ -44,7 +44,8 @@ extension AgentLoop {
                         state: checkpoint.state,
                         events: checkpoint.events,
                         toolUses: checkpoint.resolvedToolUses,
-                        costRecord: checkpoint.costRecord
+                        costRecord: checkpoint.costRecord,
+                        invocations: checkpoint.invocations
                     )
                 }
 
@@ -79,7 +80,8 @@ extension AgentLoop {
                     state: checkpoint.state,
                     events: checkpoint.events,
                     toolUses: checkpoint.resolvedToolUses,
-                    costRecord: checkpoint.costRecord
+                    costRecord: checkpoint.costRecord,
+                        invocations: checkpoint.invocations
                 )
 
             case .failed:
@@ -96,7 +98,8 @@ extension AgentLoop {
                     state: checkpoint.state,
                     events: checkpoint.events,
                     toolUses: checkpoint.resolvedToolUses,
-                    costRecord: checkpoint.costRecord
+                    costRecord: checkpoint.costRecord,
+                        invocations: checkpoint.invocations
                 )
 
             case .completed:
@@ -112,7 +115,8 @@ extension AgentLoop {
                     state: checkpoint.state,
                     events: checkpoint.events,
                     toolUses: checkpoint.resolvedToolUses,
-                    costRecord: checkpoint.costRecord
+                    costRecord: checkpoint.costRecord,
+                        invocations: checkpoint.invocations
                 )
             }
         }
@@ -121,17 +125,44 @@ extension AgentLoop {
     func performModelTurn(
         from checkpoint: AgentRunner.Checkpoint
     ) async throws -> AgentRunner.Checkpoint {
+        var current = checkpoint
+        try ensure_run_invocation(in: &current)
+        let model_id = "model:\(UUID().uuidString)"
+        try begin_invocation(
+            .init(
+                id: model_id,
+                parent_id: AgentExecutionInvocation.root_id(session_id: current.id),
+                kind: .model,
+                iteration: current.state.iteration + 1
+            ), to: &current
+        )
+        current.currentModelInvocationID = model_id
+        try await saveCheckpoint(&current)
+
+        let next: AgentRunner.Checkpoint
         switch configuration.responseDelivery {
         case .buffered:
-            return try await performBufferedModelTurn(
-                from: checkpoint
-            )
-
+            next = try await performBufferedModelTurn(from: current)
         case .stream:
-            return try await performStreamingModelTurn(
-                from: checkpoint
-            )
+            next = try await performStreamingModelTurn(from: current)
         }
+        current = next
+        let state: AgentExecutionInvocation.State
+        switch current.phase {
+        case .suspended, .awaiting_approval:
+            state = .suspended
+        case .interrupted:
+            state = .interrupted
+        case .failed:
+            state = .failed
+        case .ready_for_model, .processing_tool_calls, .completed:
+            state = .completed
+        case .receiving_model_response:
+            state = .running
+        }
+        try finish_invocation(id: model_id, state: state, to: &current)
+        try await saveCheckpoint(&current)
+        return current
     }
 
     func performBufferedModelTurn(

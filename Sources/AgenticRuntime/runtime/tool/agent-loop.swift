@@ -98,6 +98,14 @@ internal struct AgentLoop: Sendable {
             capabilities: await inventory.snapshot()
         )
 
+        try begin_invocation(
+            .init(
+                id: AgentExecutionInvocation.root_id(session_id: sessionID),
+                parent_id: nil, kind: .agent,
+                started_at: checkpoint.startedAt
+            ), to: &checkpoint
+        )
+
         try await recordMessages(
             request.messages
         )

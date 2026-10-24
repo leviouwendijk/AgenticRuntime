@@ -281,7 +281,8 @@ extension AgentLoop {
             state: checkpoint.state,
             events: checkpoint.events,
             toolUses: checkpoint.resolvedToolUses,
-            costRecord: checkpoint.costRecord
+            costRecord: checkpoint.costRecord,
+                invocations: checkpoint.invocations
         )
     }
 
@@ -423,6 +424,21 @@ extension AgentLoop {
     func saveCheckpoint(
         _ checkpoint: inout AgentRunner.Checkpoint
     ) async throws {
+        let root_id = AgentExecutionInvocation.root_id(session_id: checkpoint.id)
+        if let index = checkpoint.invocations.firstIndex(where: { $0.id == root_id }) {
+            let phase_state: AgentExecutionInvocation.State
+            switch checkpoint.phase {
+            case .completed: phase_state = .completed
+            case .failed: phase_state = .failed
+            case .interrupted: phase_state = .interrupted
+            case .suspended, .awaiting_approval: phase_state = .suspended
+            case .ready_for_model, .receiving_model_response, .processing_tool_calls:
+                phase_state = .running
+            }
+            if checkpoint.invocations[index].state != phase_state {
+                checkpoint.invocations[index].transition(to: phase_state)
+            }
+        }
         checkpoint.capabilities =
             await capabilityState.snapshot()
         if configuration.contextMode == .dynamic, let contextAllocator {
@@ -470,6 +486,7 @@ extension AgentLoop {
         _ event: Run.Event.State,
         to checkpoint: inout AgentRunner.Checkpoint
     ) async throws {
+        try observe_invocation_event(event, in: &checkpoint)
         checkpoint.events.append(
             event
         )

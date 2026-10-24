@@ -49,6 +49,11 @@ extension AgentLoop {
             }
 
             let toolCall = record.toolCall
+            try begin_tool_invocation(
+                call_id: toolCall.id,
+                tool_name: toolCall.tool.rawValue,
+                in: &checkpoint
+            )
 
             try await recordToolCall(
                 toolCall

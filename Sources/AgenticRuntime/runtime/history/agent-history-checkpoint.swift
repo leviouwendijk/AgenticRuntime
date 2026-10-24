@@ -23,6 +23,10 @@ public extension AgentRunner {
         public var contextWorkingSet: Context.WorkingSet?
         public var contextTransitions: [Context.Transition]
         public var events: [Run.Event.State]
+        /// Authoritative invocation spans, independently of display projections.
+        public var invocations: [AgentExecutionInvocation]
+        /// Last provider request span that causally produced tool calls.
+        public var currentModelInvocationID: String?
         public var phase: Phase
         public var lastResponse: AgentResponse?
         public var partialResponse: AgentPartialResponse?
@@ -52,6 +56,8 @@ public extension AgentRunner {
             case contextWorkingSet
             case contextTransitions
             case events
+            case invocations
+            case currentModelInvocationID
             case phase
             case lastResponse
             case partialResponse
@@ -109,6 +115,13 @@ public extension AgentRunner {
                 [Run.Event.State].self,
                 forKey: .events
             ) ?? []
+            invocations = try container.decodeIfPresent(
+                [AgentExecutionInvocation].self,
+                forKey: .invocations
+            ) ?? []
+            currentModelInvocationID = try container.decodeIfPresent(
+                String.self, forKey: .currentModelInvocationID
+            )
             phase = try container.decode(
                 Phase.self,
                 forKey: .phase
@@ -180,6 +193,8 @@ public extension AgentRunner {
             contextWorkingSet: Context.WorkingSet? = nil,
             contextTransitions: [Context.Transition] = [],
             events: [Run.Event.State] = [],
+            invocations: [AgentExecutionInvocation] = [],
+            currentModelInvocationID: String? = nil,
             phase: Phase = .ready_for_model,
             lastResponse: AgentResponse? = nil,
             partialResponse: AgentPartialResponse? = nil,
@@ -208,6 +223,8 @@ public extension AgentRunner {
             self.contextWorkingSet = contextWorkingSet
             self.contextTransitions = contextTransitions
             self.events = events
+            self.invocations = invocations
+            self.currentModelInvocationID = currentModelInvocationID
             self.phase = phase
             self.lastResponse = lastResponse
             self.partialResponse = partialResponse

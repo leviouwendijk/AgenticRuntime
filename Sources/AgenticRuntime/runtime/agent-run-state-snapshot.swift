@@ -13,6 +13,8 @@ public struct AgentRunStateSnapshot:
     public let state: AgentRunner.State
     public let runLimits: AgentRunLimits
     public let events: [Run.Event.State]
+    /// Nil only when decoding a legacy presentation snapshot.
+    public let invocations: [AgentExecutionInvocation]?
     public let lastResponse: AgentResponse?
     public let partialResponse: AgentPartialResponse?
     public let toolBatch: AgentToolUseBatch?
@@ -35,6 +37,7 @@ public struct AgentRunStateSnapshot:
         self.state = checkpoint.state
         self.runLimits = checkpoint.runLimits
         self.events = checkpoint.events
+        self.invocations = checkpoint.invocations
         self.lastResponse = checkpoint.lastResponse
         self.partialResponse = checkpoint.partialResponse
         self.toolBatch = checkpoint.toolBatch

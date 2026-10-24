@@ -61,6 +61,15 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
         ) {
             try AgenticProgramRuntimeFlowTesting.runContextCompactionProjection()
         },
+        TestFlow("invocation-trace-projection", tags: ["runtime", "trace", "provenance"]) {
+            try AgenticProgramRuntimeFlowTesting.runInvocationTraceProjection()
+        },
+        TestFlow("invocation-boundary-continuity", tags: ["runtime", "provenance", "resume"]) {
+            try AgenticProgramRuntimeFlowTesting.runInvocationBoundaryContinuity()
+        },
+        TestFlow("invocation-provenance-contract", tags: ["runtime", "provenance"]) {
+            try AgenticProgramRuntimeFlowTesting.runInvocationProvenanceContract()
+        },
         TestFlow("execution-trace-projection", tags: ["runtime", "trace", "tree"]) {
             try AgenticProgramRuntimeFlowTesting.runExecutionTraceProjection()
         },

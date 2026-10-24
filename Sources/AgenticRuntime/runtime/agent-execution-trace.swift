@@ -24,6 +24,8 @@ public struct AgentExecutionTraceNode: Sendable, Codable, Hashable, Identifiable
         case program(ProgramExecutionOutcome)
         case program_step(ProgramStepKind)
         case unattributed_tools
+        case invocation(AgentExecutionInvocation.Kind)
+        case invocation_hierarchy
     }
 
     /// Unique occurrence identity in a projection; stable across resume.
@@ -55,7 +57,8 @@ public extension AgentExecutionTrace {
         session_id: String,
         phase: AgentRunner.Phase,
         events: [Run.Event.State],
-        tool_uses: [AgentToolUseRecord]
+        tool_uses: [AgentToolUseRecord],
+        invocations: [AgentExecutionInvocation] = []
     ) throws -> Self {
         let namespace = ["run", session_id]
         func key(_ components: [String]) -> String {
@@ -143,6 +146,26 @@ public extension AgentExecutionTrace {
             }))
         }
 
+        if !invocations.isEmpty {
+            try AgentExecutionInvocationHistory.validate(invocations)
+            let by_parent = Dictionary(grouping: invocations, by: \.parent_id)
+            func project(_ span: AgentExecutionInvocation) -> Tree<AgentExecutionTraceNode>.Node {
+                let children = (by_parent[span.id] ?? []).map(project)
+                return .init(.init(
+                    id: key(["invocation", span.id]),
+                    kind: .invocation(span.kind),
+                    reference_id: span.source_record_id ?? span.id,
+                    title: span.target_id ?? span.kind.rawValue,
+                    detail: span.state.rawValue
+                ), children: children)
+            }
+            roots_children.insert(.init(.init(
+                id: key(["invocations"]),
+                kind: .invocation_hierarchy,
+                title: "recorded invocation ancestry"
+            ), children: (by_parent[nil] ?? []).map(project)), at: 0)
+        }
+
         let root_id = key(["root"])
         return .init(id: root_id, tree: .init(roots: [.init(.init(
             id: root_id,
@@ -189,19 +212,19 @@ private func trace_key(_ components: [String]) -> String {
 
 public extension AgentRunStateSnapshot {
     func execution_trace() throws -> AgentExecutionTrace {
-        try .run(session_id: sessionID, phase: phase, events: events, tool_uses: toolUses)
+        try .run(session_id: sessionID, phase: phase, events: events, tool_uses: toolUses, invocations: invocations ?? [])
     }
 }
 
 public extension AgentRunner.Result {
     func execution_trace() throws -> AgentExecutionTrace {
-        try .run(session_id: sessionID, phase: phase, events: events, tool_uses: toolUses)
+        try .run(session_id: sessionID, phase: phase, events: events, tool_uses: toolUses, invocations: invocations)
     }
 }
 
 public extension AgentRunner.Checkpoint {
     func execution_trace() throws -> AgentExecutionTrace {
-        try .run(session_id: id, phase: phase, events: events, tool_uses: resolvedToolUses)
+        try .run(session_id: id, phase: phase, events: events, tool_uses: resolvedToolUses, invocations: invocations)
     }
 }
 

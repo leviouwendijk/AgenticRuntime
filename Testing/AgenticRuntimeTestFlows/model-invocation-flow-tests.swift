@@ -76,6 +76,21 @@ extension AgenticProgramRuntimeFlowTesting {
             "Runtime consumes the AgentModelInvocation.Result response"
         )
 
+        try Expect.equal(
+            result.invocations.count, 2,
+            "a buffered model invocation records the run root and model span"
+        )
+        try Expect.true(
+            result.invocations.contains(where: { span in
+                span.kind == .model
+                    && span.parent_id == AgentExecutionInvocation.root_id(
+                        session_id: result.sessionID
+                    )
+                    && span.state == .completed
+            }),
+            "the completed model span retains its recorded run parent"
+        )
+
         return [
             .field(
                 "invocations",
@@ -143,6 +158,11 @@ extension AgenticProgramRuntimeFlowTesting {
             result.response?.message.content.text,
             "fixture-response",
             "streaming Runtime finalizes from the invocation-level completion result"
+        )
+
+        try Expect.equal(
+            result.invocations.filter { $0.kind == .model }.count, 1,
+            "streaming creates one model invocation span without new run events"
         )
 
         return [

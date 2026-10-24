@@ -113,7 +113,8 @@ public actor AgentRunner {
                 state: checkpoint.state,
                 events: checkpoint.events,
                 toolUses: checkpoint.resolvedToolUses,
-                costRecord: checkpoint.costRecord
+                costRecord: checkpoint.costRecord,
+                        invocations: checkpoint.invocations
             )
 
         case .ready_for_model,
@@ -138,7 +139,8 @@ public actor AgentRunner {
                 state: checkpoint.state,
                 events: checkpoint.events,
                 toolUses: checkpoint.resolvedToolUses,
-                costRecord: checkpoint.costRecord
+                costRecord: checkpoint.costRecord,
+                        invocations: checkpoint.invocations
             )
 
         case .failed:
@@ -155,7 +157,8 @@ public actor AgentRunner {
                 state: checkpoint.state,
                 events: checkpoint.events,
                 toolUses: checkpoint.resolvedToolUses,
-                costRecord: checkpoint.costRecord
+                costRecord: checkpoint.costRecord,
+                        invocations: checkpoint.invocations
             )
         }
     }
@@ -306,7 +309,8 @@ extension AgentRunner {
             state: checkpoint.state,
             events: checkpoint.events,
             toolUses: checkpoint.resolvedToolUses,
-            costRecord: checkpoint.costRecord
+            costRecord: checkpoint.costRecord,
+                        invocations: checkpoint.invocations
         )
     }
 }
