@@ -78,8 +78,8 @@ public struct InstalledCapabilities: Sendable {
                 reference: reference,
                 namespace: namespaces[reference],
                 purpose: binding.definition.purpose,
-                input: binding.capabilityContract.input.jsonvalue,
-                output: binding.capabilityContract.output.jsonvalue,
+                input: binding.contract.input.jsonvalue,
+                output: binding.contract.output.jsonvalue,
                 modelInputSchema: binding.modelFacingInputSchema?.jsonvalue,
                 risk: binding.definition.risk
             ))
@@ -90,8 +90,8 @@ public struct InstalledCapabilities: Sendable {
             result.append(.init(
                 reference: reference, namespace: namespaces[reference],
                 purpose: definition.purpose,
-                input: binding.capabilityContract.input.jsonvalue,
-                output: binding.capabilityContract.output.jsonvalue,
+                input: binding.contract.input.jsonvalue,
+                output: binding.contract.output.jsonvalue,
                 modelInputSchema: binding.modelFacingInputSchema.jsonvalue
             ))
         }
@@ -101,8 +101,8 @@ public struct InstalledCapabilities: Sendable {
             result.append(.init(
                 reference: reference, namespace: namespaces[reference],
                 purpose: definition.purpose,
-                input: binding.capabilityContract.input.jsonvalue,
-                output: binding.capabilityContract.output.jsonvalue,
+                input: binding.contract.input.jsonvalue,
+                output: binding.contract.output.jsonvalue,
                 modelInputSchema: binding.modelFacingInputSchema.jsonvalue
             ))
         }
@@ -112,8 +112,8 @@ public struct InstalledCapabilities: Sendable {
             result.append(.init(
                 reference: reference, namespace: namespaces[reference],
                 purpose: definition.purpose,
-                input: binding.capabilityContract.input.jsonvalue,
-                output: binding.capabilityContract.output.jsonvalue
+                input: binding.contract.input.jsonvalue,
+                output: binding.contract.output.jsonvalue
             ))
         }
         return result.sorted {

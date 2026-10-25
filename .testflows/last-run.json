@@ -3,12 +3,12 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-10-24T22:42:59Z",
+  "generated_at" : "2026-10-25T09:14:15Z",
   "passed" : 50,
   "results" : [
     {
       "display_name" : "usage-absorption-cost-tracker",
-      "duration_seconds" : 0.005468010902404785,
+      "duration_seconds" : 0.005137920379638672,
       "name" : "usage-absorption-cost-tracker",
       "status" : "passed",
       "tags" : [
@@ -21,7 +21,7 @@
     },
     {
       "display_name" : "instruction-selection",
-      "duration_seconds" : 0.0024650096893310547,
+      "duration_seconds" : 0.002398967742919922,
       "name" : "instruction-selection",
       "status" : "passed",
       "tags" : [
@@ -33,7 +33,7 @@
     },
     {
       "display_name" : "context-inference-preparation",
-      "duration_seconds" : 0.005110979080200195,
+      "duration_seconds" : 0.005145072937011719,
       "name" : "context-inference-preparation",
       "status" : "passed",
       "tags" : [
@@ -46,7 +46,7 @@
     },
     {
       "display_name" : "context-evidence-resolution",
-      "duration_seconds" : 0.0029031038284301758,
+      "duration_seconds" : 0.002897977828979492,
       "name" : "context-evidence-resolution",
       "status" : "passed",
       "tags" : [
@@ -59,7 +59,7 @@
     },
     {
       "display_name" : "context-invocation-audit",
-      "duration_seconds" : 0.00456690788269043,
+      "duration_seconds" : 0.004379987716674805,
       "name" : "context-invocation-audit",
       "status" : "passed",
       "tags" : [
@@ -72,7 +72,7 @@
     },
     {
       "display_name" : "context-allocator-roles",
-      "duration_seconds" : 0.0008909702301025391,
+      "duration_seconds" : 0.0011720657348632812,
       "name" : "context-allocator-roles",
       "status" : "passed",
       "tags" : [
@@ -85,7 +85,7 @@
     },
     {
       "display_name" : "context-dynamic-mode",
-      "duration_seconds" : 0.0812070369720459,
+      "duration_seconds" : 0.08294296264648438,
       "name" : "context-dynamic-mode",
       "status" : "passed",
       "tags" : [
@@ -98,7 +98,7 @@
     },
     {
       "display_name" : "context-compaction-projection",
-      "duration_seconds" : 0.00015497207641601562,
+      "duration_seconds" : 0.0001729726791381836,
       "name" : "context-compaction-projection",
       "status" : "passed",
       "tags" : [
@@ -110,7 +110,7 @@
     },
     {
       "display_name" : "invocation-trace-projection",
-      "duration_seconds" : 0.0008329153060913086,
+      "duration_seconds" : 0.0009379386901855469,
       "name" : "invocation-trace-projection",
       "status" : "passed",
       "tags" : [
@@ -121,7 +121,7 @@
     },
     {
       "display_name" : "invocation-boundary-continuity",
-      "duration_seconds" : 9.09566879272461e-05,
+      "duration_seconds" : 9.703636169433594e-05,
       "name" : "invocation-boundary-continuity",
       "status" : "passed",
       "tags" : [
@@ -132,7 +132,7 @@
     },
     {
       "display_name" : "invocation-provenance-contract",
-      "duration_seconds" : 2.002716064453125e-05,
+      "duration_seconds" : 2.205371856689453e-05,
       "name" : "invocation-provenance-contract",
       "status" : "passed",
       "tags" : [
@@ -142,7 +142,7 @@
     },
     {
       "display_name" : "execution-trace-projection",
-      "duration_seconds" : 0.00020802021026611328,
+      "duration_seconds" : 0.00022900104522705078,
       "name" : "execution-trace-projection",
       "status" : "passed",
       "tags" : [
@@ -153,7 +153,7 @@
     },
     {
       "display_name" : "execution-trace-difference",
-      "duration_seconds" : 0.0003399848937988281,
+      "duration_seconds" : 0.00034809112548828125,
       "name" : "execution-trace-difference",
       "status" : "passed",
       "tags" : [
@@ -164,7 +164,7 @@
     },
     {
       "display_name" : "tool-observation-history",
-      "duration_seconds" : 0.0003770589828491211,
+      "duration_seconds" : 0.0004260540008544922,
       "name" : "tool-observation-history",
       "status" : "passed",
       "tags" : [
@@ -175,7 +175,7 @@
     },
     {
       "display_name" : "agent-capability-state",
-      "duration_seconds" : 7.903575897216797e-05,
+      "duration_seconds" : 8.797645568847656e-05,
       "name" : "agent-capability-state",
       "status" : "passed",
       "tags" : [
@@ -189,7 +189,7 @@
     },
     {
       "display_name" : "agent-realization",
-      "duration_seconds" : 0.0001850128173828125,
+      "duration_seconds" : 0.00020492076873779297,
       "name" : "agent-realization",
       "status" : "passed",
       "tags" : [
@@ -204,7 +204,7 @@
     },
     {
       "display_name" : "inference-installation",
-      "duration_seconds" : 0.00026702880859375,
+      "duration_seconds" : 0.0002980232238769531,
       "name" : "inference-installation",
       "status" : "passed",
       "tags" : [
@@ -217,7 +217,7 @@
     },
     {
       "display_name" : "agent-owned-capability-inventory-live-mutation",
-      "duration_seconds" : 0.00044095516204833984,
+      "duration_seconds" : 0.00048100948333740234,
       "name" : "agent-owned-capability-inventory-live-mutation",
       "status" : "passed",
       "tags" : [
@@ -230,7 +230,7 @@
     },
     {
       "display_name" : "capability-dispatch",
-      "duration_seconds" : 0.00013005733489990234,
+      "duration_seconds" : 0.00014507770538330078,
       "name" : "capability-dispatch",
       "status" : "passed",
       "tags" : [
@@ -242,7 +242,7 @@
     },
     {
       "display_name" : "capability-contract-alignment",
-      "duration_seconds" : 0.00016701221466064453,
+      "duration_seconds" : 0.00018095970153808594,
       "name" : "capability-contract-alignment",
       "status" : "passed",
       "tags" : [
@@ -254,7 +254,7 @@
     },
     {
       "display_name" : "model-capability-projection",
-      "duration_seconds" : 0.0008649826049804688,
+      "duration_seconds" : 0.0009530782699584961,
       "name" : "model-capability-projection",
       "status" : "passed",
       "tags" : [
@@ -266,7 +266,7 @@
     },
     {
       "display_name" : "runtime-diagnostics",
-      "duration_seconds" : 0.00013196468353271484,
+      "duration_seconds" : 0.00013399124145507812,
       "name" : "runtime-diagnostics",
       "status" : "passed",
       "tags" : [
@@ -279,7 +279,7 @@
     },
     {
       "display_name" : "agent-delegation-admission",
-      "duration_seconds" : 0.0006330013275146484,
+      "duration_seconds" : 0.0007020235061645508,
       "name" : "agent-delegation-admission",
       "status" : "passed",
       "tags" : [
@@ -292,7 +292,7 @@
     },
     {
       "display_name" : "agent-delegation-execution",
-      "duration_seconds" : 0.0004099607467651367,
+      "duration_seconds" : 0.0004329681396484375,
       "name" : "agent-delegation-execution",
       "status" : "passed",
       "tags" : [
@@ -304,7 +304,7 @@
     },
     {
       "display_name" : "agent-invocation",
-      "duration_seconds" : 0.00036597251892089844,
+      "duration_seconds" : 0.0004000663757324219,
       "name" : "agent-invocation",
       "status" : "passed",
       "tags" : [
@@ -318,7 +318,7 @@
     },
     {
       "display_name" : "agent-authored-visible-capabilities-survive-runtime-launch",
-      "duration_seconds" : 0.0006400346755981445,
+      "duration_seconds" : 0.0006880760192871094,
       "name" : "agent-authored-visible-capabilities-survive-runtime-launch",
       "status" : "passed",
       "tags" : [
@@ -332,7 +332,7 @@
     },
     {
       "display_name" : "program-execution-record",
-      "duration_seconds" : 0.000370025634765625,
+      "duration_seconds" : 0.0004010200500488281,
       "name" : "program-execution-record",
       "status" : "passed",
       "tags" : [
@@ -344,7 +344,7 @@
     },
     {
       "display_name" : "program-execution-failure-record",
-      "duration_seconds" : 0.0005289316177368164,
+      "duration_seconds" : 0.0006029605865478516,
       "name" : "program-execution-failure-record",
       "status" : "passed",
       "tags" : [
@@ -356,7 +356,7 @@
     },
     {
       "display_name" : "program-inference-execution-record",
-      "duration_seconds" : 0.0006479024887084961,
+      "duration_seconds" : 0.0007250308990478516,
       "name" : "program-inference-execution-record",
       "status" : "passed",
       "tags" : [
@@ -369,7 +369,7 @@
     },
     {
       "display_name" : "program-inference-failure-recovery-evidence",
-      "duration_seconds" : 0.000841975212097168,
+      "duration_seconds" : 0.0009150505065917969,
       "name" : "program-inference-failure-recovery-evidence",
       "status" : "passed",
       "tags" : [
@@ -384,7 +384,7 @@
     },
     {
       "display_name" : "model-invocation-transport",
-      "duration_seconds" : 5.900859832763672e-05,
+      "duration_seconds" : 6.306171417236328e-05,
       "name" : "model-invocation-transport",
       "status" : "passed",
       "tags" : [
@@ -397,7 +397,7 @@
     },
     {
       "display_name" : "model-invocation-streaming-completion",
-      "duration_seconds" : 0.00010704994201660156,
+      "duration_seconds" : 0.00011897087097167969,
       "name" : "model-invocation-streaming-completion",
       "status" : "passed",
       "tags" : [
@@ -410,7 +410,7 @@
     },
     {
       "display_name" : "runtime-services-composition",
-      "duration_seconds" : 6.99758529663086e-05,
+      "duration_seconds" : 5.805492401123047e-05,
       "name" : "runtime-services-composition",
       "status" : "passed",
       "tags" : [
@@ -422,7 +422,7 @@
     },
     {
       "display_name" : "mode-model-selection-propagation",
-      "duration_seconds" : 5.1021575927734375e-05,
+      "duration_seconds" : 4.100799560546875e-05,
       "name" : "mode-model-selection-propagation",
       "status" : "passed",
       "tags" : [
@@ -434,7 +434,7 @@
     },
     {
       "display_name" : "runtime-services-recording-propagation",
-      "duration_seconds" : 4.100799560546875e-05,
+      "duration_seconds" : 3.790855407714844e-05,
       "name" : "runtime-services-recording-propagation",
       "status" : "passed",
       "tags" : [
@@ -446,7 +446,7 @@
     },
     {
       "display_name" : "application-program-installation",
-      "duration_seconds" : 0.0002460479736328125,
+      "duration_seconds" : 0.00026595592498779297,
       "name" : "application-program-installation",
       "status" : "passed",
       "tags" : [
@@ -460,7 +460,7 @@
     },
     {
       "display_name" : "application-installation-composition",
-      "duration_seconds" : 0.0015230178833007812,
+      "duration_seconds" : 0.0016139745712280273,
       "name" : "application-installation-composition",
       "status" : "passed",
       "tags" : [
@@ -475,7 +475,7 @@
     },
     {
       "display_name" : "application-catalog-installation",
-      "duration_seconds" : 0.0014809370040893555,
+      "duration_seconds" : 0.0015360116958618164,
       "name" : "application-catalog-installation",
       "status" : "passed",
       "tags" : [
@@ -489,7 +489,7 @@
     },
     {
       "display_name" : "application-gateway-availability",
-      "duration_seconds" : 2.8967857360839844e-05,
+      "duration_seconds" : 2.9921531677246094e-05,
       "name" : "application-gateway-availability",
       "status" : "passed",
       "tags" : [
@@ -502,7 +502,7 @@
     },
     {
       "display_name" : "program-governed-tool-execution",
-      "duration_seconds" : 0.0007780790328979492,
+      "duration_seconds" : 0.0008519887924194336,
       "name" : "program-governed-tool-execution",
       "status" : "passed",
       "tags" : [
@@ -517,7 +517,7 @@
     },
     {
       "display_name" : "program-user-input-resume",
-      "duration_seconds" : 0.002024054527282715,
+      "duration_seconds" : 0.0022559165954589844,
       "name" : "program-user-input-resume",
       "status" : "passed",
       "tags" : [
@@ -532,7 +532,7 @@
     },
     {
       "display_name" : "program-approval-resume-replay",
-      "duration_seconds" : 0.0034470558166503906,
+      "duration_seconds" : 0.0038150548934936523,
       "name" : "program-approval-resume-replay",
       "status" : "passed",
       "tags" : [
@@ -547,7 +547,7 @@
     },
     {
       "display_name" : "tool-observe-recovery",
-      "duration_seconds" : 0.005767941474914551,
+      "duration_seconds" : 0.0038160085678100586,
       "name" : "tool-observe-recovery",
       "status" : "passed",
       "tags" : [
@@ -560,7 +560,7 @@
     },
     {
       "display_name" : "tool-mutation-recovery",
-      "duration_seconds" : 0.0014170408248901367,
+      "duration_seconds" : 0.0015039443969726562,
       "name" : "tool-mutation-recovery",
       "status" : "passed",
       "tags" : [
@@ -573,7 +573,7 @@
     },
     {
       "display_name" : "tool-classification-propagation",
-      "duration_seconds" : 0.0006679296493530273,
+      "duration_seconds" : 0.0007489919662475586,
       "name" : "tool-classification-propagation",
       "status" : "passed",
       "tags" : [
@@ -587,7 +587,7 @@
     },
     {
       "display_name" : "workspace-access-lease-activation",
-      "duration_seconds" : 0.0037260055541992188,
+      "duration_seconds" : 0.003970026969909668,
       "name" : "workspace-access-lease-activation",
       "status" : "passed",
       "tags" : [
@@ -602,7 +602,7 @@
     },
     {
       "display_name" : "program-caught-tool-failure-resume",
-      "duration_seconds" : 0.0007849931716918945,
+      "duration_seconds" : 0.0007799863815307617,
       "name" : "program-caught-tool-failure-resume",
       "status" : "passed",
       "tags" : [
@@ -617,7 +617,7 @@
     },
     {
       "display_name" : "program-governed-tool-recovery",
-      "duration_seconds" : 0.0010089874267578125,
+      "duration_seconds" : 0.0011169910430908203,
       "name" : "program-governed-tool-recovery",
       "status" : "passed",
       "tags" : [
@@ -631,7 +631,7 @@
     },
     {
       "display_name" : "malformed-clarify-tool-input-recovery",
-      "duration_seconds" : 0.001650094985961914,
+      "duration_seconds" : 0.0017989873886108398,
       "name" : "malformed-clarify-tool-input-recovery",
       "status" : "passed",
       "tags" : [
@@ -644,7 +644,7 @@
     },
     {
       "display_name" : "agent-run-limit-stop",
-      "duration_seconds" : 0.0013560056686401367,
+      "duration_seconds" : 0.0012269020080566406,
       "name" : "agent-run-limit-stop",
       "status" : "passed",
       "tags" : [

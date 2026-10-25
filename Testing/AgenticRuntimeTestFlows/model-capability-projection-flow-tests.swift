@@ -111,11 +111,11 @@ extension AgenticProgramRuntimeFlowTesting {
             ProjectionInference.contract,
             ProjectionChildAgent.contract,
             ProjectionContractTool.contract,
-            program.capabilityContract,
-            program.program.capabilityContract,
-            inference.capabilityContract,
-            tool.capabilityContract,
-            hostOnlyTool.capabilityContract,
+            program.contract,
+            program.program.contract,
+            inference.contract,
+            tool.contract,
+            hostOnlyTool.contract,
         ] {
             try Expect.equal(
                 contract.input.jsonvalue,

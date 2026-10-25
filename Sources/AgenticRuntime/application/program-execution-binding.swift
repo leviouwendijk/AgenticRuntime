@@ -13,16 +13,16 @@ public struct ProgramExecutionBinding:
     }
 
     /// The Core Program binding remains the source of this typed contract.
-    public var capabilityContract: CapabilityContract {
-        program.capabilityContract
+    public var contract: CapabilityContract {
+        program.contract
     }
 
     public var semanticInputSchema: JSONSchema {
-        capabilityContract.input
+        contract.input
     }
 
     public var semanticOutputSchema: JSONSchema {
-        capabilityContract.output
+        contract.output
     }
 
     public var modelFacingInputSchema: JSONSchema {
