@@ -41,7 +41,7 @@ public struct AgenticRuntime:
     /// a mutable source of capability authority.
     public func toolPresentation() throws -> ToolInventory {
         try ToolInventory.materialize(
-            registrations: application.toolRegistrations,
+            bindings: application.toolBindings,
             registry: installed.tools
         )
     }

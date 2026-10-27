@@ -34,6 +34,27 @@ private struct InstallationToolFixture:
     }
 }
 
+private struct ProviderToolFixture: Tool {
+    typealias Input = InstallationFixtureValue
+    typealias Output = InstallationFixtureValue
+
+    static let definition = ToolDefinition(
+        identifier: "fixture.provider_tool",
+        purpose: "Proves provider installation survives the ToolBinding migration.",
+        risk: .observe
+    )
+
+    func call(_ input: Input, in _: ToolContext) async throws -> Output {
+        input
+    }
+}
+
+private struct InstallationProviderFixture: AgentToolProvider {
+    func registerTools(into registry: inout ToolRegistry) throws {
+        try registry.register(ProviderToolFixture())
+    }
+}
+
 private struct InstallationProgramFixture:
     Program
 {
@@ -147,7 +168,7 @@ extension AgenticProgramRuntimeFlowTesting {
         }
 
         try Expect.equal(
-            application.toolRegistrations.count,
+            application.toolBindings.count,
             1,
             "Installation composition contributes granular Tool registrations"
         )
@@ -193,8 +214,8 @@ extension AgenticProgramRuntimeFlowTesting {
         }
 
         try Expect.equal(
-            wrappedApplication.toolRegistrations.count,
-            application.toolRegistrations.count,
+            wrappedApplication.toolBindings.count,
+            application.toolBindings.count,
             "install(Installation) preserves composed Tool contributions"
         )
         try Expect.equal(
@@ -276,6 +297,51 @@ extension AgenticProgramRuntimeFlowTesting {
             "Runtime validates and preserves application launch entries"
         )
 
+        // A provider remains an explicit, executable installation path.
+        let providerApplication = Agentic.application(
+            "fixture.provider_installation"
+        ) {
+            install(InstallationProviderFixture())
+        }
+        let providerRuntime = try await AgenticRuntime(
+            application: providerApplication
+        )
+        try Expect.equal(
+            providerRuntime.tools.inspect(
+                identifiedBy: ProviderToolFixture.definition.identifier
+            ) != nil,
+            true,
+            "Explicit AgentToolProvider contributes its registered Tool"
+        )
+        try Expect.equal(
+            try providerRuntime.toolPresentation().entry(
+                identifiedBy: ProviderToolFixture.definition.identifier
+            )?.collectionIdentifier,
+            AgentToolCollectionMetadata.ungrouped.identifier,
+            "Provider-installed Tools appear as ungrouped in presentation"
+        )
+
+        // Application DSL accepts the canonical grouped bindings directly.
+        let groupedApplication = Agentic.application(
+            "fixture.grouped_bindings"
+        ) {
+            tools {
+                collection("fixture.collection", title: "Fixture collection") {
+                    InstallationToolFixture()
+                }
+            }
+        }
+        let groupedRuntime = try await AgenticRuntime(
+            application: groupedApplication
+        )
+        try Expect.equal(
+            try groupedRuntime.toolPresentation().collection(
+                identifiedBy: "fixture.collection"
+            )?.toolIdentifiers,
+            [InstallationToolFixture.definition.identifier],
+            "Grouped ToolBindings preserve collection metadata through Runtime"
+        )
+
         let invalidApplication = Agentic.application(
             "fixture.invalid_agent_launch"
         ) {
@@ -314,7 +380,7 @@ extension AgenticProgramRuntimeFlowTesting {
         return [
             .field(
                 "tools",
-                String(application.toolRegistrations.count)
+                String(application.toolBindings.count)
             ),
             .field(
                 "programs",

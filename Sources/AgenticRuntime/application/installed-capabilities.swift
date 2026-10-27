@@ -35,8 +35,11 @@ public struct InstalledCapabilities: Sendable {
     public init(application: AgenticApplication) throws {
         self.init()
         catalog = application.catalog
-        for registration in application.toolRegistrations {
-            try registration.apply(into: &tools)
+        for binding in application.toolBindings {
+            try tools.register(binding)
+        }
+        for provider in application.toolProviders {
+            try tools.register(from: provider)
         }
         for binding in application.programBindings {
             try install(binding)
@@ -274,9 +277,13 @@ public struct InstalledCapabilities: Sendable {
             switch component {
             case .catalog(let contribution):
                 candidate.catalog = candidate.catalog + contribution
-            case .tools(let registrations):
-                for registration in registrations {
-                    try registration.apply(into: &candidate.tools)
+            case .tools(let bindings):
+                for binding in bindings {
+                    try candidate.tools.register(binding)
+                }
+            case .toolProviders(let providers):
+                for provider in providers {
+                    try candidate.tools.register(from: provider)
                 }
             case .programs(let bindings):
                 for binding in bindings { try candidate.install(binding) }

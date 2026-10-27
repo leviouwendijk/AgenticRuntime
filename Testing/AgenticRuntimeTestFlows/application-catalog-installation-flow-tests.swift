@@ -278,7 +278,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "Semantic Catalog installation does not fabricate an explicit Agent installation"
         )
         try Expect.equal(
-            application.toolRegistrations.count,
+            application.toolBindings.count,
             2,
             "Catalog installation does not fabricate Tool registrations while granular Tools remain installable"
         )
@@ -313,7 +313,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "install(Domain.self) realizes linker-derived Agent installation"
         )
         try Expect.equal(
-            domainApplication.toolRegistrations.count,
+            domainApplication.toolBindings.count,
             2,
             "Domain installation realizes the bound Domain Tool while preserving an explicitly installed unscoped Tool"
         )
@@ -432,7 +432,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ),
             .field(
                 "tool_registrations",
-                String(application.toolRegistrations.count)
+                String(application.toolBindings.count)
             ),
             .field(
                 "agent_definitions",

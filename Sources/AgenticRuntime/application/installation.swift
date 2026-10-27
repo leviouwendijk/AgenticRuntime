@@ -19,7 +19,7 @@ private final class DomainSink:
             components: [
                 .tools(
                     [
-                        .tool(
+                        ToolBinding(
                             tool,
                             modelContract: modelContract
                         ),
@@ -204,22 +204,15 @@ public func install<DomainType: Domain>(
     for component in overrides.replacing.components {
         let references: [CapabilityReference]
         switch component {
-        case .tools(let registrations):
-            var typed: [CapabilityReference] = []
-            for registration in registrations {
-                guard let reference = registration.reference else {
-                    throw DomainInstallationOverrideError.unsupportedReplacement
-                }
-                typed.append(reference)
-            }
-            references = typed
+        case .tools(let bindings):
+            references = bindings.map(\.reference)
         case .programs(let bindings):
             references = bindings.map(\.reference)
         case .inferences(let bindings):
             references = bindings.map(\.reference)
         case .agents(let bindings):
             references = bindings.map(\.reference)
-        case .catalog, .adapters, .launches, .gateways, .modelProviders:
+        case .catalog, .toolProviders, .adapters, .launches, .gateways, .modelProviders:
             throw DomainInstallationOverrideError.unsupportedReplacement
         }
         for reference in references {
@@ -243,37 +236,31 @@ public func install<ToolType: Tool>(
     modelContract: ToolModelContract? = nil
 ) -> Installation {
     install(
-        [
-            AgentToolRegistration.tool(
-                tool,
-                modelContract: modelContract
-            ),
-        ]
+        ToolBinding(
+            tool,
+            modelContract: modelContract
+        )
     )
 }
 
+/// Providers remain an explicit installation path because they may register
+/// multiple Tools and cannot be represented by a single ToolBinding.
 public func install(
     _ provider: any AgentToolProvider
 ) -> Installation {
-    install(
-        [
-            AgentToolRegistration.provider(
-                provider
-            ),
-        ]
-    )
+    .init(components: [.toolProviders([provider])])
 }
 
 public func install(
-    _ registrations: [AgentToolRegistration]
+    _ binding: ToolBinding
 ) -> Installation {
-    .init(
-        components: [
-            .tools(
-                registrations
-            ),
-        ]
-    )
+    install([binding])
+}
+
+public func install(
+    _ bindings: [ToolBinding]
+) -> Installation {
+    .init(components: [.tools(bindings)])
 }
 
 public func install<ProgramType: Program>(

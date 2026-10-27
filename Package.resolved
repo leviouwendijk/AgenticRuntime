@@ -7,7 +7,7 @@
       "location" : "https://github.com/leviouwendijk/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "833bfd2bfdf6a17581472c952d8a1967a453bc06"
+        "revision" : "ebaf3ce7e8873aaeb366947be5945d34663f6e11"
       }
     },
     {
@@ -173,6 +173,15 @@
       }
     },
     {
+      "identity" : "math",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Math.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "92a41271b1de32c218b45404a2a4640c633c4400"
+      }
+    },
+    {
       "identity" : "methods",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/leviouwendijk/Methods.git",
@@ -232,7 +241,7 @@
       "location" : "https://github.com/leviouwendijk/Primitives.git",
       "state" : {
         "branch" : "master",
-        "revision" : "74458da6a6262002ea7b006f37844ec7a5aa04f5"
+        "revision" : "239603be564915e79ae83c87cb3bec4e60ff1a48"
       }
     },
     {

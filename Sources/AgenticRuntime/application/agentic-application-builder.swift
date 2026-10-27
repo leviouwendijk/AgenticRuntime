@@ -4,7 +4,8 @@ public enum AgenticApplicationComponent:
     Sendable
 {
     case catalog(Catalog)
-    case tools([AgentToolRegistration])
+    case tools([ToolBinding])
+    case toolProviders([any AgentToolProvider])
     case programs([ProgramExecutionBinding])
     case inferences([InferenceBinding])
     case adapters([any InferenceAdapter])
@@ -45,7 +46,7 @@ public enum AgenticApplicationBuilder {
     }
 
     public static func buildExpression(
-        _ expression: [AgentToolRegistration]
+        _ expression: [ToolBinding]
     ) -> [AgenticApplicationComponent] {
         [
             .tools(
