@@ -87,3 +87,15 @@ extension AgentRealization {
     }
 }
 
+// IF deciding to check Agent install that has no application level install
+// matters less for in-swift, more for LOA syntax?
+// -----
+// let missing = requestedVisible.subtracting(installed.capabilities)
+// guard missing == .none else {
+//     throw AgentRealizationError.missingInstalledCapabilities(missing)
+// }
+
+// let notAvailable = requestedVisible.subtracting(requestedAvailable)
+// guard notAvailable == .none else {
+//     throw AgentRealizationError.visibleNotAvailable(notAvailable)
+// }
