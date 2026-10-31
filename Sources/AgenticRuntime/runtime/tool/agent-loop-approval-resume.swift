@@ -41,6 +41,18 @@ extension AgentLoop {
                 to: &checkpoint
             )
 
+            checkpoint.clearSuspension()
+            checkpoint.phase = .processing_tool_calls
+            try await saveCheckpoint(&checkpoint)
+
+            if let interruption = await requestedUrgentInterruption() {
+                return try await interrupt(
+                    checkpoint,
+                    mode: interruption.mode,
+                    reason: interruption.reason
+                )
+            }
+
             let execution = try await executeApprovedToolCall(
                 pendingApproval,
                 advertisedTools: checkpoint.lastAdvertisedTools

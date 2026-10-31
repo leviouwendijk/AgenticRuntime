@@ -267,6 +267,9 @@ extension AgentLoop {
                     to: &checkpoint
                 )
 
+                // Publish active execution before waiting for the tool result.
+                try await saveCheckpoint(&checkpoint)
+
                 let execution = try await executeApprovedToolReview(
                     review
                 )
@@ -370,6 +373,9 @@ extension AgentLoop {
                         ),
                         to: &checkpoint
                     )
+
+                    // Synchronous approvals also publish the running phase.
+                    try await saveCheckpoint(&checkpoint)
 
                     let execution = try await executeApprovedToolReview(
                         review

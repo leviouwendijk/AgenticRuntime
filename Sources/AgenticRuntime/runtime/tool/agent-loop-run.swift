@@ -205,6 +205,19 @@ extension AgentLoop {
             }
             return nil
         }
+        // Buffered invocations must expose the same cancellable in-flight
+        // checkpoint phase as streaming invocations, before awaiting transport.
+        checkpoint.phase = .receiving_model_response
+        try await saveCheckpoint(&checkpoint)
+
+        if let interruption = await requestedUrgentInterruption() {
+            try await applyInterruption(
+                to: &checkpoint,
+                request: interruption
+            )
+            return checkpoint
+        }
+
         let response: AgentResponse
         let journal = AgentModelToolInvocationJournal()
 
