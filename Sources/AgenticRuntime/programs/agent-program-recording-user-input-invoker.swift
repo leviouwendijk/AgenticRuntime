@@ -14,7 +14,7 @@ struct ProgramRecordingUserInputInvoker:
         let inputValue = try JSONCoding.default.value(
             request
         )
-        let index = await trace.reserveIndex()
+        let index = try await trace.reserveIndex()
         let startedAt = Date()
 
         if let replayed = try await trace.replay(

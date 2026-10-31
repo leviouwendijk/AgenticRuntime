@@ -43,7 +43,8 @@ extension AgentLoop {
         recovery: Recovery.Record? = nil,
         observations: [ToolResultObservation] = [],
         to checkpoint: inout AgentRunner.Checkpoint,
-        summary: String
+        summary: String,
+        eventKind: Run.Event.State.Kind? = nil
     ) async throws {
         if var batch = checkpoint.toolBatch {
             batch.mark(
@@ -68,7 +69,7 @@ extension AgentLoop {
 
         try await appendRunEvent(
             .init(
-                kind: result.isError ? .tool_error : .tool_result,
+                kind: eventKind ?? (result.isError ? .tool_error : .tool_result),
                 iteration: checkpoint.state.iteration,
                 toolCallID: result.call.id,
                 toolName: result.call.tool.rawValue,

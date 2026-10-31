@@ -11,6 +11,7 @@ public enum ProgramExecutionOutcome:
     case succeeded
     case suspended
     case failed
+    case interrupted
 }
 
 public enum ProgramStepKind:
@@ -143,6 +144,7 @@ public struct ProgramExecutionRecord:
     public var suspension: Run.Suspension?
     public var checkpoint: ProgramCheckpoint?
     public var failure: ProgramFailureRecord?
+    public var interruption: Run.Interruption?
     public var startedAt: Date
     public var completedAt: Date
     public var durationMilliseconds: Int
@@ -158,6 +160,7 @@ public struct ProgramExecutionRecord:
         suspension: Run.Suspension? = nil,
         checkpoint: ProgramCheckpoint? = nil,
         failure: ProgramFailureRecord? = nil,
+        interruption: Run.Interruption? = nil,
         startedAt: Date,
         completedAt: Date,
         durationMilliseconds: Int,
@@ -172,6 +175,7 @@ public struct ProgramExecutionRecord:
         self.suspension = suspension
         self.checkpoint = checkpoint
         self.failure = failure
+        self.interruption = interruption
         self.startedAt = startedAt
         self.completedAt = completedAt
         self.durationMilliseconds = durationMilliseconds
@@ -180,6 +184,10 @@ public struct ProgramExecutionRecord:
 
     public var isSuspended: Bool {
         outcome == .suspended
+    }
+
+    public var isInterrupted: Bool {
+        outcome == .interrupted
     }
 
     public var interactionRequest: Run.Interaction.Request? {
@@ -211,6 +219,10 @@ public struct ProgramExecution<ProgramType: Program>:
 
     public var isFailed: Bool {
         record.outcome == .failed
+    }
+
+    public var isInterrupted: Bool {
+        record.outcome == .interrupted
     }
 
     public var interactionRequest: Run.Interaction.Request? {

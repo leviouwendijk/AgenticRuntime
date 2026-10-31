@@ -156,7 +156,8 @@ extension AgentLoop {
                 for: record.toolCall,
                 disposition: .skipped_by_user,
                 to: &checkpoint,
-                summary: "skipped because run was interrupted"
+                summary: "skipped because run was interrupted",
+                eventKind: .tool_skipped
             )
         }
 

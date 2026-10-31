@@ -125,6 +125,7 @@ public struct AgenticRuntime:
         identifiedBy identifier: ProgramIdentifier,
         input: JSONValue,
         realization: JSONValue? = nil,
+        sessionID: String? = nil,
         services: RuntimeServices = .init(),
         metadata: [String: String] = [:]
     ) async throws -> ProgramExecutionRecord {
@@ -138,6 +139,7 @@ public struct AgenticRuntime:
         return try await registration.execute(
             input: input,
             realization: realization,
+            sessionID: sessionID,
             services: services,
             metadata: metadata
         )

@@ -132,15 +132,18 @@ public struct RuntimeServices: Sendable {
         public var inference: (any InferenceExecuting)?
         public var tools: (any ProgramToolExecuting)?
         public var invoker: (any ProgramInvoking)?
+        public var interruption: Run.Control?
 
         public init(
             inference: (any InferenceExecuting)? = nil,
             tools: (any ProgramToolExecuting)? = nil,
-            invoker: (any ProgramInvoking)? = nil
+            invoker: (any ProgramInvoking)? = nil,
+            interruption: Run.Control? = nil
         ) {
             self.inference = inference
             self.tools = tools
             self.invoker = invoker
+            self.interruption = interruption
         }
     }
 

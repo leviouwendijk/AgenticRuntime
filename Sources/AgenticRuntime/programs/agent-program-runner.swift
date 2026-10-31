@@ -68,7 +68,8 @@ public struct ProgramRunner: Sendable {
 
         let trace = ProgramExecutionTrace(
             replaySteps: resume?.completedSteps ?? [],
-            expectedSuspendedStep: resume?.suspendedStep
+            expectedSuspendedStep: resume?.suspendedStep,
+            interruption: services.program.interruption
         )
         let startedAt = resume?.startedAt ?? Date()
         let executionMetadata = services.metadata.merging(
@@ -125,11 +126,40 @@ public struct ProgramRunner: Sendable {
             metadata: executionMetadata
         )
 
+        func interruptedExecution(
+            _ request: Run.Interruption
+        ) async -> ProgramExecution<ProgramType> {
+            let completedAt = Date()
+            let steps = await trace.snapshot()
+            return .init(
+                output: nil,
+                record: .init(
+                    sessionID: sessionID,
+                    programIdentifier: ProgramType.definition.identifier,
+                    input: inputValue,
+                    steps: steps,
+                    outcome: .interrupted,
+                    interruption: request,
+                    startedAt: startedAt,
+                    completedAt: completedAt,
+                    durationMilliseconds: agentProgramElapsedMilliseconds(
+                        from: startedAt,
+                        to: completedAt
+                    ),
+                    metadata: executionMetadata
+                )
+            )
+        }
+
         do {
             let output = try await program.run(
                 input,
                 in: context
             )
+
+            if let request = await services.program.interruption?.current() {
+                return await interruptedExecution(request)
+            }
 
             if let resumeControl {
                 try await resumeControl.requireConsumed()
@@ -158,7 +188,12 @@ public struct ProgramRunner: Sendable {
                 output: output,
                 record: record
             )
+        } catch let signal as ProgramInterruptionSignal {
+            return await interruptedExecution(signal.request)
         } catch let signal as ProgramSuspensionSignal {
+            if let request = await services.program.interruption?.current() {
+                return await interruptedExecution(request)
+            }
             let completedAt = Date()
             let steps = await trace.snapshot()
 
@@ -207,6 +242,9 @@ public struct ProgramRunner: Sendable {
                 record: record
             )
         } catch {
+            if let request = await services.program.interruption?.current() {
+                return await interruptedExecution(request)
+            }
             let completedAt = Date()
             let steps = await trace.snapshot()
             let record = ProgramExecutionRecord(

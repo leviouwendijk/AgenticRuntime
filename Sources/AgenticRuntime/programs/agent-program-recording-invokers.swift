@@ -7,16 +7,22 @@ actor ProgramExecutionTrace {
     private var records: [ProgramStepRecord] = []
     private let replaySteps: [ProgramStepRecord]
     private let expectedSuspendedStep: ProgramStepRecord?
+    private let interruption: Run.Control?
 
     init(
         replaySteps: [ProgramStepRecord] = [],
-        expectedSuspendedStep: ProgramStepRecord? = nil
+        expectedSuspendedStep: ProgramStepRecord? = nil,
+        interruption: Run.Control? = nil
     ) {
         self.replaySteps = replaySteps
         self.expectedSuspendedStep = expectedSuspendedStep
+        self.interruption = interruption
     }
 
-    func reserveIndex() -> Int {
+    func reserveIndex() async throws -> Int {
+        if let request = await interruption?.current() {
+            throw ProgramInterruptionSignal(request: request)
+        }
         let index = nextIndex
         nextIndex += 1
         return index
@@ -97,7 +103,7 @@ struct ProgramRecordingInferenceInvoker<ProgramType: Program>:
             identifier: site.identifier
         )
         let inputValue = try JSONCoding.default.value(input)
-        let index = await trace.reserveIndex()
+        let index = try await trace.reserveIndex()
         let startedAt = Date()
         var appliedRealization: InferenceRealizationConfiguration?
 
@@ -240,7 +246,7 @@ struct ProgramRecordingToolInvoker:
         Output: Decodable & Sendable
     {
         let inputValue = try JSONCoding.default.value(input)
-        let index = await trace.reserveIndex()
+        let index = try await trace.reserveIndex()
 
         if let replayed = try await trace.replay(
             index: index,
@@ -400,7 +406,7 @@ struct ProgramRecordingProgramInvoker:
         in context: ProgramContext
     ) async throws -> ProgramType.Output {
         let inputValue = try JSONCoding.default.value(input)
-        let index = await trace.reserveIndex()
+        let index = try await trace.reserveIndex()
         let startedAt = Date()
 
         do {

@@ -35,6 +35,7 @@ public struct ProgramExecutionBinding:
         @Sendable (
             JSONValue,
             JSONValue?,
+            String?,
             RuntimeServices,
             [String: String]
         ) async throws -> ProgramExecutionRecord
@@ -57,6 +58,7 @@ public struct ProgramExecutionBinding:
         self.executeHandler = {
             input,
             realization,
+            sessionID,
             services,
             metadata
             in
@@ -82,6 +84,7 @@ public struct ProgramExecutionBinding:
                 program,
                 input: decodedInput,
                 realization: appliedRealization,
+                sessionID: sessionID,
                 metadata: metadata
             )
 
@@ -116,12 +119,14 @@ public struct ProgramExecutionBinding:
     public func execute(
         input: JSONValue,
         realization: JSONValue? = nil,
+        sessionID: String? = nil,
         services: RuntimeServices = .init(),
         metadata: [String: String] = [:]
     ) async throws -> ProgramExecutionRecord {
         try await executeHandler(
             input,
             realization,
+            sessionID,
             services,
             metadata
         )
