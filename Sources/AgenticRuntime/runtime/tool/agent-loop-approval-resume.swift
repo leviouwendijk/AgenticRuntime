@@ -73,7 +73,7 @@ extension AgentLoop {
 
             checkpoint.clearSuspension()
 
-            if pendingApproval.preflight.risk.isMutating {
+            if pendingApproval.preflight.mayInvalidateSourceState {
                 try await appendSkippedSiblings(
                     after: pendingApproval.toolCall.id,
                     to: &checkpoint,

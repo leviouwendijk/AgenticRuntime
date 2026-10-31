@@ -297,7 +297,7 @@ extension AgentLoop {
                         : "tool executed"
                 )
 
-                if preflight.risk.isMutating {
+                if preflight.mayInvalidateSourceState {
                     try await appendSkippedSiblings(
                         after: toolCall.id,
                         to: &checkpoint,
@@ -408,7 +408,7 @@ extension AgentLoop {
                             : "tool executed"
                     )
 
-                    if preflight.risk.isMutating {
+                    if preflight.mayInvalidateSourceState {
                         try await appendSkippedSiblings(
                             after: toolCall.id,
                             to: &checkpoint,

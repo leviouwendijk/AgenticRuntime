@@ -79,6 +79,9 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
         TestFlow("tool-observation-history", tags: ["runtime", "observations", "persistence"]) {
             try AgenticProgramRuntimeFlowTesting.runToolObservationHistory()
         },
+        TestFlow("tool-source-impact", tags: ["runtime", "tools", "source-impact", "approval"]) {
+            try AgenticProgramRuntimeFlowTesting.runToolSourceImpact()
+        },
         TestFlow(
             "agent-capability-state",
             tags: [
