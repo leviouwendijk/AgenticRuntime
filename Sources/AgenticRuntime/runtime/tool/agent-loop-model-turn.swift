@@ -65,6 +65,9 @@ extension AgentLoop {
                let target = projection.target(named: toolCall.tool.rawValue) {
                 switch target {
                 case .program, .inference:
+                    if let stopped = try await interruptionBeforeToolExecution(checkpoint) {
+                        return stopped
+                    }
                     do {
                         let resolver = RuntimeModelCapabilityCallResolver(
                             dispatcher: await modelDispatcher(),
@@ -210,6 +213,9 @@ extension AgentLoop {
             }
 
             if toolCall.tool == SystemIO.Tools.RequestPathGrant.identifier {
+                if let stopped = try await interruptionBeforeToolExecution(checkpoint) {
+                    return stopped
+                }
                 let execution = try await executeApprovedToolReview(
                     review
                 )
@@ -269,6 +275,10 @@ extension AgentLoop {
 
                 // Publish active execution before waiting for the tool result.
                 try await saveCheckpoint(&checkpoint)
+
+                if let stopped = try await interruptionBeforeToolExecution(checkpoint) {
+                    return stopped
+                }
 
                 let execution = try await executeApprovedToolReview(
                     review
@@ -376,6 +386,10 @@ extension AgentLoop {
 
                     // Synchronous approvals also publish the running phase.
                     try await saveCheckpoint(&checkpoint)
+
+                    if let stopped = try await interruptionBeforeToolExecution(checkpoint) {
+                        return stopped
+                    }
 
                     let execution = try await executeApprovedToolReview(
                         review

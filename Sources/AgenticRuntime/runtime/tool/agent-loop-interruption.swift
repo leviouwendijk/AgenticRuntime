@@ -40,6 +40,23 @@ extension AgentLoop {
         return request
     }
 
+    // Recheck at the final execution boundary, not only when a tool batch starts.
+    func interruptionBeforeToolExecution(
+        _ checkpoint: AgentRunner.Checkpoint
+    ) async throws -> ToolProcessingOutcome? {
+        guard let request = await requestedUrgentInterruption() else {
+            return nil
+        }
+
+        return .result(
+            try await interrupt(
+                checkpoint,
+                mode: request.mode,
+                reason: request.reason
+            )
+        )
+    }
+
     func applyInterruption(
         to checkpoint: inout AgentRunner.Checkpoint,
         request: Run.Interruption
