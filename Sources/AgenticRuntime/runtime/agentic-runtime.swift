@@ -49,6 +49,7 @@ public struct AgenticRuntime:
     public let launches: [ApplicationLaunchEntry]
     public let gateways: GatewayCatalog
     public let profiles: ProfileCatalog
+    public let pricing: StaticModelPricingCatalog
 
     public init(
         application: AgenticApplication
@@ -69,6 +70,7 @@ public struct AgenticRuntime:
         self.launches = launches
         self.gateways = modelCatalogs.gateways
         self.profiles = modelCatalogs.profiles
+        self.pricing = modelCatalogs.pricing
     }
 
     public func realizeAgent(

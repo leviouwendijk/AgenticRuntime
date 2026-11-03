@@ -31,12 +31,25 @@ extension AgenticProgramRuntimeFlowTesting {
             "fixture.application_gateway_availability"
         ) {
             factory
+            modelProvider(ApplicationPricingFixtureModelProvider())
         }
 
         let runtime = try await AgenticRuntime(
             application: application
         )
         let resolutionCount = await probe.resolutionCount
+        let price = try runtime.pricing.pricing(
+            for: .init(
+                provider: "fixture.pricing",
+                model: "fixture-model"
+            )
+        )
+
+        try Expect.equal(
+            price.currencyCode,
+            "EUR",
+            "Runtime exposes pricing composed from installed model providers"
+        )
 
         try Expect.equal(
             resolutionCount,
@@ -73,6 +86,25 @@ extension AgenticProgramRuntimeFlowTesting {
             .field(
                 "availability",
                 "unavailable"
+            ),
+        ]
+    }
+}
+
+private struct ApplicationPricingFixtureModelProvider: AgentModelProvider {
+    let descriptor = AgentModelProviderDescriptor(
+        source: "fixture.pricing",
+        displayName: "Pricing fixture"
+    )
+
+    func pricingSnapshots() throws -> [ModelPricingSnapshot] {
+        [
+            try .tokenPricing(
+                provider: "fixture.pricing",
+                model: "fixture-model",
+                currencyCode: "EUR",
+                inputMicrosPerMillionTokens: 100000,
+                outputMicrosPerMillionTokens: 200000
             ),
         ]
     }
