@@ -4,129 +4,131 @@ import TestFlows
 
 extension AgenticProgramRuntimeFlowTesting {
     static func runUsageAbsorptionCostTracker() throws -> [TestDiagnostic] {
-        let pricing = try ModelPricingSnapshot.tokenPricing(
+        let firstPrice = try ModelPricingSnapshot.tokenPricing(
             provider: "fixture.provider",
-            model: "fixture.model",
-            currencyCode: "USD",
+            model: "fixture.first",
+            currencyCode: "EUR",
             inputMicrosPerMillionTokens: 2_000_000,
             outputMicrosPerMillionTokens: 4_000_000
         )
-        let tracker = AgentCostTracker(
-            catalog: StaticModelPricingCatalog(snapshots: [pricing]),
+        let secondPrice = try ModelPricingSnapshot.tokenPricing(
             provider: "fixture.provider",
-            defaultModel: "fixture.model",
+            model: "fixture.second",
+            currencyCode: "EUR",
+            inputMicrosPerMillionTokens: 5_000_000,
+            outputMicrosPerMillionTokens: 9_000_000
+        )
+        let tracker = AgentCostTracker(
+            catalog: StaticModelPricingCatalog(snapshots: [firstPrice, secondPrice]),
             reservedOutputTokens: 32
         )
-        let request = AgentRequest(
-            messages: [
-                Message(role: .user, text: "Estimate a small request"),
-            ]
-        )
-        let projected = tracker.projectedRecord(
+        let request = AgentRequest(messages: [
+            Message(role: .user, text: "Estimate a small request"),
+        ])
+
+        func route(_ wireModel: String) -> AgentModelRoute {
+            .init(
+                purpose: .executor,
+                profile: .init(
+                    identifier: .init(rawValue: "fixture_" + wireModel),
+                    gatewayIdentifier: .init(rawValue: "fixture_gateway"),
+                    model: wireModel,
+                    metadata: ["provider": "fixture.provider"]
+                )
+            )
+        }
+
+        func response(_ model: String, usage: AgentUsage? = .init(
+            inputTokens: 47, outputTokens: 17
+        )) -> AgentResponse {
+            .init(
+                message: Message(role: .assistant, text: "response"),
+                stopReason: .end_turn,
+                usage: usage,
+                metadata: ["model": model]
+            )
+        }
+
+        let firstRoute = route("fixture.first")
+        let firstProjected = tracker.projectedRecord(
             existing: nil,
             request: request,
-            sessionID: "usage-migration-session",
+            route: firstRoute,
+            sessionID: "routing-session",
             turnIndex: 0
         )
+        let firstActual = tracker.actualRecord(
+            existing: firstProjected,
+            response: response("fixture.first"),
+            route: .init(route: firstRoute),
+            sessionID: "routing-session",
+            turnIndex: 0
+        )
+        try Expect.equal(firstActual?.turns.count, 1, "Actual updates the same turn")
+        try Expect.equal(firstActual?.actual?.pricing?.model, "fixture.first", "First route priced")
 
-        try Expect.equal(
-            projected.turns.count,
-            1,
-            "projected record retains one turn"
-        )
-        try Expect.equal(
-            projected.turns.first?.requestModel,
-            "fixture.model",
-            "tracker retains configured request model"
-        )
-        try Expect.equal(
-            projected.projected?.status,
-            .available,
-            "token-based projection resolves catalog pricing"
-        )
-        try Expect.equal(
-            projected.projected?.usage.outputTokens,
-            32,
-            "reserved output token estimate is preserved"
-        )
-
-        let response = AgentResponse(
-            message: Message(role: .assistant, text: "response"),
-            stopReason: .end_turn,
-            usage: AgentUsage(inputTokens: 47, outputTokens: 17)
-        )
-        let actual = tracker.actualRecord(
-            existing: projected,
+        let secondRoute = route("fixture.second")
+        let secondProjected = tracker.projectedRecord(
+            existing: firstActual,
             request: request,
-            response: response,
-            sessionID: "usage-migration-session",
-            turnIndex: 0
+            route: secondRoute,
+            sessionID: "routing-session",
+            turnIndex: 1
         )
+        let secondActual = tracker.actualRecord(
+            existing: secondProjected,
+            response: response("fixture.second"),
+            route: .init(route: secondRoute),
+            sessionID: "routing-session",
+            turnIndex: 1
+        )
+        try Expect.equal(secondActual?.turns.count, 2, "Model switches retain both turns")
+        try Expect.equal(secondActual?.turns[0].actual?.pricing?.model, "fixture.first", "First turn preserved")
+        try Expect.equal(secondActual?.turns[1].actual?.pricing?.model, "fixture.second", "Second turn priced independently")
+        try Expect.equal(secondActual?.turns[1].actual?.usage.inputTokens, 47, "Reported usage retained")
 
-        try Expect.equal(
-            actual?.turns.count,
-            1,
-            "actual accounting updates the same turn instead of duplicating it"
-        )
-        try Expect.equal(
-            actual?.actual?.status,
-            .available,
-            "actual usage resolves catalog pricing"
-        )
-        try Expect.equal(
-            actual?.actual?.usage.inputTokens,
-            47,
-            "provider-reported input usage is retained"
-        )
-        try Expect.equal(
-            actual?.actual?.usage.outputTokens,
-            17,
-            "provider-reported output usage is retained"
-        )
-        try Expect.equal(
-            actual?.metadata["provider"],
-            "fixture.provider",
-            "provider metadata survives migration"
-        )
-
-        let withoutUsage = AgentResponse(
-            message: Message(role: .assistant, text: "no usage"),
-            stopReason: .end_turn
-        )
-        let retained = tracker.actualRecord(
-            existing: projected,
-            request: request,
-            response: withoutUsage,
-            sessionID: "usage-migration-session",
-            turnIndex: 0
-        )
-        try Expect.equal(
-            retained,
-            projected,
-            "missing provider usage does not erase projected records"
-        )
-
-        let missingPricingTracker = AgentCostTracker(
-            catalog: StaticModelPricingCatalog(),
-            provider: "fixture.provider",
-            defaultModel: "unpriced.model"
-        )
-        let missingPricing = missingPricingTracker.projectedRecord(
+        let autoRoute = route("hyai/auto")
+        let autoProjected = tracker.projectedRecord(
             existing: nil,
             request: request,
-            sessionID: "usage-migration-unpriced",
+            route: autoRoute,
+            sessionID: "auto-session",
             turnIndex: 0
         )
-        try Expect.equal(
-            missingPricing.projected?.status,
-            .unavailable,
-            "missing pricing remains an explicit unavailable projection"
+        try Expect.equal(autoProjected.projected?.status, .unavailable, "Auto has no invented fixed price")
+        let autoActual = tracker.actualRecord(
+            existing: autoProjected,
+            response: response("fixture.second"),
+            route: .init(route: autoRoute),
+            sessionID: "auto-session",
+            turnIndex: 0
         )
+        try Expect.equal(autoActual?.actual?.pricing?.model, "fixture.second", "Auto uses physical billed model")
+        try Expect.equal(autoActual?.turns[0].requestModel, "hyai/auto", "Requested identity retained")
+
+        let noUsage = tracker.actualRecord(
+            existing: secondProjected,
+            response: response("fixture.second", usage: nil),
+            route: .init(route: secondRoute),
+            sessionID: "routing-session",
+            turnIndex: 1
+        )
+        try Expect.equal(noUsage, secondProjected, "Missing usage does not invent actual cost")
+
+        let missing = tracker.actualRecord(
+            existing: autoProjected,
+            response: response("unknown-physical-model"),
+            route: .init(route: autoRoute),
+            sessionID: "auto-session",
+            turnIndex: 0
+        )
+        try Expect.equal(missing?.actual?.status, .unavailable, "Unknown billed models remain unpriced")
 
         return [
-            .field("projected_turns", String(projected.turns.count)),
-            .field("actual_input_tokens", String(actual?.actual?.usage.inputTokens ?? 0)),
-            .field("missing_pricing_unavailable", String(missingPricing.projected?.status == .unavailable)),
+            .field("turns", String(secondActual?.turns.count ?? 0)),
+            .field("model_switch_priced", "true"),
+            .field("auto_resolved", "true"),
+            .field("unpriced_unavailable", "true"),
         ]
     }
 }

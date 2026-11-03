@@ -192,12 +192,6 @@ extension AgentLoop {
 
         let turnIndex = checkpoint.state.iteration + 1
 
-        try await applyProjectedCost(
-            for: preparedRequest,
-            to: &checkpoint,
-            turnIndex: turnIndex
-        )
-
         checkpoint.lastAdvertisedCapabilities = projection
         checkpoint.lastAdvertisedTools = projection.entries.compactMap { entry in
             if case .tool(let identifier) = entry.target {
@@ -218,7 +212,7 @@ extension AgentLoop {
             return checkpoint
         }
 
-        let response: AgentResponse
+        let invocationResult: AgentModelInvocation.Result
         let journal = AgentModelToolInvocationJournal()
 
         do {
@@ -235,7 +229,7 @@ extension AgentLoop {
                     )
                 )
             )
-            response = result.response
+            invocationResult = result
         } catch RuntimeToolCallBoundary.capabilities_changed {
             try await finishNativeCapabilityBoundary(
                 invocations: await journal.snapshot(),
@@ -290,6 +284,7 @@ extension AgentLoop {
             return checkpoint
         }
 
+        let response = invocationResult.response
         checkpoint.state.iteration += 1
 
         try await applyNativeToolInvocations(
@@ -322,9 +317,15 @@ extension AgentLoop {
             to: &checkpoint
         )
 
-        try await applyActualCost(
+        try await applyProjectedCost(
             for: preparedRequest,
+            route: invocationResult.route.route,
+            to: &checkpoint,
+            turnIndex: turnIndex
+        )
+        try await applyActualCost(
             response: response,
+            route: invocationResult.route,
             to: &checkpoint,
             turnIndex: turnIndex
         )

@@ -3,6 +3,7 @@ import Agentic
 extension AgentLoop {
     func applyProjectedCost(
         for request: AgentRequest,
+        route: AgentModelRoute,
         to checkpoint: inout AgentRunner.Checkpoint,
         turnIndex: Int
     ) async throws {
@@ -13,6 +14,7 @@ extension AgentLoop {
         let record = costTracker.projectedRecord(
             existing: checkpoint.costRecord,
             request: request,
+            route: route,
             sessionID: checkpoint.id,
             turnIndex: turnIndex
         )
@@ -33,8 +35,8 @@ extension AgentLoop {
     }
 
     func applyActualCost(
-        for request: AgentRequest,
         response: AgentResponse,
+        route: AgentModelRouteRecord,
         to checkpoint: inout AgentRunner.Checkpoint,
         turnIndex: Int
     ) async throws {
@@ -44,8 +46,8 @@ extension AgentLoop {
 
         guard let record = costTracker.actualRecord(
             existing: checkpoint.costRecord,
-            request: request,
             response: response,
+            route: route,
             sessionID: checkpoint.id,
             turnIndex: turnIndex
         ) else {

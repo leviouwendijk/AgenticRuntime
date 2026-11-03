@@ -96,9 +96,6 @@ public extension Agentic.RuntimeBootstrapAPI {
 
     func costTracker(
         environment: AgentRuntimeEnvironment,
-        provider: String,
-        region: String? = nil,
-        defaultModel: String? = nil,
         reservedOutputTokens: Int = 0,
         catalog: (any ModelPricingCatalog)? = nil,
         metadata: [String: String] = [:]
@@ -109,9 +106,6 @@ public extension Agentic.RuntimeBootstrapAPI {
 
         return AgentCostTracker(
             catalog: catalog,
-            provider: provider,
-            region: region,
-            defaultModel: defaultModel,
             reservedOutputTokens: reservedOutputTokens,
             metadata: metadata
         )

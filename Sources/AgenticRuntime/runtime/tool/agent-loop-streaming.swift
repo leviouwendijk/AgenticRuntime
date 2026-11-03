@@ -29,17 +29,12 @@ extension AgentLoop {
 
         let turnIndex = checkpoint.state.iteration + 1
 
-        try await applyProjectedCost(
-            for: preparedRequest,
-            to: &checkpoint,
-            turnIndex: turnIndex
-        )
-
         var accumulator = AgentStreamAccumulator(
             messageID: UUID().uuidString
         )
         var checkpointState = AgentStreamCheckpointState()
         let journal = AgentModelToolInvocationJournal()
+        var completedResult: AgentModelInvocation.Result?
 
         checkpoint.lastAdvertisedCapabilities = projection
         checkpoint.lastAdvertisedTools = projection.entries.compactMap { entry in
@@ -93,6 +88,7 @@ extension AgentLoop {
                     event = modelEvent
 
                 case .completed(let result):
+                    completedResult = result
                     event = .completed(
                         result.response
                     )
@@ -149,13 +145,15 @@ extension AgentLoop {
 
             try Task.checkCancellation()
 
-            guard let response = accumulator.completedResponse else {
+            guard let completedResult,
+                  accumulator.completedResponse != nil
+            else {
                 throw AgentStreamingError.missingCompletedResponse
             }
 
             return try await finalizeStreamingModelTurn(
                 preparedRequest: preparedRequest,
-                response: response,
+                result: completedResult,
                 checkpoint: checkpoint,
                 turnIndex: turnIndex,
                 nativeInvocations: await journal.snapshot(),
@@ -206,13 +204,14 @@ extension AgentLoop {
 
     private func finalizeStreamingModelTurn(
         preparedRequest: AgentRequest,
-        response: AgentResponse,
+        result: AgentModelInvocation.Result,
         checkpoint: AgentRunner.Checkpoint,
         turnIndex: Int,
         nativeInvocations: [ToolInvocation.Result],
         nativeSemanticInvocations: [ModelSemanticInvocationResult]
     ) async throws -> AgentRunner.Checkpoint {
         var checkpoint = checkpoint
+        let response = result.response
 
         checkpoint.state.iteration += 1
 
@@ -246,9 +245,15 @@ extension AgentLoop {
             to: &checkpoint
         )
 
-        try await applyActualCost(
+        try await applyProjectedCost(
             for: preparedRequest,
+            route: result.route.route,
+            to: &checkpoint,
+            turnIndex: turnIndex
+        )
+        try await applyActualCost(
             response: response,
+            route: result.route,
             to: &checkpoint,
             turnIndex: turnIndex
         )
