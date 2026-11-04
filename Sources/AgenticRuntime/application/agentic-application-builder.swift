@@ -13,6 +13,7 @@ public enum AgenticApplicationComponent:
     case launches([ApplicationLaunchEntry])
     case gateways([AgentModelGatewayFactory])
     case modelProviders([any AgentModelProvider])
+    case modelSelection(ApplicationModelSelection)
 }
 
 @resultBuilder
@@ -309,6 +310,15 @@ public func program<ProgramType: Program>(
         launch: .program(
             definition.identifier
         )
+    )
+}
+
+public func modelSelection(
+    default preferences: AgentModelPreferences,
+    precedence: ModelSelectionPrecedence = .default
+) -> AgenticApplicationComponent {
+    .modelSelection(
+        .init(preferences: preferences, precedence: precedence)
     )
 }
 

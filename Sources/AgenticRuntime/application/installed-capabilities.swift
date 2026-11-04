@@ -293,7 +293,7 @@ public struct InstalledCapabilities: Sendable {
                 for binding in bindings { try candidate.install(binding) }
             case .adapters(let adapters):
                 for adapter in adapters { try candidate.install(adapter) }
-            case .launches, .gateways, .modelProviders:
+            case .launches, .gateways, .modelProviders, .modelSelection:
                 throw CapabilityInventoryError.notCapabilityInstallation
             }
         }

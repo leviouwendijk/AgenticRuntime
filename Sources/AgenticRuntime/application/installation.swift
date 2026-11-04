@@ -212,7 +212,7 @@ public func install<DomainType: Domain>(
             references = bindings.map(\.reference)
         case .agents(let bindings):
             references = bindings.map(\.reference)
-        case .catalog, .toolProviders, .adapters, .launches, .gateways, .modelProviders:
+        case .catalog, .toolProviders, .adapters, .launches, .gateways, .modelProviders, .modelSelection:
             throw DomainInstallationOverrideError.unsupportedReplacement
         }
         for reference in references {

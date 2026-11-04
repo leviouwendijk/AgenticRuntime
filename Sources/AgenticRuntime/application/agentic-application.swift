@@ -37,6 +37,7 @@ public struct AgenticApplication:
     public let launchEntries: [ApplicationLaunchEntry]
     public let gatewayFactories: [AgentModelGatewayFactory]
     public let modelProviders: [any AgentModelProvider]
+    public let modelSelection: ApplicationModelSelection
 
     public init(
         identifier: AgenticApplicationIdentifier,
@@ -54,6 +55,7 @@ public struct AgenticApplication:
         var launchEntries: [ApplicationLaunchEntry] = []
         var gatewayFactories: [AgentModelGatewayFactory] = []
         var modelProviders: [any AgentModelProvider] = []
+        var modelSelection = ApplicationModelSelection()
 
         for component in components {
             switch component {
@@ -96,6 +98,9 @@ public struct AgenticApplication:
                 modelProviders.append(
                     contentsOf: providers
                 )
+
+            case .modelSelection(let configuration):
+                modelSelection = configuration
             }
         }
 
@@ -112,6 +117,7 @@ public struct AgenticApplication:
         self.launchEntries = launchEntries
         self.gatewayFactories = gatewayFactories
         self.modelProviders = modelProviders
+        self.modelSelection = modelSelection
     }
 
     public init(
