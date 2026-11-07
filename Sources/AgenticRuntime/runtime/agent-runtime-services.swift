@@ -43,17 +43,20 @@ public struct RuntimeServices: Sendable {
         public var workspace: WorkspaceContext?
         public var catalog: Catalog
         public var approvalHandler: (any ToolApprovalHandler)?
+        public var services: ToolServices
 
         public init(
             registry: ToolRegistry = .init(),
             workspace: WorkspaceContext? = nil,
             catalog: Catalog = .none,
-            approvalHandler: (any ToolApprovalHandler)? = nil
+            approvalHandler: (any ToolApprovalHandler)? = nil,
+            services: ToolServices = .init()
         ) {
             self.registry = registry
             self.workspace = workspace
             self.catalog = catalog
             self.approvalHandler = approvalHandler
+            self.services = services
         }
 
         public func using(
@@ -63,7 +66,8 @@ public struct RuntimeServices: Sendable {
                 registry: registry,
                 workspace: workspace,
                 catalog: catalog,
-                approvalHandler: approvalHandler
+                approvalHandler: approvalHandler,
+                services: services
             )
         }
 
@@ -74,7 +78,8 @@ public struct RuntimeServices: Sendable {
                 registry: registry,
                 workspace: workspace,
                 catalog: catalog,
-                approvalHandler: approvalHandler
+                approvalHandler: approvalHandler,
+                services: services
             )
         }
 
@@ -85,7 +90,18 @@ public struct RuntimeServices: Sendable {
                 registry: registry,
                 workspace: workspace,
                 catalog: catalog,
-                approvalHandler: approvalHandler
+                approvalHandler: approvalHandler,
+                services: services
+            )
+        }
+
+        public func using(services: ToolServices) -> Self {
+            .init(
+                registry: registry,
+                workspace: workspace,
+                catalog: catalog,
+                approvalHandler: approvalHandler,
+                services: services
             )
         }
     }

@@ -204,7 +204,8 @@ extension AgentLoop {
             workspace: tooling.workspace,
             catalog: await inventory.catalog(),
             capabilities: capabilityState,
-            inspections: await inventory.capabilityInspections()
+            inspections: await inventory.capabilityInspections(),
+            services: tooling.services
         )
     }
 

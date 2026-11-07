@@ -209,7 +209,8 @@ public struct CapabilityDispatcher: Sendable {
                     workspace: services.tooling.workspace,
                     catalog: effectiveCatalog,
                     capabilities: capabilityState,
-                    inspections: inspections
+                    inspections: inspections,
+                    services: services.tooling.services
                 ),
                 approvalHandler: services.tooling.approvalHandler,
                 observationHandler: observationHandler,
