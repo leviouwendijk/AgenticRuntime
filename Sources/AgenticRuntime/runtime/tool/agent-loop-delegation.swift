@@ -158,9 +158,25 @@ extension AgentLoop {
         guard let delegation,
               let result = await delegation.latestResult(
                   "child:\(checkpoint.id.utf8.count):\(checkpoint.id):\(call.id.utf8.count):\(call.id)"
-              ), result.suspension != nil else {
+              ) else {
             throw AgentHistoryError.corruptedCheckpoint(
                 "pending delegated Agent result is missing"
+            )
+        }
+        if result.isCompleted || result.isFailed || result.isInterrupted {
+            try await recordTerminalDelegatedChild(
+                result,
+                call: call,
+                checkpoint: &checkpoint
+            )
+            if let next = try await processDelegatedBatch(from: checkpoint) {
+                return next
+            }
+            return .continueLoop(checkpoint)
+        }
+        guard result.suspension != nil else {
+            throw AgentHistoryError.corruptedCheckpoint(
+                "delegated Agent is neither suspended nor terminal"
             )
         }
         try await mirrorDelegatedSuspension(
@@ -168,6 +184,49 @@ extension AgentLoop {
             checkpoint: &checkpoint
         )
         return .result(try suspendedResult(from: checkpoint))
+    }
+
+    /// Called when the human stops a suspended child. No approval is
+    /// fabricated: the parent receives the interrupted child's tool result.
+    func resumeTerminatedDelegatedChild(
+        _ checkpoint: AgentRunner.Checkpoint
+    ) async throws -> AgentRunner.Result? {
+        guard let delegation,
+              let suspension = checkpoint.resolvedSuspension,
+              let childID = suspension.metadata["delegated_child_session_id"],
+              let callID = suspension.metadata["delegated_child_call_id"],
+              let call = checkpoint.toolBatch?.record(for: callID)?.toolCall,
+              let child = await delegation.latestResult(childID),
+              child.isCompleted || child.isFailed || child.isInterrupted else {
+            return nil
+        }
+        var current = checkpoint
+        try await recordTerminalDelegatedChild(
+            child,
+            call: call,
+            checkpoint: &current
+        )
+        return try await runLoop(from: current)
+    }
+
+    func recordTerminalDelegatedChild(
+        _ child: AgentRunner.Result,
+        call: ToolCall,
+        checkpoint: inout AgentRunner.Checkpoint
+    ) async throws {
+        let response = try RuntimeModelCapabilityCallResolver.agentResponse(
+            child, for: call
+        )
+        checkpoint.clearSuspension()
+        checkpoint.phase = .processing_tool_calls
+        try await appendToolResult(
+            response,
+            for: call,
+            disposition: response.isError ? .failed_execution : .executed,
+            to: &checkpoint,
+            summary: "delegated Agent reached terminal state"
+        )
+        try await saveCheckpoint(&checkpoint)
     }
 
     func resumeDelegatedChild(

@@ -54,6 +54,8 @@ public actor AgentDelegation {
         case executionInProgress(String)
         case executionNotStarted(String)
         case resultIdentityMismatch(expected: String, actual: String)
+        case rootSessionNotWorker(String)
+        case workerNotTerminal(String)
     }
 
     private struct Entry: Sendable {
@@ -65,6 +67,7 @@ public actor AgentDelegation {
         var executing: Bool = false
         var latestResult: AgentRunner.Result? = nil
         var requestedScope: String? = nil
+        var mutationsWithdrawn: Bool = false
     }
 
     private let runtime: AgenticRuntime
@@ -73,6 +76,7 @@ public actor AgentDelegation {
         Session, AgentRequest, RuntimeServices.Tooling
     ) async throws -> RuntimeServices.Tooling
     private var childToolingFactory: ToolingFactory?
+    private let childRunLimits: AgentRunLimits?
     private var entries: [String: Entry]
 
     /// The root's live capability state should be the same state held by its
@@ -82,7 +86,8 @@ public actor AgentDelegation {
         root: AgentIdentifier,
         sessionID: String,
         capabilityState: AgentCapabilityState,
-        childToolingFactory: ToolingFactory? = nil
+        childToolingFactory: ToolingFactory? = nil,
+        childRunLimits: AgentRunLimits? = nil
     ) throws {
         let realization = try runtime.realizeAgent(identifiedBy: root)
         let session = Session(
@@ -93,6 +98,7 @@ public actor AgentDelegation {
         )
         self.runtime = runtime
         self.childToolingFactory = childToolingFactory
+        self.childRunLimits = childRunLimits
         installed = runtime.installed
         entries = [
             sessionID: Entry(
@@ -152,6 +158,70 @@ public actor AgentDelegation {
                 }
             }
         }
+    }
+
+    /// Trusted owner control for one admitted worker. A running worker receives
+    /// an interruption request; a suspended worker is checkpoint-interrupted
+    /// immediately. Neither path affects siblings.
+    @discardableResult
+    public func interruptWorker(
+        _ sessionID: String,
+        mode: Run.Interruption.Mode,
+        reason: String? = nil
+    ) async throws -> AgentRunner.Result? {
+        guard let entry = entries[sessionID] else {
+            throw Failure.unknownSession(sessionID)
+        }
+        guard entry.session.parentSessionID != nil else {
+            throw Failure.rootSessionNotWorker(sessionID)
+        }
+        guard !entry.settled else {
+            throw Failure.settledSession(sessionID)
+        }
+        guard let runner = entry.runner else {
+            throw Failure.executionNotStarted(sessionID)
+        }
+        guard !entries.values.contains(where: {
+            !$0.settled && isDescendant($0.session, of: sessionID)
+        }) else {
+            throw Failure.activeDescendants(sessionID)
+        }
+        if entry.executing || entry.latestResult == nil {
+            await runner.requestInterruption(mode, reason: reason)
+            return nil
+        }
+        return try await perform(sessionID) { runner in
+            try await runner.interrupt(
+                sessionID: sessionID,
+                mode: mode,
+                reason: reason
+            )
+        }
+    }
+
+    /// Close only this worker's participant, withdrawing its unpublished edits.
+    /// Explicit withdrawal is forbidden during an executing tool operation.
+    public func withdrawWorkerMutations(
+        of sessionID: String
+    ) async throws {
+        guard let entry = entries[sessionID] else {
+            throw Failure.unknownSession(sessionID)
+        }
+        guard entry.session.parentSessionID != nil else {
+            throw Failure.rootSessionNotWorker(sessionID)
+        }
+        guard !entry.executing else {
+            throw Failure.executionInProgress(sessionID)
+        }
+        guard entry.settled else {
+            throw Failure.workerNotTerminal(sessionID)
+        }
+        if entry.mutationsWithdrawn { return }
+        if let workspace = entry.runner?.tooling.workspace,
+           case .coordinated(let participant) = workspace.execution.mutations {
+            try await participant.close()
+        }
+        entries[sessionID]?.mutationsWithdrawn = true
     }
 
     /// Abort pending worker proposals without affecting other Host sessions.
@@ -267,7 +337,7 @@ public actor AgentDelegation {
     /// reservation when the child suspends, awaits approval or is interruptible.
     public func settle(_ result: AgentRunner.Result) throws {
         let sessionID = result.sessionID
-        guard result.isCompleted || result.isFailed else {
+        guard result.isCompleted || result.isFailed || result.isInterrupted else {
             throw Failure.nonterminalResult(sessionID)
         }
         guard var entry = entries[sessionID] else {
@@ -320,11 +390,15 @@ public actor AgentDelegation {
             throw error
         }
         entry.requestedScope = request.metadata["worker_scope_path"]
+        var childConfiguration = configuration
+        if let childRunLimits {
+            childConfiguration.runLimits = childRunLimits
+        }
         entry.runner = runtime.makeAgentRunner(
             realization: entry.realization,
             capabilityState: entry.capabilities,
             model: model,
-            configuration: configuration,
+            configuration: childConfiguration,
             tooling: childTooling,
             delegation: self,
             recording: .init(
@@ -412,8 +486,12 @@ public actor AgentDelegation {
             current.executing = false
             current.latestResult = result
             entries[sessionID] = current
-            if result.isCompleted || result.isFailed {
+            if result.isCompleted || result.isFailed || result.isInterrupted {
                 try settle(result)
+                if result.isFailed || result.isInterrupted {
+                    // A stopped/failed worker cannot leave its proposal pending.
+                    try? await withdrawWorkerMutations(of: sessionID)
+                }
             }
             return result
         } catch {

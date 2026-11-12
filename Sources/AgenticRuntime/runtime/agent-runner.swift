@@ -102,9 +102,13 @@ public actor AgentRunner {
         switch checkpoint.phase {
         case .suspended,
              .awaiting_approval:
-            return try suspendedResult(
-                from: checkpoint
-            )
+            if checkpoint.resolvedSuspension?.metadata["delegated_child_session_id"] != nil {
+                let executor = try await makeAgentLoop(restoring: checkpoint)
+                if let reconciled = try await executor.resumeTerminatedDelegatedChild(checkpoint) {
+                    return reconciled
+                }
+            }
+            return try suspendedResult(from: checkpoint)
 
         case .completed:
             guard let response = checkpoint.lastResponse else {

@@ -408,6 +408,22 @@ extension AgenticProgramRuntimeFlowTesting {
     }
 }
 
+private actor DelegatedCheckpointStore: AgentHistoryStore {
+    private var values: [String: AgentRunner.Checkpoint] = [:]
+
+    func loadCheckpoint(sessionID: String) async throws -> AgentRunner.Checkpoint? {
+        values[sessionID]
+    }
+
+    func saveCheckpoint(_ checkpoint: AgentRunner.Checkpoint) async throws {
+        values[checkpoint.id] = checkpoint
+    }
+
+    func deleteCheckpoint(sessionID: String) async throws {
+        values.removeValue(forKey: sessionID)
+    }
+}
+
 private actor DelegatedExecutionRecorder {
     private var invocations: [AgentModelInvocation] = []
 
@@ -615,6 +631,57 @@ extension AgenticProgramRuntimeFlowTesting {
         }
         try Expect.true(rejectedWithoutDelegation,
             "Agent capability cannot run without an admitted delegation authority")
+
+        let limitedState = try runtime.realizeAgent(
+            identifiedBy: DelegationRootFixture.identifier
+        ).makeCapabilityState()
+        let limited = try AgentDelegation(
+            runtime: runtime,
+            root: DelegationRootFixture.identifier,
+            sessionID: "limit-parent",
+            capabilityState: limitedState,
+            childRunLimits: .init(iterations: 0)
+        )
+        let checkpointStore = DelegatedCheckpointStore()
+        let limitedChild = try await limited.run(
+            DelegationLeafFixture.identifier,
+            request: .init(messages: [Message(role: .user, text: "hold for limit")]),
+            from: "limit-parent",
+            sessionID: "limit-child",
+            model: model,
+            configuration: .init(
+                runLimits: .unlimited,
+                historyPersistenceMode: .checkpointmutation
+            ),
+            recording: .init(historyStore: checkpointStore)
+        )
+        try Expect.true(limitedChild.suspension != nil,
+            "Child-only run limits suspend independent of parent configuration")
+        let stopped = try await limited.interruptWorker(
+            "limit-child", mode: .urgent, reason: "selective test"
+        )
+        try Expect.true(stopped?.isInterrupted == true,
+            "Suspended worker can be interrupted individually")
+        let snapshot = await limited.snapshots().first {
+            $0.session.id == "limit-child"
+        }
+        try Expect.true(snapshot?.settled == true,
+            "Interrupted child releases its concurrency reservation")
+        let next = try await limited.begin(
+            DelegationLeafFixture.identifier,
+            from: "limit-parent",
+            sessionID: "second-child"
+        )
+        try Expect.equal(next.parentSessionID, "limit-parent",
+            "A second direct worker may start after interruption")
+        var rejectedResume = false
+        do {
+            _ = try await limited.resume("limit-child")
+        } catch AgentDelegation.Failure.settledSession {
+            rejectedResume = true
+        }
+        try Expect.true(rejectedResume,
+            "Interrupted workers cannot resume after terminal settlement")
 
         return []
     }
