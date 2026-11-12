@@ -41,6 +41,7 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
         case missingTool(ToolIdentifier)
         case missingProgram(ProgramIdentifier)
         case missingInference(InferenceIdentifier)
+        case missingAgent(AgentIdentifier)
         case duplicateProviderName(String)
     }
 
@@ -152,8 +153,23 @@ extension InstalledCapabilities {
             ))
         }
 
-        // Agents are not projected as callable functions until child delegation
-        // has a governed execution and checkpoint contract.
+        for identifier in visible.agents {
+            guard let binding = agentBinding(identifier) else {
+                throw ModelCapabilityProjection.ProjectionError.missingAgent(identifier)
+            }
+            candidates.append(.init(
+                function: .init(
+                    name: ModelCapabilityProjection.providerName(
+                        kind: "agent", identifier: identifier.rawValue
+                    ),
+                    description: binding.definition.purpose,
+                    input: CapabilityModelInputSchema.envelope(
+                        semanticInput: binding.contract.input
+                    ).jsonvalue
+                ),
+                target: .agent(identifier)
+            ))
+        }
         return try ModelCapabilityProjection(candidates)
     }
 }

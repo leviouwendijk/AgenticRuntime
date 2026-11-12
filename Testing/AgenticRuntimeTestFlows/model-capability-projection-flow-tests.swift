@@ -41,7 +41,7 @@ private enum ProjectionInference: Inference {
 private enum ProjectionChildAgent: Agent {
     typealias Input = ProjectionInput
     typealias Output = JSONValue
-    static let purpose = "A child intentionally not projectable before delegation."
+    static let purpose = "A typed child Agent callable through governed delegation."
     static let definition = AgentDefinition(
         identifier: "fixture.projection.child",
         purpose: purpose
@@ -223,12 +223,12 @@ extension AgenticProgramRuntimeFlowTesting {
         )
 
         try Expect.equal(
-            projection.entries.count, 2,
-            "Only executable model-callable Program and Inference are projected."
+            projection.entries.count, 3,
+            "Installed visible Tools, Programs, Inferences and Agents share projection."
         )
         try Expect.equal(
-            projection.name(for: agentTarget) == nil, true,
-            "Visible Agents must not be advertised until governed delegation exists."
+            projection.name(for: agentTarget) != nil, true,
+            "Installed visible Agents are projected as semantic capabilities."
         )
         try Expect.equal(
             projection.functions.map(\.name),
@@ -241,7 +241,8 @@ extension AgenticProgramRuntimeFlowTesting {
         )
 
         guard let programName = projection.name(for: programTarget),
-              let inferenceName = projection.name(for: inferenceTarget)
+              let inferenceName = projection.name(for: inferenceTarget),
+              let agentName = projection.name(for: agentTarget)
         else {
             throw ModelCapabilityProjection.ProjectionError.missingProgram(
                 ProjectionProgram.definition.identifier
@@ -260,6 +261,10 @@ extension AgenticProgramRuntimeFlowTesting {
             "Transport lookup recovers the exact registered Inference identifier."
         )
         try Expect.equal(
+            projection.target(named: agentName), agentTarget,
+            "Transport lookup recovers the exact registered Agent identity."
+        )
+        try Expect.equal(
             projection.target(named: "not-a-projected-function") == nil, true,
             "Unknown provider function names have no semantic capability target."
         )
@@ -274,7 +279,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             projection.functions.allSatisfy { $0.input == expectedEnvelope },
             true,
-            "Both schemas derive from typed Input and require arguments."
+            "All semantic capabilities derive model schemas from typed Input."
         )
 
         // Persisting a checkpoint must preserve provider-to-target identity,
@@ -355,7 +360,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
         return [
             .field("projected", String(projection.entries.count)),
-            .field("agents_hidden_until_delegation", "true"),
+            .field("agents_projected_with_live_delegation_guard", "true"),
             .field("schema_derived_from_input", "true"),
             .field("reveal_preserves_name", "true"),
         ]

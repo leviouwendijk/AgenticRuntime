@@ -52,8 +52,39 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
                 realization: nil
             )
 
-        case .agent:
-            throw RuntimeModelToolAuthorizationError.invalidProjection
+        case .agent(let identifier):
+            let arguments = try semanticArguments(call.input)
+            let binding = try await agentBinding(identifier)
+            _ = try binding.call(from: CapabilityCall.Raw(
+                id: call.id,
+                capability: .agent(identifier),
+                input: arguments
+            ))
+            guard let parentSessionID = dispatcher.parentSessionID else {
+                throw CapabilityInvocationError.agentRequiresDelegation(identifier)
+            }
+            let childID = "child:\(parentSessionID.utf8.count):\(parentSessionID):\(call.id.utf8.count):\(call.id)"
+            var messages: [Message] = []
+            if let instructions = binding.definition.instructions,
+               !instructions.isEmpty {
+                messages.append(Message(role: .system, text: instructions))
+            }
+            messages.append(Message(
+                role: .user,
+                text: String(decoding: try JSONEncoder().encode(arguments), as: UTF8.self)
+            ))
+            invocation = .agent(
+                identifier: identifier,
+                request: AgentRequest(
+                    messages: messages,
+                    responseFormat: .jsonschema(binding.contract.output),
+                    metadata: [
+                        "parent_agent_session_id": parentSessionID,
+                        "parent_agent_call_id": call.id
+                    ]
+                ),
+                sessionID: childID
+            )
         }
 
         let before = await dispatcher.capabilityState.snapshot()
@@ -77,8 +108,28 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
                 output: try JSONDecoder().decode(JSONValue.self, from: result.output),
                 isError: false
             )
-        case .agent:
-            throw RuntimeModelToolAuthorizationError.invalidProjection
+        case .agent(let result):
+            guard result.isCompleted,
+                  let message = result.response?.message else {
+                response = ToolCall.Response(
+                    call: call.reference,
+                    output: .object([
+                        "child_session_id": .string(result.sessionID),
+                        "phase": .string(result.phase.rawValue)
+                    ]),
+                    isError: true
+                )
+                break
+            }
+            let output = try JSONDecoder().decode(
+                JSONValue.self,
+                from: Data(message.content.text.utf8)
+            )
+            response = ToolCall.Response(
+                call: call.reference,
+                output: output,
+                isError: false
+            )
         }
         if case .tool = target {
             // Governed Tool results are retained through the dispatcher's
@@ -91,6 +142,18 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
             throw RuntimeToolCallBoundary.capabilities_changed
         }
         return response
+    }
+
+    private func agentBinding(_ identifier: AgentIdentifier) async throws -> AgentBinding {
+        if let inventory = dispatcher.inventory,
+           let binding = await inventory.agentBinding(identifier) {
+            return binding
+        }
+        if let runtime = dispatcher.runtime,
+           let binding = runtime.installed.agentBinding(identifier) {
+            return binding
+        }
+        throw CapabilityInvocationError.notInstalled(.agent(identifier))
     }
 
     private func semanticArguments(_ input: JSONValue) throws -> JSONValue {

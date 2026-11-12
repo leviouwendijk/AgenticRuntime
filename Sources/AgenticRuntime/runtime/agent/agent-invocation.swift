@@ -34,6 +34,7 @@ public extension AgenticRuntime {
         model: RuntimeServices.Model,
         configuration: AgentRunner.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
+        delegation: AgentDelegation? = nil,
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         modelPreferences: AgentModelPreferences = .init()
@@ -50,6 +51,7 @@ public extension AgenticRuntime {
                 installed: installed,
                 state: capabilityState
             ),
+            delegation: delegation,
             extensions: extensions,
             recording: recording
         )

@@ -240,6 +240,7 @@ public actor AgentDelegation {
             model: model,
             configuration: configuration,
             tooling: tooling,
+            delegation: self,
             recording: recording
         )
         entries[session.id] = entry

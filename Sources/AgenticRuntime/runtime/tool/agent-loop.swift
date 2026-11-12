@@ -8,6 +8,7 @@ internal struct AgentLoop: Sendable {
     let configuration: AgentRunner.Configuration
     let tooling: RuntimeServices.Tooling
     let inventory: CapabilityInventory
+    let delegation: AgentDelegation?
 
     var capabilityState: AgentCapabilityState {
         inventory.state
@@ -23,6 +24,7 @@ internal struct AgentLoop: Sendable {
         configuration: AgentRunner.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
         inventory: CapabilityInventory,
+        delegation: AgentDelegation? = nil,
         runControl: Run.Control = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
@@ -33,6 +35,7 @@ internal struct AgentLoop: Sendable {
         self.configuration = configuration
         self.tooling = tooling
         self.inventory = inventory
+        self.delegation = delegation
         self.runControl = runControl
         self.extensions = extensions
         self.recording = recording
@@ -47,6 +50,7 @@ internal struct AgentLoop: Sendable {
     /// The dispatcher reuses the run's state, installed executable bindings,
     /// Tool governance, model route, and registered inference adapters.
     func modelDispatcher(
+        sessionID: String,
         journal: AgentModelToolInvocationJournal? = nil
     ) async -> CapabilityDispatcher {
         let inferenceExecutor = InferenceExecutor(
@@ -62,6 +66,8 @@ internal struct AgentLoop: Sendable {
         )
         return CapabilityDispatcher(
             inventory: inventory,
+            delegation: delegation,
+            parentSessionID: sessionID,
             services: RuntimeServices(
                 model: model,
                 tooling: tooling,

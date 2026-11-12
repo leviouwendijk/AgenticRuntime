@@ -552,6 +552,70 @@ extension AgenticProgramRuntimeFlowTesting {
         }
         try Expect.true(denied_no_runner, "Admission alone cannot invent a runner")
 
+        // Model projection is an actual Agent capability call, not a second Tool.
+        // The identity and delegation tree are Host-created, never model arguments.
+        let modelState = try runtime.realizeAgent(
+            identifiedBy: DelegationRootFixture.identifier
+        ).makeCapabilityState()
+        _ = await modelState.reveal(.init(agents: [DelegationLeafFixture.identifier]))
+        let modelDelegation = try AgentDelegation(
+            runtime: runtime,
+            root: DelegationRootFixture.identifier,
+            sessionID: "model-parent",
+            capabilityState: modelState
+        )
+        let inventory = CapabilityInventory(installed: runtime.installed, state: modelState)
+        let projection = try await inventory.modelProjection()
+        let agentTarget = CapabilityInvocation.Target.agent(DelegationLeafFixture.identifier)
+        let function = try Expect.notNil(
+            projection.name(for: agentTarget),
+            "Visible Agent capabilities are model-callable"
+        )
+        let dispatcher = CapabilityDispatcher(
+            inventory: inventory,
+            services: .init(model: model),
+            delegation: modelDelegation,
+            parentSessionID: "model-parent"
+        )
+        let delegated = try await dispatcher.invoke(
+            .agent(
+                identifier: DelegationLeafFixture.identifier,
+                request: .init(messages: [Message(role: .user, text: "delegated work")]),
+                sessionID: "model-child"
+            ),
+            origin: .model(projection: projection, function: function)
+        )
+        guard case .agent(let completed) = delegated else {
+            throw CapabilityInvocationError.agentRequiresDelegation(
+                DelegationLeafFixture.identifier
+            )
+        }
+        try Expect.true(completed.isCompleted, "Model Agent capability executes as child")
+        try Expect.equal(completed.sessionID, "model-child", "Child identity is preserved")
+        let lineage = await modelDelegation.session("model-child")
+        try Expect.equal(lineage?.parentSessionID, "model-parent", "Parent lineage is governed")
+
+        let noAuthority = CapabilityDispatcher(
+            inventory: inventory,
+            services: .init(model: model),
+            parentSessionID: "model-parent"
+        )
+        var rejectedWithoutDelegation = false
+        do {
+            _ = try await noAuthority.invoke(
+                .agent(
+                    identifier: DelegationLeafFixture.identifier,
+                    request: .init(messages: []),
+                    sessionID: "unauthorized-child"
+                ),
+                origin: .model(projection: projection, function: function)
+            )
+        } catch CapabilityInvocationError.agentRequiresDelegation {
+            rejectedWithoutDelegation = true
+        }
+        try Expect.true(rejectedWithoutDelegation,
+            "Agent capability cannot run without an admitted delegation authority")
+
         return []
     }
 }

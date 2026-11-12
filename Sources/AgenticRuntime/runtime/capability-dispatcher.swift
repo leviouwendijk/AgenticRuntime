@@ -90,6 +90,10 @@ public struct CapabilityDispatcher: Sendable {
     public let capabilityState: AgentCapabilityState
     public let inventory: CapabilityInventory?
     public let services: RuntimeServices
+    /// Host-issued invocation tree, independent of model-facing Tools.
+    public let delegation: AgentDelegation?
+    /// Trusted runner identity, never extracted from model-provided arguments.
+    public let parentSessionID: String?
     public let configuration: AgentRunner.Configuration
     public let observationHandler: ToolExecutionObservations.Observer?
     public let resolutionObserver: (@Sendable (ToolInvocation.Result) async -> Void)?
@@ -99,6 +103,8 @@ public struct CapabilityDispatcher: Sendable {
     public init(
         inventory: CapabilityInventory,
         services: RuntimeServices = .init(),
+        delegation: AgentDelegation? = nil,
+        parentSessionID: String? = nil,
         configuration: AgentRunner.Configuration = .default,
         observationHandler: ToolExecutionObservations.Observer? = nil,
         resolutionObserver: (@Sendable (ToolInvocation.Result) async -> Void)? = nil
@@ -107,6 +113,8 @@ public struct CapabilityDispatcher: Sendable {
         self.capabilityState = inventory.state
         self.inventory = inventory
         self.services = services
+        self.delegation = delegation
+        self.parentSessionID = parentSessionID
         self.configuration = configuration
         self.observationHandler = observationHandler
         self.resolutionObserver = resolutionObserver
@@ -117,6 +125,8 @@ public struct CapabilityDispatcher: Sendable {
         capabilityState: AgentCapabilityState,
         inventory: CapabilityInventory? = nil,
         services: RuntimeServices = .init(),
+        delegation: AgentDelegation? = nil,
+        parentSessionID: String? = nil,
         configuration: AgentRunner.Configuration = .default,
         observationHandler: ToolExecutionObservations.Observer? = nil,
         resolutionObserver: (@Sendable (ToolInvocation.Result) async -> Void)? = nil
@@ -125,6 +135,8 @@ public struct CapabilityDispatcher: Sendable {
         self.capabilityState = inventory?.state ?? capabilityState
         self.inventory = inventory
         self.services = services
+        self.delegation = delegation
+        self.parentSessionID = parentSessionID
         self.configuration = configuration
         self.observationHandler = observationHandler
         self.resolutionObserver = resolutionObserver
@@ -165,11 +177,14 @@ public struct CapabilityDispatcher: Sendable {
             // future visibility changes. Disabling availability still revokes
             // live invocation authority above.
         case .delegated_agent:
-            // Parent/child authority requires the later delegation control plane.
-            if case .agent(let identifier, _, _) = invocation {
-                throw CapabilityInvocationError.agentRequiresDelegation(identifier)
+            guard case .agent = invocation,
+                  parentSessionID != nil,
+                  delegation != nil else {
+                throw CapabilityInvocationError.notAvailable(target)
             }
-            throw CapabilityInvocationError.notAvailable(target)
+            guard target.isVisible(in: snapshot.available) else {
+                throw CapabilityInvocationError.notAvailable(target)
+            }
         }
 
         switch invocation {
@@ -273,28 +288,36 @@ public struct CapabilityDispatcher: Sendable {
             )
 
         case .agent(let identifier, let request, let sessionID):
-            // Root launch is a trusted Host authority, not delegated child
-            // execution. Delegation remains fail-closed until parent lineage,
-            // limits, reentry and resumable child identity are governed.
-            guard case .host = origin else {
-                throw CapabilityInvocationError.agentRequiresDelegation(
-                    identifier
-                )
-            }
-            guard let runtime else {
-                throw CapabilityInvocationError.notInstalled(target)
-            }
             guard let model = services.model else {
                 throw CapabilityInvocationError.missingAgentModel(identifier)
             }
-            return .agent(try await runtime.runAgent(
-                identifiedBy: identifier,
+            if case .host = origin {
+                guard let runtime else {
+                    throw CapabilityInvocationError.notInstalled(target)
+                }
+                return .agent(try await runtime.runAgent(
+                    identifiedBy: identifier,
+                    request: request,
+                    model: model,
+                    configuration: configuration,
+                    tooling: services.tooling,
+                    recording: services.recording,
+                    sessionID: sessionID
+                ))
+            }
+            guard let parentSessionID,
+                  let delegation else {
+                throw CapabilityInvocationError.agentRequiresDelegation(identifier)
+            }
+            return .agent(try await delegation.run(
+                identifier,
                 request: request,
+                from: parentSessionID,
+                sessionID: sessionID,
                 model: model,
                 configuration: configuration,
                 tooling: services.tooling,
-                recording: services.recording,
-                sessionID: sessionID
+                recording: services.recording
             ))
         }
     }

@@ -15,7 +15,6 @@ extension AgentLoop {
         sessionID: String,
         journal: AgentModelToolInvocationJournal
     ) async throws -> AgentModelInvocationContext {
-        _ = sessionID
         // Validate extensions against the exact function declarations bound
         // to this turn, not a newly acquired visibility snapshot.
         guard request.tools == advertisedTools,
@@ -25,7 +24,7 @@ extension AgentLoop {
         }
         return AgentModelInvocationContext(
             toolCallResolver: RuntimeModelCapabilityCallResolver(
-                dispatcher: await modelDispatcher(journal: journal),
+                dispatcher: await modelDispatcher(sessionID: sessionID, journal: journal),
                 projection: projection,
                 journal: journal
             )

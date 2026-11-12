@@ -7,6 +7,8 @@ public actor AgentRunner {
     public let model: RuntimeServices.Model
     public let configuration: AgentRunner.Configuration
     public let tooling: RuntimeServices.Tooling
+    /// Host-issued delegation authority retained across checkpoint resumption.
+    private weak var delegation: AgentDelegation?
     /// The inventory owns the only live capability authority for this runner.
     public let capabilities: CapabilityInventory
 
@@ -26,6 +28,7 @@ public actor AgentRunner {
         configuration: AgentRunner.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
         inventory: CapabilityInventory,
+        delegation: AgentDelegation? = nil,
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         contextServices: Context.Services? = nil
@@ -33,6 +36,7 @@ public actor AgentRunner {
         self.model = model
         self.configuration = configuration
         self.tooling = tooling
+        self.delegation = delegation
         self.capabilities = inventory
         self.runControl = Run.Control()
         self.extensions = extensions
@@ -47,6 +51,7 @@ public actor AgentRunner {
         configuration: AgentRunner.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
         capabilityState: AgentCapabilityState,
+        delegation: AgentDelegation? = nil,
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         contextServices: Context.Services? = nil
@@ -60,6 +65,7 @@ public actor AgentRunner {
                 catalog: tooling.catalog,
                 state: capabilityState
             ),
+            delegation: delegation,
             extensions: extensions,
             recording: recording,
             contextServices: contextServices
@@ -255,6 +261,7 @@ extension AgentRunner {
             configuration: configuration,
             tooling: tooling,
             inventory: capabilities,
+            delegation: delegation,
             runControl: runControl,
             extensions: extensions,
             recording: recording,

@@ -64,13 +64,13 @@ extension AgentLoop {
             if let projection = checkpoint.lastAdvertisedCapabilities,
                let target = projection.target(named: toolCall.tool.rawValue) {
                 switch target {
-                case .program, .inference:
+                case .program, .inference, .agent:
                     if let stopped = try await interruptionBeforeToolExecution(checkpoint) {
                         return stopped
                     }
                     do {
                         let resolver = RuntimeModelCapabilityCallResolver(
-                            dispatcher: await modelDispatcher(),
+                            dispatcher: await modelDispatcher(sessionID: checkpoint.id),
                             projection: projection,
                             journal: nil
                         )
@@ -98,8 +98,6 @@ extension AgentLoop {
 
                 case .tool:
                     break
-                case .agent:
-                    throw RuntimeModelToolAuthorizationError.invalidProjection
                 }
             }
 
