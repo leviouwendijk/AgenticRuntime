@@ -592,8 +592,8 @@ extension AgenticProgramRuntimeFlowTesting {
         }
         try Expect.true(completed.isCompleted, "Model Agent capability executes as child")
         try Expect.equal(completed.sessionID, "model-child", "Child identity is preserved")
-        let lineage = await modelDelegation.session("model-child")
-        try Expect.equal(lineage?.parentSessionID, "model-parent", "Parent lineage is governed")
+        let modelLineage = await modelDelegation.session("model-child")
+        try Expect.equal(modelLineage?.parentSessionID, "model-parent", "Parent lineage is governed")
 
         let noAuthority = CapabilityDispatcher(
             inventory: inventory,

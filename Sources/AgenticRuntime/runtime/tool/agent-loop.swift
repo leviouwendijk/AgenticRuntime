@@ -66,8 +66,6 @@ internal struct AgentLoop: Sendable {
         )
         return CapabilityDispatcher(
             inventory: inventory,
-            delegation: delegation,
-            parentSessionID: sessionID,
             services: RuntimeServices(
                 model: model,
                 tooling: tooling,
@@ -77,6 +75,8 @@ internal struct AgentLoop: Sendable {
                     tools: programTools
                 )
             ),
+            delegation: delegation,
+            parentSessionID: sessionID,
             configuration: configuration,
             observationHandler: { observation in
                 try? await self.record(.tool_observation(observation))
