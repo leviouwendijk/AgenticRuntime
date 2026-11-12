@@ -228,6 +228,13 @@ internal struct AgentLoop: Sendable {
             )
         }
 
+        if suspension.metadata["delegated_child_session_id"] != nil {
+            return try await resumeDelegatedChild(
+                checkpoint,
+                interaction: response
+            )
+        }
+
         switch response.resolution {
         case .approval(let decision):
             return try await resumeApproval(

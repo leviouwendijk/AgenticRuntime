@@ -13,6 +13,7 @@ public enum AgentToolUseDisposition: String, Sendable, Codable, Hashable, CaseIt
     case preflighted
     case executed
     case suspended_for_approval
+    case suspended_for_delegation
     case suspended_for_user_input
     case suspended_for_workspace_access
     case skipped_after_mutation
@@ -79,6 +80,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
     public var isSuspended: Bool {
         switch disposition {
         case .suspended_for_approval,
+             .suspended_for_delegation,
              .suspended_for_user_input,
              .suspended_for_workspace_access:
             return true

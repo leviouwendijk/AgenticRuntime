@@ -37,7 +37,17 @@ extension AgentLoop {
             return .continueLoop(checkpoint)
         }
 
+        if let delegated = try await processDelegatedBatch(from: checkpoint) {
+            return delegated
+        }
+
         for record in batch.records where !record.isTerminal {
+            if record.isSuspended {
+                return try await surfaceRetainedChild(
+                    record.toolCall,
+                    checkpoint: &checkpoint
+                )
+            }
             if let interruption = await requestedUrgentInterruption() {
                 return .result(
                     try await interrupt(
@@ -82,6 +92,12 @@ extension AgentLoop {
                             to: &checkpoint,
                             summary: "semantic capability invoked"
                         )
+                    } catch let suspension as RuntimeDelegatedChildSuspension {
+                        try await mirrorDelegatedSuspension(
+                            suspension,
+                            checkpoint: &checkpoint
+                        )
+                        return .result(try suspendedResult(from: checkpoint))
                     } catch {
                         let result = try makeToolErrorResult(for: toolCall, error: error)
                         try await appendToolResult(

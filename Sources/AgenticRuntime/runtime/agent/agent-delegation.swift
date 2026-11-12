@@ -1,4 +1,5 @@
 import Agentic
+import Workspace
 
 /// Parent-owned admission state for a tree of Agent invocations.
 ///
@@ -24,6 +25,14 @@ public actor AgentDelegation {
             self.parentSessionID = parentSessionID
             self.depth = depth
         }
+    }
+
+    public struct Snapshot: Sendable {
+        public let session: Session
+        public let phase: AgentRunner.Phase?
+        public let requestedScope: String?
+        public let executing: Bool
+        public let settled: Bool
     }
 
     public enum Failure: Error, Sendable {
@@ -54,10 +63,16 @@ public actor AgentDelegation {
         var settled: Bool
         var runner: AgentRunner? = nil
         var executing: Bool = false
+        var latestResult: AgentRunner.Result? = nil
+        var requestedScope: String? = nil
     }
 
     private let runtime: AgenticRuntime
     private let installed: InstalledCapabilities
+    public typealias ToolingFactory = @Sendable (
+        Session, AgentRequest, RuntimeServices.Tooling
+    ) async throws -> RuntimeServices.Tooling
+    private var childToolingFactory: ToolingFactory?
     private var entries: [String: Entry]
 
     /// The root's live capability state should be the same state held by its
@@ -66,7 +81,8 @@ public actor AgentDelegation {
         runtime: AgenticRuntime,
         root: AgentIdentifier,
         sessionID: String,
-        capabilityState: AgentCapabilityState
+        capabilityState: AgentCapabilityState,
+        childToolingFactory: ToolingFactory? = nil
     ) throws {
         let realization = try runtime.realizeAgent(identifiedBy: root)
         let session = Session(
@@ -76,6 +92,7 @@ public actor AgentDelegation {
             depth: 0
         )
         self.runtime = runtime
+        self.childToolingFactory = childToolingFactory
         installed = runtime.installed
         entries = [
             sessionID: Entry(
@@ -89,6 +106,65 @@ public actor AgentDelegation {
 
     public func session(_ id: String) -> Session? {
         entries[id]?.session
+    }
+
+    public func latestResult(_ id: String) -> AgentRunner.Result? {
+        entries[id]?.latestResult
+    }
+
+    public func sessions() -> [Session] {
+        entries.values.map(\.session).sorted { $0.id < $1.id }
+    }
+
+    public func snapshots() -> [Snapshot] {
+        entries.values.map { entry in
+            .init(
+                session: entry.session,
+                phase: entry.latestResult?.phase,
+                requestedScope: entry.requestedScope,
+                executing: entry.executing,
+                settled: entry.settled
+            )
+        }.sorted { $0.session.id < $1.session.id }
+    }
+
+    public func configureChildTooling(_ factory: ToolingFactory?) {
+        childToolingFactory = factory
+    }
+
+    /// Stop descendants when the owning root is interrupted or superseded.
+    public func interruptDescendants(
+        of parentID: String,
+        mode: Run.Interruption.Mode,
+        reason: String?
+    ) async {
+        let active = entries.values.compactMap { entry -> AgentRunner? in
+            guard !entry.settled,
+                  isDescendant(entry.session, of: parentID) else {
+                return nil
+            }
+            return entry.runner
+        }
+        await withTaskGroup(of: Void.self) { group in
+            for runner in active {
+                group.addTask {
+                    await runner.requestInterruption(mode, reason: reason)
+                }
+            }
+        }
+    }
+
+    /// Abort pending worker proposals without affecting other Host sessions.
+    public func withdrawWorkerMutations() async {
+        for entry in entries.values {
+            guard entry.session.parentSessionID != nil,
+                  let context = entry.runner?.tooling.workspace else {
+                continue
+            }
+            if case .coordinated(let participant) = context.execution.mutations {
+                try? await participant.close()
+            }
+        }
     }
 
     /// Atomically reserve a child under the parent's current authority.
@@ -234,14 +310,29 @@ public actor AgentDelegation {
         guard var entry = entries[session.id] else {
             throw Failure.unknownSession(session.id)
         }
+        let childTooling: RuntimeServices.Tooling
+        do {
+            childTooling = try await childToolingFactory?(
+                session, request, tooling
+            ) ?? tooling
+        } catch {
+            entries.removeValue(forKey: session.id)
+            throw error
+        }
+        entry.requestedScope = request.metadata["worker_scope_path"]
         entry.runner = runtime.makeAgentRunner(
             realization: entry.realization,
             capabilityState: entry.capabilities,
             model: model,
             configuration: configuration,
-            tooling: tooling,
+            tooling: childTooling,
             delegation: self,
-            recording: recording
+            recording: .init(
+                historyStore: recording.historyStore,
+                eventSinks: [],
+                stateSinks: [],
+                costTracker: recording.costTracker
+            )
         )
         entries[session.id] = entry
         return try await perform(session.id) { runner in
@@ -268,6 +359,21 @@ public actor AgentDelegation {
                 reply: reply,
                 metadata: metadata
             )
+        }
+    }
+
+    public func resume(
+        _ sessionID: String,
+        interaction response: Run.Interaction.Response
+    ) async throws -> AgentRunner.Result {
+        guard response.sessionID == sessionID else {
+            throw Run.Interaction.Error.sessionMismatch(
+                expected: sessionID,
+                received: response.sessionID
+            )
+        }
+        return try await perform(sessionID) { runner in
+            try await runner.resume(interaction: response)
         }
     }
 
@@ -304,6 +410,7 @@ public actor AgentDelegation {
                 throw Failure.unknownSession(sessionID)
             }
             current.executing = false
+            current.latestResult = result
             entries[sessionID] = current
             if result.isCompleted || result.isFailed {
                 try settle(result)

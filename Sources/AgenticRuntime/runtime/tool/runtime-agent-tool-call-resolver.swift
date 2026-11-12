@@ -8,6 +8,13 @@ enum RuntimeToolCallBoundary: Error, Sendable {
     case capabilities_changed
 }
 
+/// The parent must mirror this checkpoint rather than converting it to a
+/// terminal model tool error. It contains no model-controlled authority.
+struct RuntimeDelegatedChildSuspension: Error, Sendable {
+    let call: ToolCall
+    let result: AgentRunner.Result
+}
+
 /// A provider ToolCall carries only a function name and JSON arguments.
 /// Neither field may choose a semantic capability or an authorization origin.
 struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
@@ -73,25 +80,52 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
                 role: .user,
                 text: String(decoding: try JSONEncoder().encode(arguments), as: UTF8.self)
             ))
+            var metadata = [
+                "parent_agent_session_id": parentSessionID,
+                "parent_agent_call_id": call.id
+            ]
+            if case .object(let envelope) = call.input,
+               let execution = envelope["execution"] {
+                guard case .object(let fields) = execution,
+                      fields.keys.allSatisfy({ $0 == "workspace_scope" }) else {
+                    throw RuntimeModelToolAuthorizationError.invalidArguments
+                }
+                if let scope = fields["workspace_scope"] {
+                    guard case .string(let path) = scope,
+                          !path.isEmpty else {
+                        throw RuntimeModelToolAuthorizationError.invalidArguments
+                    }
+                    metadata["worker_scope_path"] = path
+                }
+            }
+            if let scope = metadata["worker_scope_path"] {
+                messages.append(Message(
+                    role: .system,
+                    text: "Assigned workspace scope: \(scope). Only operate on that path or its descendants; approval is required for any expansion."
+                ))
+            }
             invocation = .agent(
                 identifier: identifier,
                 request: AgentRequest(
                     messages: messages,
                     responseFormat: .jsonschema(binding.contract.output),
-                    metadata: [
-                        "parent_agent_session_id": parentSessionID,
-                        "parent_agent_call_id": call.id
-                    ]
+                    metadata: metadata
                 ),
                 sessionID: childID
             )
         }
 
         let before = await dispatcher.capabilityState.snapshot()
-        let outcome = try await dispatcher.invoke(
-            invocation,
-            origin: .model(projection: projection, function: function)
-        )
+        let outcome: CapabilityInvocation.Outcome
+        if case .agent(_, _, let childID) = invocation,
+           let retained = await dispatcher.delegation?.latestResult(childID) {
+            outcome = .agent(retained)
+        } else {
+            outcome = try await dispatcher.invoke(
+                invocation,
+                origin: .model(projection: projection, function: function)
+            )
+        }
         let response: ToolCall.Response
         switch outcome {
         case .tool(let result):
@@ -109,27 +143,7 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
                 isError: false
             )
         case .agent(let result):
-            guard result.isCompleted,
-                  let message = result.response?.message else {
-                response = ToolCall.Response(
-                    call: call.reference,
-                    output: .object([
-                        "child_session_id": .string(result.sessionID),
-                        "phase": .string(result.phase.rawValue)
-                    ]),
-                    isError: true
-                )
-                break
-            }
-            let output = try JSONDecoder().decode(
-                JSONValue.self,
-                from: Data(message.content.text.utf8)
-            )
-            response = ToolCall.Response(
-                call: call.reference,
-                output: output,
-                isError: false
-            )
+            response = try Self.agentResponse(result, for: call)
         }
         if case .tool = target {
             // Governed Tool results are retained through the dispatcher's
@@ -142,6 +156,35 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
             throw RuntimeToolCallBoundary.capabilities_changed
         }
         return response
+    }
+
+    static func agentResponse(
+        _ result: AgentRunner.Result,
+        for call: ToolCall
+    ) throws -> ToolCall.Response {
+        if result.suspension != nil {
+            throw RuntimeDelegatedChildSuspension(call: call, result: result)
+        }
+        guard result.isCompleted,
+              let message = result.response?.message else {
+            return .init(
+                call: call.reference,
+                output: .object([
+                    "child_session_id": .string(result.sessionID),
+                    "phase": .string(result.phase.rawValue),
+                    "failure": .string(result.failure?.message ?? "Child did not complete")
+                ]),
+                isError: true
+            )
+        }
+        return .init(
+            call: call.reference,
+            output: try JSONDecoder().decode(
+                JSONValue.self,
+                from: Data(message.content.text.utf8)
+            ),
+            isError: false
+        )
     }
 
     private func agentBinding(_ identifier: AgentIdentifier) async throws -> AgentBinding {

@@ -277,9 +277,11 @@ extension AgenticProgramRuntimeFlowTesting {
             )
         }.jsonvalue
         try Expect.equal(
-            projection.functions.allSatisfy { $0.input == expectedEnvelope },
+            projection.functions.filter {
+                $0.name != agentName
+            }.allSatisfy { $0.input == expectedEnvelope },
             true,
-            "All semantic capabilities derive model schemas from typed Input."
+            "Programs and Inferences use the typed Input envelope."
         )
 
         // Persisting a checkpoint must preserve provider-to-target identity,

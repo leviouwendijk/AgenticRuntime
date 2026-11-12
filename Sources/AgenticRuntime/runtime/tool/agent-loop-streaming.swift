@@ -176,6 +176,14 @@ extension AgentLoop {
             )
 
             return checkpoint
+        } catch let pending as RuntimeDelegatedChildSuspension {
+            try await suspendNativeDelegatedChild(
+                pending,
+                invocations: await journal.snapshot(),
+                semanticInvocations: await journal.semanticSnapshot(),
+                checkpoint: &checkpoint
+            )
+            return checkpoint
         } catch is CancellationError {
             let interruption =
                 await requestedInterruption()

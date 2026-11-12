@@ -164,7 +164,14 @@ extension InstalledCapabilities {
                     ),
                     description: binding.definition.purpose,
                     input: CapabilityModelInputSchema.envelope(
-                        semanticInput: binding.contract.input
+                        semanticInput: binding.contract.input,
+                        execution: .object {
+                            JSONSchema.property(
+                                "workspace_scope",
+                                schema: .string(),
+                                required: false
+                            )
+                        }
                     ).jsonvalue
                 ),
                 target: .agent(identifier)
