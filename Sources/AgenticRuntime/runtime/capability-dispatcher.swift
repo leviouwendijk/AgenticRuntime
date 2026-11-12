@@ -177,10 +177,12 @@ public struct CapabilityDispatcher: Sendable {
             // future visibility changes. Disabling availability still revokes
             // live invocation authority above.
         case .delegated_agent:
-            guard case .agent = invocation,
-                  parentSessionID != nil,
-                  delegation != nil else {
+            guard case .agent(let identifier, _, _) = invocation else {
                 throw CapabilityInvocationError.notAvailable(target)
+            }
+            guard parentSessionID != nil,
+                  delegation != nil else {
+                throw CapabilityInvocationError.agentRequiresDelegation(identifier)
             }
             guard target.isVisible(in: snapshot.available) else {
                 throw CapabilityInvocationError.notAvailable(target)

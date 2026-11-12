@@ -487,6 +487,28 @@ private struct DelegatedExecutionModel: AgentModelInvoking {
     }
 }
 
+private enum DelegationPreferredSelectionFixture: Agent {
+    typealias Input = String
+    typealias Output = String
+
+    static let purpose = "Delegation model preference override fixture."
+    static let identifier = AgentIdentifier(
+        rawValue: "fixture.delegation.preferred_selection"
+    )
+    static let modelSelection = AgentModelSelection(
+        purpose: .coder,
+        preferences: .init(
+            preferredModelID: "fixture.worker.model",
+            gateway: "fixture.worker.gateway"
+        )
+    )
+    static let definition = AgentDefinition(
+        identifier: identifier,
+        purpose: purpose,
+        modelSelection: modelSelection
+    )
+}
+
 extension AgenticProgramRuntimeFlowTesting {
     static func runAgentDelegationExecution() async throws -> [TestDiagnostic] {
         let application = Agentic.application("fixture.delegation.execution") {
@@ -494,6 +516,7 @@ extension AgenticProgramRuntimeFlowTesting {
             install(DelegationIntermediateFixture.self)
             install(DelegationLeafFixture.self)
             install(DelegationExcludedFixture.self)
+            install(DelegationPreferredSelectionFixture.self)
         }
         let runtime = try await AgenticRuntime(application: application)
         let root = try runtime.makeAgentRunner(
@@ -508,7 +531,17 @@ extension AgenticProgramRuntimeFlowTesting {
             capabilityState: root_state
         )
         let recorder = DelegatedExecutionRecorder()
-        let model = RuntimeServices.Model(invoker: DelegatedExecutionModel(recorder: recorder))
+        let model = RuntimeServices.Model(
+            invoker: DelegatedExecutionModel(recorder: recorder),
+            selection: .init(
+                purpose: .executor,
+                preferences: .init(
+                    preferredModelID: "fixture.application.model",
+                    gateway: "fixture.application.gateway"
+                ),
+                constraints: .init(allowsExternal: false)
+            )
+        )
         let child = try await admission.run(
             DelegationLeafFixture.identifier,
             request: .init(messages: [Message(role: .user, text: "execute as child")]),
@@ -526,12 +559,74 @@ extension AgenticProgramRuntimeFlowTesting {
         let calls = await recorder.snapshot()
         try Expect.equal(calls.count, 1, "Delegation executes exactly one model invocation")
         try Expect.equal(
+            calls.first?.selection.preferences.preferredModelID?.rawValue,
+            "fixture.application.model",
+            "Unconfigured delegated Agent inherits the caller's resolved model"
+        )
+        try Expect.equal(
+            calls.first?.selection.preferences.gateway?.rawValue,
+            "fixture.application.gateway",
+            "Unconfigured delegated Agent inherits the caller's gateway"
+        )
+        try Expect.true(
+            calls.first?.selection.constraints.allowsExternal == false,
+            "Delegation retains inherited hard model restrictions"
+        )
+        try Expect.equal(
             calls.first?.request.tools.count,
             0,
             "Child model projection respects its own authored visibility"
         )
         let lineage = await admission.session("real-child")
         try Expect.equal(lineage?.parentSessionID, "real-parent", "Executed child keeps parent lineage")
+
+        let preferredRunner = try runtime.makeAgentRunner(
+            identifiedBy: DelegationPreferredSelectionFixture.identifier,
+            model: model
+        )
+        let preferredSelection = await preferredRunner.model.selection
+        try Expect.equal(
+            preferredSelection.purpose, .coder,
+            "Child keeps its own authored model purpose"
+        )
+        try Expect.equal(
+            preferredSelection.preferences.preferredModelID?.rawValue,
+            "fixture.worker.model",
+            "Explicit Agent preference overrides an inherited default"
+        )
+        try Expect.equal(
+            preferredSelection.preferences.gateway?.rawValue,
+            "fixture.worker.gateway",
+            "Explicit Agent gateway overrides an inherited default"
+        )
+        try Expect.true(
+            !preferredSelection.constraints.allowsExternal,
+            "Agent override cannot weaken inherited hard restrictions"
+        )
+
+        let explicitRunner = try runtime.makeAgentRunner(
+            identifiedBy: DelegationPreferredSelectionFixture.identifier,
+            model: model,
+            modelPreferences: .init(
+                preferredModelID: "fixture.invocation.model",
+                gateway: "fixture.invocation.gateway"
+            )
+        )
+        let explicitSelection = await explicitRunner.model.selection
+        try Expect.equal(
+            explicitSelection.preferences.preferredModelID?.rawValue,
+            "fixture.invocation.model",
+            "Explicit runtime preference overrides the Agent preference"
+        )
+        try Expect.equal(
+            explicitSelection.preferences.gateway?.rawValue,
+            "fixture.invocation.gateway",
+            "Explicit runtime gateway overrides the Agent preference"
+        )
+        try Expect.true(
+            !explicitSelection.constraints.allowsExternal,
+            "Explicit preferences cannot relax a hard inherited restriction"
+        )
 
         var denied_duplicate = false
         do {

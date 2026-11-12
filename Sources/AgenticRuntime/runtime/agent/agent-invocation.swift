@@ -40,8 +40,18 @@ public extension AgenticRuntime {
         modelPreferences: AgentModelPreferences = .init()
     ) -> AgentRunner {
         var selection = realization.modelSelection
-        selection.preferences = selection.preferences.overriding(
+        // A delegated runner receives the caller's resolved model posture.
+        // Preserve that target unless this Agent or an explicit invocation
+        // preference supplies a more specific one.
+        selection.preferences = model.selection.preferences.overriding(
+            with: selection.preferences
+        ).overriding(
             with: modelPreferences
+        )
+        // Routing restrictions are inherited, never relaxed by a child.
+        // Keep the child's purpose and capability requirements independent.
+        selection.constraints = model.selection.constraints.tightened(
+            by: selection.constraints
         )
         return AgentRunner(
             model: model.selecting(selection),
