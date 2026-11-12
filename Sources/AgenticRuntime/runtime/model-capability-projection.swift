@@ -1,5 +1,6 @@
 import Agentic
 import Primitives
+import Schema
 
 /// One model-visible function bound to a semantic Runtime capability.
 ///
