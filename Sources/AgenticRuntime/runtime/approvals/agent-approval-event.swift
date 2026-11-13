@@ -107,7 +107,10 @@ public extension AgentApprovalEvent {
              .tool_result,
              .tool_error,
              .cost_projected,
-             .cost_actual:
+             .cost_actual,
+             .mutation_staged,
+             .mutation_published,
+             .mutation_withdrawn:
             return nil
         }
 

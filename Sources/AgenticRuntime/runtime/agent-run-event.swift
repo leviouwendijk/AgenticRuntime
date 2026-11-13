@@ -60,6 +60,11 @@ public extension Run.Event {
             case tool_error
             case cost_projected
             case cost_actual
+            /// Coordinated mutation lifecycle: staged under claims, then
+            /// published to disk or withdrawn.
+            case mutation_staged
+            case mutation_published
+            case mutation_withdrawn
         }
 
         public let id: String

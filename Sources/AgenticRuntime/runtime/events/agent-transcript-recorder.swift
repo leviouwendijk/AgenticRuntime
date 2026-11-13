@@ -98,7 +98,10 @@ private extension AgentTranscriptRecorder {
              .pending_user_input,
              .pending_workspace_access,
              .cost_projected,
-             .cost_actual:
+             .cost_actual,
+             .mutation_staged,
+             .mutation_published,
+             .mutation_withdrawn:
             return true
         }
     }
