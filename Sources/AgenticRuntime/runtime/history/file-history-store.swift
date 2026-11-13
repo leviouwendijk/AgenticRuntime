@@ -1,6 +1,9 @@
 import Foundation
 import IO
+import Readers
 
+/// A recovery snapshot per session: the state a run resumes from. The
+/// complete step record is the session log (`Run.Log`), not this file.
 public actor FileHistoryStore: AgentHistoryStore {
     public let sessionsdir: URL
 
@@ -13,17 +16,9 @@ public actor FileHistoryStore: AgentHistoryStore {
     public func loadCheckpoint(
         sessionID: String
     ) async throws -> AgentExecutor.Checkpoint? {
-        let url = checkpointURL(
-            for: sessionID
-        )
-
-        guard FileSystem.default.exists(url) else {
-            return nil
-        }
-
-        let data = try Data(
-            contentsOf: url
-        )
+        let data = try DataFileReader(checkpointURL(for: sessionID)).read(
+            options: .init(missingFilePolicy: .returnEmpty)
+        ).data
 
         guard !data.isEmpty else {
             return nil
@@ -35,24 +30,32 @@ public actor FileHistoryStore: AgentHistoryStore {
         )
     }
 
+    /// Written beside its final name and moved into place, so a reader sees
+    /// either the previous snapshot or the new one, never a partial file.
     public func saveCheckpoint(
         _ checkpoint: AgentExecutor.Checkpoint
     ) async throws {
         let url = checkpointURL(
             for: checkpoint.id
         )
+        let partial = url.appendingPathExtension("partial")
 
         try FileSystem.default.directory.create(url.deletingLastPathComponent())
 
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(
-            checkpoint
+        var destination = Destination(
+            try SystemFileDestination(path: partial.path, mode: .truncate)
         )
+        try Run.Log.write(
+            try JSONEncoder().encode(checkpoint),
+            to: &destination
+        )
+        _ = try destination.flush()
 
-        try data.write(
-            to: url,
-            options: .atomic
-        )
+        if FileSystem.default.exists(url) {
+            try FileSystem.default.replace(url, with: partial)
+        } else {
+            try FileSystem.default.move(partial, to: url)
+        }
     }
 
     public func deleteCheckpoint(

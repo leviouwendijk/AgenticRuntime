@@ -33,7 +33,7 @@ extension AgentLoop {
         )
         let request = try await prepareModelRequest(
             from: try await requestWithCurrentState(
-                from: checkpoint.originalRequest,
+                from: checkpoint.request,
                 messages: checkpoint.state.messages,
                 definitions: tools,
                 iteration: checkpoint.state.iteration,
@@ -53,7 +53,6 @@ extension AgentLoop {
             }
             return nil
         }
-        checkpoint.contextUsage.append(usage)
 
         try await appendRunEvent(
             .init(

@@ -112,7 +112,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "Only the oversized output is elided, to a stub naming the call")
 
         let checkpoint = AgentExecutor.Checkpoint(
-            id: "session-dynamic", originalRequest: canonical,
+            id: "session-dynamic", request: canonical,
             state: .init(iteration: 0, messages: canonical.messages),
             runLimits: .default, contextMode: .dynamic,
             contextPolicy: policy,

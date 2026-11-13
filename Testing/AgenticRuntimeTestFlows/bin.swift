@@ -62,6 +62,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try AgenticProgramRuntimeFlowTesting.runContextUsage()
         },
         TestFlow(
+            "checkpoint-snapshot",
+            tags: ["runtime", "history", "checkpoint", "persistence"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runCheckpointSnapshot()
+        },
+        TestFlow(
             "run-log",
             tags: ["runtime", "log", "persistence", "history"]
         ) {

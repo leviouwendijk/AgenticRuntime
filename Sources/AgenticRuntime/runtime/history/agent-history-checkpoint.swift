@@ -15,15 +15,17 @@ public extension AgentExecutor {
 
     struct Checkpoint: Sendable, Codable, Hashable, Identifiable {
         public let id: String
-        public let originalRequest: AgentRequest
+        /// The run's request settings: generation, response format,
+        /// invocation options, metadata. The conversation lives in
+        /// `state.messages` and capabilities are projected each turn, so
+        /// neither is kept here; a checkpoint never holds the transcript twice.
+        public let request: AgentRequest
         public var state: State
         public var runLimits: AgentRunLimits
         public var contextMode: Context.Mode
         public var contextPolicy: Context.Policy
         public var contextWorkingSet: Context.WorkingSet?
         public var contextTransitions: [Context.Transition]
-        /// Estimated input composition of each model turn's request.
-        public var contextUsage: [Context.Usage]
         public var events: [Run.Event.State]
         /// Authoritative invocation spans, independently of display projections.
         public var invocations: [AgentExecutionInvocation]
@@ -50,14 +52,13 @@ public extension AgentExecutor {
 
         private enum CodingKeys: String, CodingKey {
             case id
-            case originalRequest
+            case request
             case state
             case runLimits
             case contextMode
             case contextPolicy
             case contextWorkingSet
             case contextTransitions
-            case contextUsage
             case events
             case invocations
             case currentModelInvocationID
@@ -86,10 +87,10 @@ public extension AgentExecutor {
                 String.self,
                 forKey: .id
             )
-            originalRequest = try container.decode(
+            request = try container.decode(
                 AgentRequest.self,
-                forKey: .originalRequest
-            )
+                forKey: .request
+            ).settings
             state = try container.decode(
                 State.self,
                 forKey: .state
@@ -113,10 +114,6 @@ public extension AgentExecutor {
             contextTransitions = try container.decodeIfPresent(
                 [Context.Transition].self,
                 forKey: .contextTransitions
-            ) ?? []
-            contextUsage = try container.decodeIfPresent(
-                [Context.Usage].self,
-                forKey: .contextUsage
             ) ?? []
             events = try container.decodeIfPresent(
                 [Run.Event.State].self,
@@ -192,14 +189,13 @@ public extension AgentExecutor {
 
         public init(
             id: String,
-            originalRequest: AgentRequest,
+            request: AgentRequest,
             state: State,
             runLimits: AgentRunLimits,
             contextMode: Context.Mode = .accumulating,
             contextPolicy: Context.Policy = .init(),
             contextWorkingSet: Context.WorkingSet? = nil,
             contextTransitions: [Context.Transition] = [],
-            contextUsage: [Context.Usage] = [],
             events: [Run.Event.State] = [],
             invocations: [AgentExecutionInvocation] = [],
             currentModelInvocationID: String? = nil,
@@ -223,14 +219,13 @@ public extension AgentExecutor {
             updatedAt: Date? = nil
         ) {
             self.id = id
-            self.originalRequest = originalRequest
+            self.request = request.settings
             self.state = state
             self.runLimits = runLimits
             self.contextMode = contextMode
             self.contextPolicy = contextPolicy
             self.contextWorkingSet = contextWorkingSet
             self.contextTransitions = contextTransitions
-            self.contextUsage = contextUsage
             self.events = events
             self.invocations = invocations
             self.currentModelInvocationID = currentModelInvocationID
@@ -351,4 +346,12 @@ public extension AgentExecutor.Checkpoint {
     }
 }
 
-
+private extension AgentRequest {
+    /// The request without its conversation and capability schemas.
+    var settings: AgentRequest {
+        var settings = self
+        settings.messages = []
+        settings.tools = []
+        return settings
+    }
+}

@@ -70,7 +70,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let checkpoint = AgentExecutor.Checkpoint(
             id: sessionID,
-            originalRequest: request,
+            request: request,
             state: .init(
                 iteration: 1,
                 messages: request.messages

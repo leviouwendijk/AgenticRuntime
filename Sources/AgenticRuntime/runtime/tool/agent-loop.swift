@@ -96,7 +96,7 @@ internal struct AgentLoop: Sendable {
     ) async throws -> AgentExecutor.Result {
         var checkpoint = AgentExecutor.Checkpoint(
             id: sessionID,
-            originalRequest: request,
+            request: request,
             state: .init(
                 iteration: 0,
                 messages: request.messages
