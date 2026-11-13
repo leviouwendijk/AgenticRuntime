@@ -81,6 +81,34 @@ extension AgenticProgramRuntimeFlowTesting {
         try await store.open(session: "s1").append(.branch(.init(sessionID: "s1", branch: .init(parentSessionID: "s0"))), run: "r3")
         try Expect.equal(try store.read(session: "s1").entries.last?.seq, 8, "Torn tail is skipped")
 
+        // Self-review through the Sessions tools.
+        let context = ToolContext(services: try ToolServices().inserting(log))
+        let denials = try await Sessions.Tools.Log().call(
+            .init(kinds: [.state]),
+            in: context
+        )
+        try Expect.equal(denials.lines.map(\.seq), [4], "Log filters by kind")
+        try Expect.true(denials.lines[0].summary.contains("denied by operator"), "Lines summarize the step")
+
+        let step = try await Sessions.Tools.Step().call(.init(seq: 3), in: context)
+        try Expect.equal(
+            step.detail.valueOrNil.object?["input"],
+            .object(["path": .string("README.md")]),
+            "A call step carries its exact input"
+        )
+
+        let turn = try await Sessions.Tools.Step().call(.init(seq: 1), in: context)
+        guard let messages = turn.detail.valueOrNil.object?["messages"]?.valueOrNil.array,
+              let digest = messages.last?.valueOrNil.object?["digest"]?.valueOrNil.string else {
+            throw RunLogFixtureError.unexpectedBody
+        }
+        let payload = try await Sessions.Tools.Payload().call(.init(digest: digest), in: context)
+        try Expect.equal(
+            try payload.value.decode(Message.self),
+            user,
+            "A request's message is readable by digest"
+        )
+
         return [.field("entries", String(contents.entries.count))]
     }
 }

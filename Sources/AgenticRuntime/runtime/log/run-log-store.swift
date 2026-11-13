@@ -51,19 +51,7 @@ public extension Run.Log.Store {
     func read(
         session: String
     ) throws -> Run.Log.Contents {
-        let file = storage.logfile(sessionID: session)
-        let data = try DataFileReader(file).read().data
-        guard let first = data.split(separator: 0x0A).first else {
-            throw Run.Log.Failure.missingHeader(file)
-        }
-        let header = try Run.Log.decoder.decode(Run.Log.Header.self, from: Data(first))
-        guard header.version == Run.Log.version else {
-            throw Run.Log.Failure.unsupportedVersion(header.version)
-        }
-        return .init(
-            header: header,
-            entries: try Run.Log.entries(in: data)
-        )
+        try Run.Log.read(file: storage.logfile(sessionID: session))
     }
 
     func payload<Value: Decodable>(
@@ -71,8 +59,7 @@ public extension Run.Log.Store {
         as type: Value.Type,
         session: String
     ) throws -> Value {
-        let url = Run.Log.payload(digest, in: storage.payloadsdir(sessionID: session))
-        return try Run.Log.decoder.decode(type, from: DataFileReader(url).read().data)
+        try Run.Log.payload(digest, as: type, in: storage.payloadsdir(sessionID: session))
     }
 
     /// The exact request a `request` entry recorded.
@@ -80,11 +67,70 @@ public extension Run.Log.Store {
         _ entry: Run.Log.Entry.Request,
         session: String
     ) throws -> AgentRequest {
-        var request = try payload(entry.options, as: AgentRequest.self, session: session)
-        request.messages = try entry.messages.map {
-            try payload($0, as: Message.self, session: session)
+        try Run.Log.request(entry, in: storage.payloadsdir(sessionID: session))
+    }
+}
+
+/// Reading this session's own log. Staged entries are written first, so a
+/// reader always sees every step recorded so far.
+public extension Run.Log {
+    func read() throws -> Contents {
+        try flush()
+        return try Self.read(file: file)
+    }
+
+    nonisolated func payload<Value: Decodable>(
+        _ digest: Digest,
+        as type: Value.Type
+    ) throws -> Value {
+        try Self.payload(digest, as: type, in: payloads)
+    }
+
+    nonisolated func request(
+        _ entry: Entry.Request
+    ) throws -> AgentRequest {
+        try Self.request(entry, in: payloads)
+    }
+}
+
+extension Run.Log {
+    static func read(
+        file: URL
+    ) throws -> Contents {
+        let data = try DataFileReader(file).read().data
+        guard let first = data.split(separator: 0x0A).first else {
+            throw Failure.missingHeader(file)
         }
-        request.tools = try payload(entry.tools, as: [ToolDescriptor].self, session: session)
+        let header = try decoder.decode(Header.self, from: Data(first))
+        guard header.version == version else {
+            throw Failure.unsupportedVersion(header.version)
+        }
+        return .init(
+            header: header,
+            entries: try entries(in: data)
+        )
+    }
+
+    static func payload<Value: Decodable>(
+        _ digest: Digest,
+        as type: Value.Type,
+        in payloads: URL
+    ) throws -> Value {
+        try decoder.decode(
+            type,
+            from: DataFileReader(payload(digest, in: payloads)).read().data
+        )
+    }
+
+    static func request(
+        _ entry: Entry.Request,
+        in payloads: URL
+    ) throws -> AgentRequest {
+        var request = try payload(entry.options, as: AgentRequest.self, in: payloads)
+        request.messages = try entry.messages.map {
+            try payload($0, as: Message.self, in: payloads)
+        }
+        request.tools = try payload(entry.tools, as: [ToolDescriptor].self, in: payloads)
         return request
     }
 }
