@@ -68,6 +68,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting.runCheckpointSnapshot()
         },
         TestFlow(
+            "live-pricing-cache",
+            tags: ["runtime", "pricing", "cache", "offline"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runLivePricingCache()
+        },
+        TestFlow(
             "run-log",
             tags: ["runtime", "log", "persistence", "history"]
         ) {

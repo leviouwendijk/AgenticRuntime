@@ -51,8 +51,11 @@ public struct AgenticRuntime:
     public let profiles: ProfileCatalog
     public let pricing: StaticModelPricingCatalog
 
+    /// `livePricing` layers provider-published prices over the curated
+    /// ones; without it, pricing stays offline.
     public init(
-        application: AgenticApplication
+        application: AgenticApplication,
+        livePricing: LivePricingCache? = nil
     ) async throws {
         let installed = try InstalledCapabilities(application: application)
         let launches = try validateApplicationLaunchEntries(
@@ -92,7 +95,13 @@ public struct AgenticRuntime:
         self.launches = launches
         self.gateways = modelCatalogs.gateways
         self.profiles = modelCatalogs.profiles
-        self.pricing = modelCatalogs.pricing
+        var pricing = modelCatalogs.pricing
+        if let livePricing {
+            for snapshot in await livePricing.snapshots(for: application.modelProviders) {
+                pricing.insert(snapshot)
+            }
+        }
+        self.pricing = pricing
     }
 
     public func realizeAgent(
@@ -198,7 +207,8 @@ public extension AgenticRuntime {
         _ application: Application.Type
     ) async throws -> Self {
         try await .init(
-            application: application.application
+            application: application.application,
+            livePricing: .home(AgentHomeLocator().resolveHome())
         )
     }
 }
