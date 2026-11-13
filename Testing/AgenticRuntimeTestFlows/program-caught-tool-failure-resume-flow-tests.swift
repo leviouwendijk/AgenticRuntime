@@ -16,11 +16,11 @@ private actor ProgramCaughtToolFailureProbe {
 }
 
 private struct ProgramCaughtToolFailureExecutor:
-    ProgramToolExecuting
+    GovernedToolExecuting
 {
     let probe: ProgramCaughtToolFailureProbe
 
-    func invoke(
+    func execute(
         _ identifier: ToolIdentifier,
         input: JSONValue
     ) async throws -> ToolExecution.Result {
@@ -29,8 +29,8 @@ private struct ProgramCaughtToolFailureExecutor:
 
         throw ProgramToolFailure(
             tool: identifier,
-            result: ToolCall.Response(
-                call: .init(id: "fixture-caught-tool-failure", tool: identifier),
+            result: FunctionCall.Response(
+                call: .init(id: "fixture-caught-tool-failure", name: identifier.rawValue),
                 output: .null,
                 isError: true
             )
@@ -63,7 +63,7 @@ private struct ProgramCaughtToolFailureResumeFixture:
             as: String.self
         ) { failure -> String in
             guard failure.tool == Self.toolIdentifier,
-                  failure.result.call.tool
+                  ToolIdentifier(failure.result.call.name)
                     == Self.toolIdentifier,
                   failure.result.isError
             else {
@@ -103,7 +103,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let executor = ProgramCaughtToolFailureExecutor(
             probe: probe
         )
-        let runner = ProgramRunner(
+        let programExecutor = ProgramExecutor(
             services: .init(
                 program: .init(
                     tools: executor
@@ -111,7 +111,7 @@ extension AgenticProgramRuntimeFlowTesting {
             )
         )
 
-        let initial = try await runner.execute(
+        let initial = try await programExecutor.execute(
             ProgramCaughtToolFailureResumeFixture(),
             input: "seed",
             sessionID: "fixture-caught-tool-failure-resume"
@@ -141,7 +141,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let failedStep = checkpoint.completedSteps[0]
         let failedResult = try Expect.notNil(
             failedStep.toolResult,
-            "caught tool failure retains its canonical ToolCall.Response"
+            "caught tool failure retains its canonical FunctionCall.Response"
         )
 
         try Expect.equal(
@@ -158,7 +158,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "caught failure remains typed as ProgramToolFailure"
         )
         try Expect.equal(
-            failedResult.call.tool,
+            ToolIdentifier(failedResult.call.name),
             ProgramCaughtToolFailureResumeFixture
                 .toolIdentifier,
             "durable failed result retains exact tool identity"
@@ -190,7 +190,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ProgramCheckpoint.self
         )
 
-        let resumed = try await runner.resume(
+        let resumed = try await programExecutor.resume(
             ProgramCaughtToolFailureResumeFixture(),
             from: durableCheckpoint,
             interaction: Run.Interaction.Response(

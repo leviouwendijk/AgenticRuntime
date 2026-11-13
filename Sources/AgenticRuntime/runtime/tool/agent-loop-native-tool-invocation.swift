@@ -4,13 +4,13 @@ import Primitives
 extension AgentLoop {
     func applyNativeSemanticInvocations(
         _ invocations: [ModelSemanticInvocationResult],
-        to checkpoint: inout AgentRunner.Checkpoint
+        to checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         for invocation in invocations {
             let response = AgentResponse(
                 message: Message(
                     role: .assistant,
-                    content: MessageContent(blocks: [.tool_call(invocation.call)])
+                    content: MessageContent(blocks: [.call(invocation.call)])
                 ),
                 stopReason: .tool_use
             )
@@ -18,7 +18,7 @@ extension AgentLoop {
             checkpoint.lastResponse = response
             storeToolBatch(AgentToolUseBatch(response: response), to: &checkpoint)
             try await recordMessage(response.message)
-            try await recordToolCall(invocation.call)
+            try await recordFunctionCall(invocation.call)
             try await appendToolResult(
                 invocation.result,
                 for: invocation.call,
@@ -32,14 +32,14 @@ extension AgentLoop {
 
     func applyNativeToolInvocations(
         _ invocations: [ToolInvocation.Result],
-        to checkpoint: inout AgentRunner.Checkpoint
+        to checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         for invocation in invocations {
             guard let result = invocation.execution?.result else {
                 continue
             }
 
-            let call = try modelToolCall(
+            let call = try makeFunctionCall(
                 for: invocation.review.invocation
             )
             let response = AgentResponse(
@@ -47,7 +47,7 @@ extension AgentLoop {
                     role: .assistant,
                     content: MessageContent(
                         blocks: [
-                            .tool_call(
+                            .call(
                                 call
                             ),
                         ]
@@ -81,7 +81,7 @@ extension AgentLoop {
                 to: &checkpoint
             )
 
-            try await recordToolCall(
+            try await recordFunctionCall(
                 call
             )
 
@@ -95,8 +95,8 @@ extension AgentLoop {
                 .init(
                     kind: .tool_preflight,
                     iteration: checkpoint.state.iteration,
-                    toolCallID: call.id,
-                    toolName: call.tool.rawValue,
+                    callID: call.id,
+                    toolName: call.name,
                     summary: invocation.review.preflight.summary
                 ),
                 to: &checkpoint
@@ -118,8 +118,8 @@ extension AgentLoop {
                     .init(
                         kind: .tool_approved,
                         iteration: checkpoint.state.iteration,
-                        toolCallID: call.id,
-                        toolName: call.tool.rawValue,
+                        callID: call.id,
+                        toolName: call.name,
                         summary: "approved"
                     ),
                     to: &checkpoint
@@ -133,8 +133,8 @@ extension AgentLoop {
                     .init(
                         kind: .tool_denied,
                         iteration: checkpoint.state.iteration,
-                        toolCallID: call.id,
-                        toolName: call.tool.rawValue,
+                        callID: call.id,
+                        toolName: call.name,
                         summary: summary
                     ),
                     to: &checkpoint
@@ -148,8 +148,8 @@ extension AgentLoop {
                     .init(
                         kind: .tool_skipped,
                         iteration: checkpoint.state.iteration,
-                        toolCallID: call.id,
-                        toolName: call.tool.rawValue,
+                        callID: call.id,
+                        toolName: call.name,
                         summary: summary
                     ),
                     to: &checkpoint
@@ -177,7 +177,7 @@ extension AgentLoop {
         _ review: ToolInvocation.Review,
         invocations: [ToolInvocation.Result],
         semanticInvocations: [ModelSemanticInvocationResult],
-        checkpoint: inout AgentRunner.Checkpoint
+        checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         checkpoint.state.iteration += 1
 
@@ -190,7 +190,7 @@ extension AgentLoop {
             to: &checkpoint
         )
 
-        let call = try modelToolCall(
+        let call = try makeFunctionCall(
             for: review.invocation
         )
 
@@ -199,7 +199,7 @@ extension AgentLoop {
                 role: .assistant,
                 content: MessageContent(
                     blocks: [
-                        .tool_call(
+                        .call(
                             call
                         ),
                     ]
@@ -208,7 +208,7 @@ extension AgentLoop {
             stopReason: .tool_use
         )
         let pendingApproval = PendingApproval(
-            toolCall: call,
+            functionCall: call,
             preflight: review.preflight,
             requirement: review.requirement,
             preparedOperation: review.preparedOperation
@@ -248,7 +248,7 @@ extension AgentLoop {
         try await recordMessage(
             response.message
         )
-        try await recordToolCall(
+        try await recordFunctionCall(
             call
         )
 
@@ -266,8 +266,8 @@ extension AgentLoop {
             .init(
                 kind: .tool_preflight,
                 iteration: checkpoint.state.iteration,
-                toolCallID: call.id,
-                toolName: call.tool.rawValue,
+                callID: call.id,
+                toolName: call.name,
                 summary: review.preflight.summary
             ),
             to: &checkpoint
@@ -277,8 +277,8 @@ extension AgentLoop {
             .init(
                 kind: .pending_approval,
                 iteration: checkpoint.state.iteration,
-                toolCallID: call.id,
-                toolName: call.tool.rawValue,
+                callID: call.id,
+                toolName: call.name,
                 summary: review.preflight.summary
             ),
             to: &checkpoint
@@ -289,9 +289,9 @@ extension AgentLoop {
         )
     }
 
-    func modelToolCall(
+    func makeFunctionCall(
         for invocation: ToolInvocation
-    ) throws -> ToolCall {
+    ) throws -> FunctionCall {
         var input: [String: JSONValue] = [
             "arguments": invocation.arguments,
         ]
@@ -302,9 +302,9 @@ extension AgentLoop {
             )
         }
 
-        return ToolCall(
+        return FunctionCall(
             id: invocation.id,
-            tool: invocation.tool,
+            name: invocation.tool.rawValue,
             input: .object(input)
         )
     }
@@ -312,7 +312,7 @@ extension AgentLoop {
     func finishNativeCapabilityBoundary(
         invocations: [ToolInvocation.Result],
         semanticInvocations: [ModelSemanticInvocationResult],
-        checkpoint: inout AgentRunner.Checkpoint
+        checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         checkpoint.state.iteration += 1
 

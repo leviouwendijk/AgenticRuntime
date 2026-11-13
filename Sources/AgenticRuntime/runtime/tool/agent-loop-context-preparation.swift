@@ -4,7 +4,7 @@ import AgenticContext
 extension AgentLoop {
     func prepareModelRequest(
         from request: AgentRequest,
-        checkpoint: AgentRunner.Checkpoint
+        checkpoint: AgentExecutor.Checkpoint
     ) async throws -> AgentRequest {
         var prepared = request
         if configuration.contextMode == .dynamic {

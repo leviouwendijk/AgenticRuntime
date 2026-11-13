@@ -65,7 +65,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             defaultExecution.outcome,
             ProgramExecutionOutcome.succeeded,
-            "runtime erased program invocation delegates to ProgramRunner"
+            "runtime erased program invocation delegates to ProgramExecutor"
         )
         try Expect.equal(
             defaultRealization.bindings.count,

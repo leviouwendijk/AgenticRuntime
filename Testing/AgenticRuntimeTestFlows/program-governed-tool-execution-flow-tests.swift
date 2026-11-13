@@ -80,7 +80,7 @@ private struct GovernedObserveProgramTool:
 
     static let definition = ToolDefinition(
         identifier: "fixture.governed_program_tool",
-        purpose: "Records execution only after the canonical ToolInvoker governance path permits it.",
+        purpose: "Records execution only after the canonical ToolExecutor governance path permits it.",
         risk: .observe
     )
 
@@ -106,7 +106,7 @@ private struct GovernedMutationProgramTool:
 
     static let definition = ToolDefinition(
         identifier: "fixture.governed_program_tool",
-        purpose: "Records execution only after the canonical ToolInvoker governance path permits it.",
+        purpose: "Records execution only after the canonical ToolExecutor governance path permits it.",
         risk: .boundedmutate
     )
 
@@ -148,7 +148,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 probe: observeProbe
             )
         }
-        let observeRunner = ProgramRunner(
+        let observeRunner = ProgramExecutor(
             services: .init(
                 program: .init(
                     tools: GovernedProgramToolExecutor(
@@ -171,7 +171,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             observeExecution.record.outcome,
             .succeeded,
-            "observe Program tool succeeds through ToolInvoker governance"
+            "observe Program tool succeeds through ToolExecutor governance"
         )
         try Expect.equal(
             observeExecution.output?.value,
@@ -200,7 +200,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 probe: reviewProbe
             )
         }
-        let reviewRunner = ProgramRunner(
+        let reviewRunner = ProgramExecutor(
             services: .init(
                 program: .init(
                     tools: GovernedProgramToolExecutor(
@@ -273,7 +273,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 probe: approvedProbe
             )
         }
-        let approvedRunner = ProgramRunner(
+        let approvedRunner = ProgramExecutor(
             services: .init(
                 program: .init(
                     tools: GovernedProgramToolExecutor(
@@ -323,7 +323,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 probe: deniedProbe
             )
         }
-        let deniedRunner = ProgramRunner(
+        let deniedRunner = ProgramExecutor(
             services: .init(
                 program: .init(
                     tools: GovernedProgramToolExecutor(
@@ -370,7 +370,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 probe: skippedProbe
             )
         }
-        let skippedRunner = ProgramRunner(
+        let skippedRunner = ProgramExecutor(
             services: .init(
                 program: .init(
                     tools: GovernedProgramToolExecutor(
@@ -428,22 +428,22 @@ extension AgenticProgramRuntimeFlowTesting {
                 value: "resumed"
             )
         )
-        let resumedCall = ToolCall(
+        let resumedCall = FunctionCall(
             id: "fixture-governed-program-resume",
-            tool: "fixture.governed_program_tool",
+            name: "fixture.governed_program_tool",
             input: resumedInput
         )
         let resumedInvocation = ToolInvocation(
             id: resumedCall.id,
-            tool: resumedCall.tool,
+            tool: ToolIdentifier(resumedCall.name),
             arguments: resumedCall.input
         )
-        let resumedReview = try await resumedExecutor.invoker.review(
+        let resumedReview = try await resumedExecutor.tools.review(
             resumedInvocation,
             context: .init()
         )
         let pendingApproval = PendingApproval(
-            toolCall: resumedCall,
+            functionCall: resumedCall,
             preflight: resumedReview.preflight,
             requirement: resumedReview.requirement
         )

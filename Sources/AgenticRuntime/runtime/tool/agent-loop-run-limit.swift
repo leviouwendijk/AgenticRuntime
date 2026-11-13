@@ -1,6 +1,6 @@
 extension AgentLoop {
     func runLimitExhaustion(
-        in checkpoint: AgentRunner.Checkpoint
+        in checkpoint: AgentExecutor.Checkpoint
     ) -> AgentRunLimitExhaustion? {
         guard let limit = checkpoint.runLimits.iterations,
               checkpoint.state.iteration >= limit
@@ -16,8 +16,8 @@ extension AgentLoop {
 
     func suspendForRunLimit(
         _ exhaustion: AgentRunLimitExhaustion,
-        checkpoint: inout AgentRunner.Checkpoint
-    ) async throws -> AgentRunner.Result {
+        checkpoint: inout AgentExecutor.Checkpoint
+    ) async throws -> AgentExecutor.Result {
         let suspension = Run.Suspension.run_limit(
             exhaustion
         )
@@ -46,10 +46,10 @@ extension AgentLoop {
     }
 
     func resumeFromRunLimit(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         resolution: AgentRunLimitResolution,
         metadata: [String: String]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         var checkpoint = checkpoint
         _ = metadata
 

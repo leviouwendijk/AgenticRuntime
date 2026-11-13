@@ -293,7 +293,7 @@ extension AgenticProgramRuntimeFlowTesting {
             mode: mode
         )
 
-        let runner = try runtime.makeModeAgentRunner(
+        let executor = try runtime.makeModeAgentExecutor(
             identifiedBy:
                 AuthoredVisibleRootFixture
                 .definition
@@ -302,7 +302,7 @@ extension AgenticProgramRuntimeFlowTesting {
             selection: selection
         )
         let capabilityState =
-            await runner.capabilityState
+            await executor.capabilityState
         let snapshot =
             await capabilityState.snapshot()
 
@@ -322,7 +322,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
 
         // The actual first model invocation must use Agent-authored visibility.
-        _ = try await runner.run(
+        _ = try await executor.run(
             AgentRequest(messages: [Message(role: .user, text: "first")]),
             sessionID: "fixture-authored-visible-first"
         )
@@ -340,16 +340,16 @@ extension AgenticProgramRuntimeFlowTesting {
 
         // The model receives no authority to guess an available-but-hidden
         // Tool that was absent from this exact request's function definitions.
-        let guessedCall = ToolCall(
+        let guessedCall = FunctionCall(
             id: "fixture-unadvertised-guessed-call",
-            tool: AuthoredVisibleBuildTool.definition.identifier,
+            name: AuthoredVisibleBuildTool.definition.identifier.rawValue,
             input: .object(["value": .string("guessed")])
         )
         var guessedModelToolRejected = false
-        if let resolver = firstInvocations[0].context.toolCallResolver {
+        if let resolver = firstInvocations[0].context.functionCallResolver {
             do {
                 _ = try await resolver.resolve(guessedCall)
-            } catch AgentToolCallResolutionError.toolNotVisible {
+            } catch FunctionCallResolutionError.toolNotVisible {
                 guessedModelToolRejected = true
             }
         }
@@ -395,10 +395,10 @@ extension AgenticProgramRuntimeFlowTesting {
 
         // Previously captured request mappings cannot gain authority later.
         var guessedAfterRevealRejected = false
-        if let resolver = firstInvocations[0].context.toolCallResolver {
+        if let resolver = firstInvocations[0].context.functionCallResolver {
             do {
                 _ = try await resolver.resolve(guessedCall)
-            } catch AgentToolCallResolutionError.toolNotVisible {
+            } catch FunctionCallResolutionError.toolNotVisible {
                 guessedAfterRevealRejected = true
             }
         }
@@ -417,11 +417,11 @@ extension AgenticProgramRuntimeFlowTesting {
 
         // A subsequent request and a genuinely reselected runner must both
         // use the same live authority rather than the Mode's initial selection.
-        _ = try await runner.run(
+        _ = try await executor.run(
             AgentRequest(messages: [Message(role: .user, text: "after reveal")]),
             sessionID: "fixture-authored-visible-revealed"
         )
-        let reselected = AgentRunner(
+        let reselected = AgentExecutor(
             model: model.selecting(.reviewer),
             tooling: .init(registry: runtime.tools),
             inventory: CapabilityInventory(

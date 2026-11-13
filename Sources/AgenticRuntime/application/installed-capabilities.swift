@@ -9,7 +9,7 @@ public struct InstalledCapabilities: Sendable {
     /// Metadata-only declarations; not installed executable capabilities.
     public var instructions: [InstructionDefinition] { catalog.instructions }
     public private(set) var adapters: InferenceAdapterCatalog
-    private var programEntries: [ProgramIdentifier: ProgramExecutionBinding]
+    private var programEntries: [ProgramIdentifier: ProgramBinding]
     private var inferenceEntries: [InferenceIdentifier: InferenceBinding]
     private var agentEntries: [AgentIdentifier: AgentBinding]
 
@@ -17,7 +17,7 @@ public struct InstalledCapabilities: Sendable {
         tools: ToolRegistry = .init(),
         catalog: Catalog = .none,
         adapters: InferenceAdapterCatalog = .init(),
-        programs: [ProgramExecutionBinding] = [],
+        programs: [ProgramBinding] = [],
         inferences: [InferenceBinding] = [],
         agents: [AgentBinding] = []
     ) {
@@ -37,9 +37,6 @@ public struct InstalledCapabilities: Sendable {
         catalog = application.catalog
         for binding in application.toolBindings {
             try tools.register(binding)
-        }
-        for provider in application.toolProviders {
-            try tools.register(from: provider)
         }
         for binding in application.programBindings {
             try install(binding)
@@ -133,7 +130,7 @@ public struct InstalledCapabilities: Sendable {
         )
     }
 
-    public func program(_ id: ProgramIdentifier) -> ProgramExecutionBinding? {
+    public func program(_ id: ProgramIdentifier) -> ProgramBinding? {
         programEntries[id]
     }
 
@@ -151,7 +148,7 @@ public struct InstalledCapabilities: Sendable {
     public var agents: Agents { .init(entries: agentEntries) }
 
     public struct Programs: Sendable {
-        fileprivate let entries: [ProgramIdentifier: ProgramExecutionBinding]
+        fileprivate let entries: [ProgramIdentifier: ProgramBinding]
         public var count: Int { entries.count }
         public var isEmpty: Bool { entries.isEmpty }
         public var definitions: [ProgramDefinition] {
@@ -164,7 +161,7 @@ public struct InstalledCapabilities: Sendable {
             }
         }
         public func registeredProgram(identifiedBy id: ProgramIdentifier) -> ProgramBinding? {
-            entries[id]?.program
+            entries[id]
         }
         public func registeredProgram(named name: String) -> ProgramBinding? {
             registeredProgram(identifiedBy: .init(rawValue: name))
@@ -244,7 +241,7 @@ public struct InstalledCapabilities: Sendable {
         try tools.register(tool, modelContract: modelContract)
     }
 
-    public mutating func install(_ binding: ProgramExecutionBinding) throws {
+    public mutating func install(_ binding: ProgramBinding) throws {
         guard programEntries[binding.identifier] == nil else {
             throw CapabilityInventoryError.duplicateProgram(binding.identifier)
         }
@@ -280,10 +277,6 @@ public struct InstalledCapabilities: Sendable {
             case .tools(let bindings):
                 for binding in bindings {
                     try candidate.tools.register(binding)
-                }
-            case .toolProviders(let providers):
-                for provider in providers {
-                    try candidate.tools.register(from: provider)
                 }
             case .programs(let bindings):
                 for binding in bindings { try candidate.install(binding) }

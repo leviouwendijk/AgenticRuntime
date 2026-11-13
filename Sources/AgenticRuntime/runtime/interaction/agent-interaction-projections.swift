@@ -9,7 +9,7 @@ public extension Run.Suspension {
     }
 }
 
-public extension AgentRunner.Result {
+public extension AgentExecutor.Result {
     var interactionRequest: Run.Interaction.Request? {
         suspension?.interactionRequest(
             sessionID: sessionID

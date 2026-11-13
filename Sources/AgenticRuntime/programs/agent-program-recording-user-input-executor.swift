@@ -2,8 +2,8 @@ import Agentic
 import Foundation
 import Primitives
 
-struct ProgramRecordingUserInputInvoker:
-    ProgramUserInputInvoking
+struct ProgramRecordingUserInputExecutor:
+    UserInputProviding
 {
     let trace: ProgramExecutionTrace
     let resumeControl: ProgramResumeControl?

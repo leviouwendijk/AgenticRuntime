@@ -6,7 +6,7 @@ import Primitives
 
 extension AgentLoop {
     func processToolCalls(
-        from checkpoint: AgentRunner.Checkpoint
+        from checkpoint: AgentExecutor.Checkpoint
     ) async throws -> ToolProcessingOutcome {
         var checkpoint = checkpoint
 
@@ -25,7 +25,7 @@ extension AgentLoop {
             to: &checkpoint
         )
 
-        guard !batch.toolCalls.isEmpty else {
+        guard !batch.functionCalls.isEmpty else {
             finishToolBatch(
                 on: &checkpoint
             )
@@ -44,7 +44,7 @@ extension AgentLoop {
         for record in batch.records where !record.isTerminal {
             if record.isSuspended {
                 return try await surfaceRetainedChild(
-                    record.toolCall,
+                    record.functionCall,
                     checkpoint: &checkpoint
                 )
             }
@@ -58,36 +58,36 @@ extension AgentLoop {
                 )
             }
 
-            let toolCall = record.toolCall
+            let functionCall = record.functionCall
             try begin_tool_invocation(
-                call_id: toolCall.id,
-                tool_name: toolCall.tool.rawValue,
+                call_id: functionCall.id,
+                tool_name: functionCall.name,
                 in: &checkpoint
             )
 
-            try await recordToolCall(
-                toolCall
+            try await recordFunctionCall(
+                functionCall
             )
 
             // Semantic model functions are not installed Tools. A saved,
             // request-bound projection is required to invoke them.
             if let projection = checkpoint.lastAdvertisedCapabilities,
-               let target = projection.target(named: toolCall.tool.rawValue) {
+               let target = projection.target(named: functionCall.name) {
                 switch target {
                 case .program, .inference, .agent:
                     if let stopped = try await interruptionBeforeToolExecution(checkpoint) {
                         return stopped
                     }
                     do {
-                        let resolver = RuntimeModelCapabilityCallResolver(
+                        let resolver = CapabilityFunctionCallResolver(
                             dispatcher: await modelDispatcher(sessionID: checkpoint.id),
                             projection: projection,
                             journal: nil
                         )
-                        let result = try await resolver.resolve(toolCall)
+                        let result = try await resolver.resolve(functionCall)
                         try await appendToolResult(
                             result,
-                            for: toolCall,
+                            for: functionCall,
                             disposition: result.isError ? .failed_execution : .executed,
                             to: &checkpoint,
                             summary: "semantic capability invoked"
@@ -99,10 +99,10 @@ extension AgentLoop {
                         )
                         return .result(try suspendedResult(from: checkpoint))
                     } catch {
-                        let result = try makeToolErrorResult(for: toolCall, error: error)
+                        let result = try makeToolErrorResult(for: functionCall, error: error)
                         try await appendToolResult(
                             result,
-                            for: toolCall,
+                            for: functionCall,
                             disposition: .failed_execution,
                             to: &checkpoint,
                             summary: localizedDescription(for: error)
@@ -122,28 +122,28 @@ extension AgentLoop {
             do {
                 let available = await capabilityState.available
                 guard checkpoint.lastAdvertisedTools?.contains(
-                    toolCall.tool
+                    ToolIdentifier(functionCall.name)
                 ) == true,
-                    available.tools.contains(toolCall.tool)
+                    available.tools.contains(ToolIdentifier(functionCall.name))
                 else {
-                    throw AgentToolCallResolutionError
+                    throw FunctionCallResolutionError
                         .toolNotVisible(
-                            toolCall.tool
+                            ToolIdentifier(functionCall.name)
                         )
                 }
 
                 invocation = try (await currentTools()).invocation(
-                    for: toolCall
+                    for: functionCall
                 )
             } catch {
                 let result = try makeToolErrorResult(
-                    for: toolCall,
+                    for: functionCall,
                     error: error
                 )
 
                 try await appendToolResult(
                     result,
-                    for: toolCall,
+                    for: functionCall,
                     disposition: .failed_preflight,
                     to: &checkpoint,
                     summary: localizedDescription(
@@ -162,7 +162,7 @@ extension AgentLoop {
             let review: ToolInvocation.Review
 
             do {
-                review = try await ToolInvoker(
+                review = try await ToolExecutor(
                     registry: (await currentTools()),
                     policy: configuration.toolExecutionPolicy,
                     recovery: configuration.recovery
@@ -172,13 +172,13 @@ extension AgentLoop {
                 )
             } catch {
                 let result = try makeToolErrorResult(
-                    for: toolCall,
+                    for: functionCall,
                     error: error
                 )
 
                 try await appendToolResult(
                     result,
-                    for: toolCall,
+                    for: functionCall,
                     disposition: .failed_preflight,
                     to: &checkpoint,
                     summary: localizedDescription(
@@ -198,7 +198,7 @@ extension AgentLoop {
 
             markToolPreflight(
                 preflight,
-                for: toolCall,
+                for: functionCall,
                 on: &checkpoint
             )
 
@@ -206,16 +206,16 @@ extension AgentLoop {
                 .init(
                     kind: .tool_preflight,
                     iteration: checkpoint.state.iteration,
-                    toolCallID: toolCall.id,
-                    toolName: toolCall.tool.rawValue,
+                    callID: functionCall.id,
+                    toolName: functionCall.name,
                     summary: preflight.summary
                 ),
                 to: &checkpoint
             )
 
-            if toolCall.tool == Standard.Tools.ClarifyWithUser.identifier {
+            if ToolIdentifier(functionCall.name) == Standard.Tools.ClarifyWithUser.identifier {
                 suspendToolBatch(
-                    for: toolCall,
+                    for: functionCall,
                     disposition: .suspended_for_user_input,
                     on: &checkpoint
                 )
@@ -226,7 +226,7 @@ extension AgentLoop {
                 )
             }
 
-            if toolCall.tool == SystemIO.Tools.RequestPathGrant.identifier {
+            if ToolIdentifier(functionCall.name) == SystemIO.Tools.RequestPathGrant.identifier {
                 if let stopped = try await interruptionBeforeToolExecution(checkpoint) {
                     return stopped
                 }
@@ -238,7 +238,7 @@ extension AgentLoop {
                 if result.isError {
                     try await appendToolResult(
                         result,
-                        for: toolCall,
+                        for: functionCall,
                         disposition: .failed_execution,
                         recovery: execution.recovery,
                         observations: execution.observations,
@@ -260,14 +260,14 @@ extension AgentLoop {
                 )
 
                 suspendToolBatch(
-                    for: toolCall,
+                    for: functionCall,
                     disposition: .suspended_for_workspace_access,
                     on: &checkpoint
                 )
 
                 return try await suspendForWorkspaceAccess(
                     request,
-                    toolCall: toolCall,
+                    functionCall: functionCall,
                     checkpoint: &checkpoint
                 )
             }
@@ -280,8 +280,8 @@ extension AgentLoop {
                     .init(
                         kind: .tool_approved,
                         iteration: checkpoint.state.iteration,
-                        toolCallID: toolCall.id,
-                        toolName: toolCall.tool.rawValue,
+                        callID: functionCall.id,
+                        toolName: functionCall.name,
                         summary: "approved"
                     ),
                     to: &checkpoint
@@ -301,7 +301,7 @@ extension AgentLoop {
 
                 try await appendToolResult(
                     result,
-                    for: toolCall,
+                    for: functionCall,
                     disposition: result.isError ? .failed_execution : .executed,
                     recovery: execution.recovery,
                     observations: execution.observations,
@@ -313,7 +313,7 @@ extension AgentLoop {
 
                 if preflight.mayInvalidateSourceState {
                     try await appendSkippedSiblings(
-                        after: toolCall.id,
+                        after: functionCall.id,
                         to: &checkpoint,
                         disposition: .skipped_after_mutation,
                         reason: staleMutationSiblingReason
@@ -338,14 +338,14 @@ extension AgentLoop {
 
             case .denied_forbidden:
                 let result = try makeDeniedToolResult(
-                    for: toolCall,
+                    for: functionCall,
                     preflight: preflight,
                     requirement: requirement
                 )
 
                 try await appendToolResult(
                     result,
-                    for: toolCall,
+                    for: functionCall,
                     disposition: .failed_preflight,
                     to: &checkpoint,
                     summary: "denied by execution policy"
@@ -355,15 +355,15 @@ extension AgentLoop {
                     .init(
                         kind: .tool_denied,
                         iteration: checkpoint.state.iteration,
-                        toolCallID: toolCall.id,
-                        toolName: toolCall.tool.rawValue,
+                        callID: functionCall.id,
+                        toolName: functionCall.name,
                         summary: "denied by execution policy"
                     ),
                     to: &checkpoint
                 )
 
                 try await appendSkippedSiblings(
-                    after: toolCall.id,
+                    after: functionCall.id,
                     to: &checkpoint,
                     disposition: .skipped_after_denial,
                     reason: deniedSiblingReason
@@ -391,8 +391,8 @@ extension AgentLoop {
                         .init(
                             kind: .tool_approved,
                             iteration: checkpoint.state.iteration,
-                            toolCallID: toolCall.id,
-                            toolName: toolCall.tool.rawValue,
+                            callID: functionCall.id,
+                            toolName: functionCall.name,
                             summary: "approved"
                         ),
                         to: &checkpoint
@@ -412,7 +412,7 @@ extension AgentLoop {
 
                     try await appendToolResult(
                         result,
-                        for: toolCall,
+                        for: functionCall,
                         disposition: result.isError ? .failed_execution : .executed,
                         recovery: execution.recovery,
                         observations: execution.observations,
@@ -424,7 +424,7 @@ extension AgentLoop {
 
                     if preflight.mayInvalidateSourceState {
                         try await appendSkippedSiblings(
-                            after: toolCall.id,
+                            after: functionCall.id,
                             to: &checkpoint,
                             disposition: .skipped_after_mutation,
                             reason: staleMutationSiblingReason
@@ -449,14 +449,14 @@ extension AgentLoop {
 
                 case .denied:
                     let result = try makeDeniedToolResult(
-                        for: toolCall,
+                        for: functionCall,
                         preflight: preflight,
                         requirement: requirement
                     )
 
                     try await appendToolResult(
                         result,
-                        for: toolCall,
+                        for: functionCall,
                         disposition: .skipped_after_denial,
                         to: &checkpoint,
                         summary: "denied after review"
@@ -466,15 +466,15 @@ extension AgentLoop {
                         .init(
                             kind: .tool_denied,
                             iteration: checkpoint.state.iteration,
-                            toolCallID: toolCall.id,
-                            toolName: toolCall.tool.rawValue,
+                            callID: functionCall.id,
+                            toolName: functionCall.name,
                             summary: "denied after review"
                         ),
                         to: &checkpoint
                     )
 
                     try await appendSkippedSiblings(
-                        after: toolCall.id,
+                        after: functionCall.id,
                         to: &checkpoint,
                         disposition: .skipped_after_denial,
                         reason: deniedSiblingReason
@@ -492,12 +492,12 @@ extension AgentLoop {
 
                 case .skipped:
                     let result = try makeSkippedToolResult(
-                        for: toolCall
+                        for: functionCall
                     )
 
                     try await appendToolResult(
                         result,
-                        for: toolCall,
+                        for: functionCall,
                         disposition: .skipped_by_user,
                         to: &checkpoint,
                         summary: "skipped after review"
@@ -507,8 +507,8 @@ extension AgentLoop {
                         .init(
                             kind: .tool_skipped,
                             iteration: checkpoint.state.iteration,
-                            toolCallID: toolCall.id,
-                            toolName: toolCall.tool.rawValue,
+                            callID: functionCall.id,
+                            toolName: functionCall.name,
                             summary: "skipped after review"
                         ),
                         to: &checkpoint
@@ -522,14 +522,14 @@ extension AgentLoop {
 
                 case .needshuman:
                     let pendingApproval = PendingApproval(
-                        toolCall: toolCall,
+                        functionCall: functionCall,
                         preflight: preflight,
                         requirement: requirement,
                         preparedOperation: review.preparedOperation
                     )
 
                     suspendToolBatch(
-                        for: toolCall,
+                        for: functionCall,
                         disposition: .suspended_for_approval,
                         on: &checkpoint
                     )
@@ -544,8 +544,8 @@ extension AgentLoop {
                         .init(
                             kind: .pending_approval,
                             iteration: checkpoint.state.iteration,
-                            toolCallID: toolCall.id,
-                            toolName: toolCall.tool.rawValue,
+                            callID: functionCall.id,
+                            toolName: functionCall.name,
                             summary: preflight.summary
                         ),
                         to: &checkpoint

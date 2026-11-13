@@ -717,13 +717,13 @@ private func programReplayRealization()
 
 private func programReplayRunner(
     probe: ProgramReplayProbe
-) throws -> ProgramRunner {
+) throws -> ProgramExecutor {
     let registry = try ToolRegistry {
         ProgramReplayMutationTool(probe: probe)
         ProgramReplayTailTool(probe: probe)
     }
 
-    return ProgramRunner(
+    return ProgramExecutor(
         services: .init(
             program: .init(
                 inference: ProgramReplayInferenceExecutor(

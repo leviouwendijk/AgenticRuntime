@@ -6,15 +6,15 @@ import TestFlows
 
 extension AgenticProgramRuntimeFlowTesting {
     static func runExecutionTraceProjection() throws -> [TestDiagnostic] {
-        let call = ToolCall(id: "trace-call", tool: "fixture", input: .null)
-        let record = AgentToolUseRecord(toolCall: call, disposition: .preflighted)
+        let call = FunctionCall(id: "trace-call", name: "fixture", input: .null)
+        let record = AgentToolUseRecord(functionCall: call, disposition: .preflighted)
         let events: [Run.Event.State] = [
             .init(id: "trace-event-1", kind: .model_stream_started, iteration: 1,
                   summary: "model started"),
             .init(id: "trace-event-2", kind: .tool_preflight, iteration: 1,
-                  toolCallID: call.id, toolName: "fixture", summary: "preflight"),
+                  callID: call.id, toolName: "fixture", summary: "preflight"),
             .init(id: "trace-event-3", kind: .pending_approval, iteration: 1,
-                  toolCallID: call.id, toolName: "fixture", summary: "awaiting review")
+                  callID: call.id, toolName: "fixture", summary: "awaiting review")
         ]
         let first = try AgentExecutionTrace.run(
             session_id: "trace-run", phase: .suspended, events: events,
@@ -41,7 +41,7 @@ extension AgenticProgramRuntimeFlowTesting {
             try Expect.equal(id, "trace-event-1", "duplicate event rejected")
         }
         let unrelated = AgentToolUseRecord(
-            toolCall: ToolCall(id: "no-events", tool: "fixture", input: .null)
+            functionCall: FunctionCall(id: "no-events", name: "fixture", input: .null)
         )
         let orphan = try AgentExecutionTrace.run(
             session_id: "trace-run", phase: .suspended,

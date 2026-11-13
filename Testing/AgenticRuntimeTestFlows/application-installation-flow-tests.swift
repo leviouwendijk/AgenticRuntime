@@ -49,12 +49,6 @@ private struct ProviderToolFixture: Tool {
     }
 }
 
-private struct InstallationProviderFixture: AgentToolProvider {
-    func registerTools(into registry: inout ToolRegistry) throws {
-        try registry.register(ProviderToolFixture())
-    }
-}
-
 private struct InstallationProgramFixture:
     Program
 {
@@ -297,11 +291,11 @@ extension AgenticProgramRuntimeFlowTesting {
             "Runtime validates and preserves application launch entries"
         )
 
-        // A provider remains an explicit, executable installation path.
+        // An explicitly installed Tool instance is executable and ungrouped.
         let providerApplication = Agentic.application(
             "fixture.provider_installation"
         ) {
-            install(InstallationProviderFixture())
+            install(ToolBinding(ProviderToolFixture()))
         }
         let providerRuntime = try await AgenticRuntime(
             application: providerApplication
@@ -311,7 +305,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 identifiedBy: ProviderToolFixture.definition.identifier
             ) != nil,
             true,
-            "Explicit AgentToolProvider contributes its registered Tool"
+            "Explicitly installed Tool binding is registered"
         )
         try Expect.equal(
             try providerRuntime.toolPresentation().entry(

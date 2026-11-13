@@ -229,11 +229,11 @@ extension AgenticProgramRuntimeFlowTesting {
             selection: .executor
         )
         var baselineConfiguration =
-            AgentRunner.Configuration.default
+            AgentExecutor.Configuration.default
         baselineConfiguration.autonomyMode =
             .auto_observe
 
-        let runner = try runtime.makeAgentRunner(
+        let executor = try runtime.makeAgentExecutor(
             identifiedBy:
                 AgentInvocationRootFixture
                 .definition
@@ -242,12 +242,12 @@ extension AgenticProgramRuntimeFlowTesting {
             configuration: baselineConfiguration
         )
         let runnerConfiguration =
-            await runner.configuration
+            await executor.configuration
         let runnerModel =
-            await runner.model
+            await executor.model
 
         let runnerCapabilityState =
-            await runner.capabilityState
+            await executor.capabilityState
 
         let runnerCapabilitySnapshot =
             await runnerCapabilityState.snapshot()

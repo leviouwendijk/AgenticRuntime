@@ -34,13 +34,13 @@ public enum ProgramToolGovernanceError:
 ///
 /// The Program identifies the semantic operation it needs. It does not receive
 /// authority to execute that operation directly. Runtime owns Program approval,
-/// suspension, and resume semantics while ToolInvoker owns review and canonical
+/// suspension, and resume semantics while ToolExecutor owns review and canonical
 /// mechanical execution.
 public struct GovernedProgramToolExecutor:
-    ProgramToolExecuting,
+    GovernedToolExecuting,
     Sendable
 {
-    public let invoker: ToolInvoker
+    public let tools: ToolExecutor
     public let context: ToolContext
     public let approvalHandler: (any ToolApprovalHandler)?
 
@@ -52,7 +52,7 @@ public struct GovernedProgramToolExecutor:
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
         self.init(
-            invoker: ToolInvoker(
+            tools: ToolExecutor(
                 registry: registry,
                 policy: policy,
                 recovery: recovery
@@ -63,16 +63,16 @@ public struct GovernedProgramToolExecutor:
     }
 
     public init(
-        invoker: ToolInvoker,
+        tools: ToolExecutor,
         context: ToolContext = .init(),
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
-        self.invoker = invoker
+        self.tools = tools
         self.context = context
         self.approvalHandler = approvalHandler
     }
 
-    public func invoke(
+    public func execute(
         _ identifier: ToolIdentifier,
         input: JSONValue
     ) async throws -> ToolExecution.Result {
@@ -81,7 +81,7 @@ public struct GovernedProgramToolExecutor:
             tool: identifier,
             arguments: input
         )
-        let invocationResult = try await invoker.invoke(
+        let invocationResult = try await tools.invoke(
             invocation,
             context: context,
             approvalHandler: approvalHandler
@@ -98,7 +98,7 @@ public struct GovernedProgramToolExecutor:
         pendingApproval: PendingApproval,
         decision: ApprovalDecision
     ) async throws -> ToolExecution.Result {
-        let identifier = pendingApproval.toolCall.tool
+        let identifier = ToolIdentifier(pendingApproval.functionCall.name)
 
         switch decision {
         case .denied:
@@ -123,11 +123,11 @@ public struct GovernedProgramToolExecutor:
 
         case .approved:
             let invocation = ToolInvocation(
-                id: pendingApproval.toolCall.id,
-                tool: pendingApproval.toolCall.tool,
-                arguments: pendingApproval.toolCall.input
+                id: pendingApproval.functionCall.id,
+                tool: ToolIdentifier(pendingApproval.functionCall.name),
+                arguments: pendingApproval.functionCall.input
             )
-            let requirement = invoker.policy.evaluate(pendingApproval.preflight)
+            let requirement = tools.policy.evaluate(pendingApproval.preflight)
             guard requirement == pendingApproval.requirement else {
                 throw ProgramToolGovernanceError.stale_approval(identifier)
             }
@@ -138,7 +138,7 @@ public struct GovernedProgramToolExecutor:
                 preparedOperation: pendingApproval.preparedOperation
             )
 
-            let invocationResult = try await invoker.invoke(
+            let invocationResult = try await tools.invoke(
                 freshReview,
                 context: context,
                 approvalHandler: ProgramResolvedApprovalHandler(
@@ -175,9 +175,9 @@ public struct GovernedProgramToolExecutor:
             throw ProgramSuspensionSignal(
                 suspension: .approval(
                     PendingApproval(
-                        toolCall: ToolCall(
+                        functionCall: FunctionCall(
                             id: invocation.review.invocation.id,
-                            tool: invocation.review.invocation.tool,
+                            name: invocation.review.invocation.tool.rawValue,
                             input: invocation.review.invocation.arguments
                         ),
                         preflight: invocation.review.preflight,

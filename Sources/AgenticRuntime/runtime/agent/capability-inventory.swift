@@ -17,7 +17,7 @@ public actor CapabilityInventory {
     public init(
         tools: ToolRegistry = .init(),
         catalog: Catalog = .none,
-        programs: [ProgramExecutionBinding] = [],
+        programs: [ProgramBinding] = [],
         inferences: [InferenceBinding] = [],
         agents: [AgentBinding] = [],
         state: AgentCapabilityState
@@ -50,7 +50,7 @@ public actor CapabilityInventory {
         return try entries.tools.modelFacingDefinitions(for: visible.tools)
     }
     public func adapters() -> InferenceAdapterCatalog { entries.adapters }
-    public func program(_ id: ProgramIdentifier) -> ProgramExecutionBinding? {
+    public func program(_ id: ProgramIdentifier) -> ProgramBinding? {
         entries.program(id)
     }
     public func inference(_ id: InferenceIdentifier) -> InferenceBinding? {
@@ -89,7 +89,7 @@ public actor CapabilityInventory {
 
     @discardableResult
     public func install(
-        _ binding: ProgramExecutionBinding
+        _ binding: ProgramBinding
     ) async throws -> AgentCapabilityState.Snapshot {
         var updated = entries
         try updated.install(binding)
@@ -138,7 +138,7 @@ public actor CapabilityInventory {
         _ program: P,
         realization: ProgramRealization<P>? = nil
     ) async throws -> AgentCapabilityState.Snapshot {
-        try await install(ProgramExecutionBinding(program, defaultRealization: realization))
+        try await install(ProgramBinding(program, defaultRealization: realization))
     }
 
     @discardableResult

@@ -1,12 +1,12 @@
 import Agentic
 import Foundation
 
-public extension AgentRunner {
+public extension AgentExecutor {
     init(
         model: RuntimeServices.Model,
         environment: AgentRuntimeEnvironment,
         sessionID: String,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
         capabilityState: AgentCapabilityState,
         extensions: [any AgentHarnessExtension] = [],

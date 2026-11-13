@@ -2,7 +2,7 @@ import Agentic
 import Foundation
 import Primitives
 
-public struct ProgramRunner: Sendable {
+public struct ProgramExecutor: Sendable {
     public var services: RuntimeServices
 
     public init(
@@ -80,48 +80,48 @@ public struct ProgramRunner: Sendable {
         let resumeControl = resume.map {
             ProgramResumeControl(resume: $0)
         }
-        let userInputInvoker = ProgramRecordingUserInputInvoker(
+        let userInput = ProgramRecordingUserInputExecutor(
             trace: trace,
             resumeControl: resumeControl
         )
 
-        let inferenceInvoker: (any InferenceInvoking)?
+        let inference: (any ProgramInferenceExecuting)?
         if let inferenceExecutor = services.program.inference {
-            inferenceInvoker = ProgramRecordingInferenceInvoker<ProgramType>(
+            inference = ProgramRecordingInferenceExecutor<ProgramType>(
                 executor: inferenceExecutor,
                 realization: realization,
                 trace: trace
             )
         } else {
-            inferenceInvoker = nil
+            inference = nil
         }
 
-        let toolInvoker: (any ProgramToolInvoking)?
+        let tools: (any ProgramToolExecuting)?
         if let toolExecutor = services.program.tools {
-            toolInvoker = ProgramRecordingToolInvoker(
+            tools = ProgramRecordingToolExecutor(
                 executor: toolExecutor,
                 trace: trace,
                 resumeControl: resumeControl
             )
         } else {
-            toolInvoker = nil
+            tools = nil
         }
 
-        let programInvoker: (any ProgramInvoking)?
-        if let nestedProgramInvoker = services.program.invoker {
-            programInvoker = ProgramRecordingProgramInvoker(
-                invoker: nestedProgramInvoker,
+        let programs: (any ProgramExecuting)?
+        if let nested = services.program.programs {
+            programs = ProgramRecordingProgramExecutor(
+                programs: nested,
                 trace: trace
             )
         } else {
-            programInvoker = nil
+            programs = nil
         }
 
         let context = ProgramContext(
-            inference: inferenceInvoker,
-            tools: toolInvoker,
-            programs: programInvoker,
-            userInput: userInputInvoker,
+            inference: inference,
+            tools: tools,
+            programs: programs,
+            userInput: userInput,
             artifacts: services.artifacts,
             metadata: executionMetadata
         )

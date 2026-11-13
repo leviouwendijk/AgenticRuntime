@@ -23,8 +23,7 @@ public struct AgenticApplication:
 
     public let catalog: Catalog
     public let toolBindings: [ToolBinding]
-    public let toolProviders: [any AgentToolProvider]
-    public let programBindings: [ProgramExecutionBinding]
+    public let programBindings: [ProgramBinding]
     public let inferenceBindings: [InferenceBinding]
     public let adapterRegistrations: [any InferenceAdapter]
     public let agentBindings: [AgentBinding]
@@ -47,8 +46,7 @@ public struct AgenticApplication:
     ) {
         var catalog = Catalog.none
         var toolBindings: [ToolBinding] = []
-        var toolProviders: [any AgentToolProvider] = []
-        var programBindings: [ProgramExecutionBinding] = []
+        var programBindings: [ProgramBinding] = []
         var inferenceBindings: [InferenceBinding] = []
         var adapterRegistrations: [any InferenceAdapter] = []
         var agentBindings: [AgentBinding] = []
@@ -64,9 +62,6 @@ public struct AgenticApplication:
 
             case .tools(let bindings):
                 toolBindings.append(contentsOf: bindings)
-
-            case .toolProviders(let providers):
-                toolProviders.append(contentsOf: providers)
 
             case .programs(let registrations):
                 programBindings.append(
@@ -109,7 +104,6 @@ public struct AgenticApplication:
         self.metadata = metadata
         self.catalog = catalog
         self.toolBindings = toolBindings
-        self.toolProviders = toolProviders
         self.programBindings = programBindings
         self.inferenceBindings = inferenceBindings
         self.adapterRegistrations = adapterRegistrations

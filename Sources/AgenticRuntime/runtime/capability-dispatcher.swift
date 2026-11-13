@@ -4,7 +4,7 @@ import Primitives
 /// A semantic Runtime invocation, independent of provider tool-call transport.
 /// Each case retains its native execution contract and result type.
 public enum CapabilityInvocation: Sendable {
-    case tool(ToolCall)
+    case tool(FunctionCall)
     case program(
         identifier: ProgramIdentifier,
         input: JSONValue,
@@ -21,39 +21,17 @@ public enum CapabilityInvocation: Sendable {
         sessionID: String
     )
 
-    public enum Target: Sendable, Codable, Hashable {
-        case tool(ToolIdentifier)
-        case program(ProgramIdentifier)
-        case inference(InferenceIdentifier)
-        case agent(AgentIdentifier)
-
-        public func isVisible(
-            in capabilities: AgentCapabilitySet
-        ) -> Bool {
-            switch self {
-            case .tool(let identifier):
-                return capabilities.tools.contains(identifier)
-            case .program(let identifier):
-                return capabilities.programs.contains(identifier)
-            case .inference(let identifier):
-                return capabilities.inferences.contains(identifier)
-            case .agent(let identifier):
-                return capabilities.agents.contains(identifier)
-            }
-        }
-    }
-
     public enum Outcome: Sendable {
-        case tool(ToolCall.Response)
+        case tool(FunctionCall.Response)
         case program(ProgramExecutionRecord)
         case inference(InferenceInvocation.Response)
-        case agent(AgentRunner.Result)
+        case agent(AgentExecutor.Result)
     }
 
-    public var target: Target {
+    public var reference: CapabilityReference {
         switch self {
         case .tool(let call):
-            return .tool(call.tool)
+            return .tool(ToolIdentifier(call.name))
         case .program(let identifier, _, _):
             return .program(identifier)
         case .inference(let identifier, _, _):
@@ -74,9 +52,9 @@ public enum CapabilityInvocationOrigin: Sendable {
 }
 
 public enum CapabilityInvocationError: Error, Sendable {
-    case notInstalled(CapabilityInvocation.Target)
-    case notAvailable(CapabilityInvocation.Target)
-    case notAdvertised(CapabilityInvocation.Target)
+    case notInstalled(CapabilityReference)
+    case notAvailable(CapabilityReference)
+    case notAdvertised(CapabilityReference)
     case missingInferenceExecutor(InferenceIdentifier)
     case missingAgentModel(AgentIdentifier)
     case agentRequiresDelegation(AgentIdentifier)
@@ -94,7 +72,7 @@ public struct CapabilityDispatcher: Sendable {
     public let delegation: AgentDelegation?
     /// Trusted runner identity, never extracted from model-provided arguments.
     public let parentSessionID: String?
-    public let configuration: AgentRunner.Configuration
+    public let configuration: AgentExecutor.Configuration
     public let observationHandler: ToolExecutionObservations.Observer?
     public let resolutionObserver: (@Sendable (ToolInvocation.Result) async -> Void)?
 
@@ -105,7 +83,7 @@ public struct CapabilityDispatcher: Sendable {
         services: RuntimeServices = .init(),
         delegation: AgentDelegation? = nil,
         parentSessionID: String? = nil,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         observationHandler: ToolExecutionObservations.Observer? = nil,
         resolutionObserver: (@Sendable (ToolInvocation.Result) async -> Void)? = nil
     ) {
@@ -127,7 +105,7 @@ public struct CapabilityDispatcher: Sendable {
         services: RuntimeServices = .init(),
         delegation: AgentDelegation? = nil,
         parentSessionID: String? = nil,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         observationHandler: ToolExecutionObservations.Observer? = nil,
         resolutionObserver: (@Sendable (ToolInvocation.Result) async -> Void)? = nil
     ) {
@@ -146,7 +124,7 @@ public struct CapabilityDispatcher: Sendable {
         _ invocation: CapabilityInvocation,
         origin: CapabilityInvocationOrigin
     ) async throws -> CapabilityInvocation.Outcome {
-        let target = invocation.target
+        let target = invocation.reference
         let snapshot = await capabilityState.snapshot()
         let installed: AgentCapabilitySet
         if let inventory {
@@ -217,9 +195,9 @@ public struct CapabilityDispatcher: Sendable {
                 }
                 inspections = runtime.installed.capabilityInspections()
             }
-            let governed = GovernedAgentToolCallResolver(
+            let governed = GovernedFunctionCallResolver(
                 registry: tools,
-                visibleToolIdentifiers: [call.tool],
+                visibleToolIdentifiers: [ToolIdentifier(call.name)],
                 policy: configuration.toolExecutionPolicy,
                 recovery: configuration.recovery,
                 context: ToolContext(
@@ -321,6 +299,23 @@ public struct CapabilityDispatcher: Sendable {
                 tooling: services.tooling,
                 recording: services.recording
             ))
+        }
+    }
+}
+
+public extension CapabilityReference {
+    func isVisible(
+        in capabilities: AgentCapabilitySet
+    ) -> Bool {
+        switch self {
+        case .tool(let identifier):
+            return capabilities.tools.contains(identifier)
+        case .program(let identifier):
+            return capabilities.programs.contains(identifier)
+        case .inference(let identifier):
+            return capabilities.inferences.contains(identifier)
+        case .agent(let identifier):
+            return capabilities.agents.contains(identifier)
         }
     }
 }

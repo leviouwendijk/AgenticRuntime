@@ -69,7 +69,7 @@ private struct ObserveRecoveryFixtureTool: Tool {
 
     func classify(
         _ error: any Error,
-        phase: ToolCall.Phase,
+        phase: ToolExecution.Phase,
         input _: Input?
     ) -> Recovery.Incident? {
         guard
@@ -113,7 +113,7 @@ private actor ObserveRecoveryModelState {
 
 private struct ObserveRecoveryModelInvoker: AgentModelInvoking {
     let state: ObserveRecoveryModelState
-    let toolCall: ToolCall
+    let functionCall: FunctionCall
 
     func buffered(
         _ invocation: AgentModelInvocation
@@ -129,7 +129,7 @@ private struct ObserveRecoveryModelInvoker: AgentModelInvoking {
                     role: .assistant,
                     content: MessageContent(
                         blocks: [
-                            .tool_call(toolCall),
+                            .call(functionCall),
                         ]
                     )
                 ),
@@ -209,9 +209,9 @@ extension AgenticProgramRuntimeFlowTesting {
     {
         let probe = ObserveRecoveryProbe()
         let state = ObserveRecoveryModelState()
-        let toolCall = ToolCall(
+        let functionCall = FunctionCall(
             id: "fixture-observe-recovery-call",
-            tool: "fixture.observe_recovery",
+            name: "fixture.observe_recovery",
             input: .object([
                 "arguments": try JSONValue.encoding(
                     ObserveRecoveryFixtureInput()
@@ -244,11 +244,11 @@ extension AgenticProgramRuntimeFlowTesting {
                 probe: probe
             )
         }
-        let runner = AgentRunner(
+        let executor = AgentExecutor(
             model: .init(
                 invoker: ObserveRecoveryModelInvoker(
                     state: state,
-                    toolCall: toolCall
+                    functionCall: functionCall
                 )
             ),
             configuration: .init(
@@ -267,7 +267,7 @@ extension AgenticProgramRuntimeFlowTesting {
             )
         )
 
-        let result = try await runner.run(
+        let result = try await executor.run(
             AgentRequest(
                 messages: [
                     Message(
@@ -352,15 +352,15 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let terminalResults = invocations[1].request.messages
             .flatMap(\.content.blocks)
-            .compactMap { block -> ToolCall.Response? in
-                guard case .tool_result(let result) = block else {
+            .compactMap { block -> FunctionCall.Response? in
+                guard case .result(let result) = block else {
                     return nil
                 }
 
                 return result
             }
             .filter { result in
-                result.call.id == toolCall.id
+                result.call.id == functionCall.id
             }
 
         try Expect.equal(
@@ -424,9 +424,9 @@ extension AgenticProgramRuntimeFlowTesting {
             forKey: "prompt"
         )
 
-        let toolCall = ToolCall(
+        let functionCall = FunctionCall(
             id: "fixture-malformed-clarify-call",
-            tool: Standard.Tools.ClarifyWithUser.identifier,
+            name: Standard.Tools.ClarifyWithUser.identifier.rawValue,
             input: .object([
                 "arguments": .object(arguments),
             ])
@@ -434,11 +434,11 @@ extension AgenticProgramRuntimeFlowTesting {
         let registry = try ToolRegistry {
             Standard.Tools.ClarifyWithUser()
         }
-        let runner = AgentRunner(
+        let executor = AgentExecutor(
             model: .init(
                 invoker: ObserveRecoveryModelInvoker(
                     state: state,
-                    toolCall: toolCall
+                    functionCall: functionCall
                 )
             ),
             configuration: .init(
@@ -456,7 +456,7 @@ extension AgenticProgramRuntimeFlowTesting {
             )
         )
 
-        let result = try await runner.run(
+        let result = try await executor.run(
             AgentRequest(
                 messages: [
                     Message(
@@ -486,15 +486,15 @@ extension AgenticProgramRuntimeFlowTesting {
 
         let terminalResults = invocations[1].request.messages
             .flatMap(\.content.blocks)
-            .compactMap { block -> ToolCall.Response? in
-                guard case .tool_result(let result) = block else {
+            .compactMap { block -> FunctionCall.Response? in
+                guard case .result(let result) = block else {
                     return nil
                 }
 
                 return result
             }
             .filter { result in
-                result.call.id == toolCall.id
+                result.call.id == functionCall.id
             }
 
         try Expect.equal(

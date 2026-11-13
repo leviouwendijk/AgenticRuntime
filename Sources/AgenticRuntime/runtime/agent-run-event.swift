@@ -51,7 +51,7 @@ public extension Run.Event {
         public let kind: Kind
         public let iteration: Int
         public let messageID: String?
-        public let toolCallID: String?
+        public let callID: String?
         public let toolName: String?
         public let summary: String
 
@@ -60,7 +60,7 @@ public extension Run.Event {
             kind: Kind,
             iteration: Int,
             messageID: String? = nil,
-            toolCallID: String? = nil,
+            callID: String? = nil,
             toolName: String? = nil,
             summary: String
         ) {
@@ -68,7 +68,7 @@ public extension Run.Event {
             self.kind = kind
             self.iteration = iteration
             self.messageID = messageID
-            self.toolCallID = toolCallID
+            self.callID = callID
             self.toolName = toolName
             self.summary = summary
         }

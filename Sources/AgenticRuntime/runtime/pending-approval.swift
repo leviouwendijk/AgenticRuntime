@@ -1,18 +1,18 @@
 import Agentic
 
 public struct PendingApproval: Sendable, Codable, Hashable {
-    public let toolCall: ToolCall
+    public let functionCall: FunctionCall
     public let preflight: ToolPreflight
     public let requirement: ApprovalRequirement
     public let preparedOperation: PreparedOperation.Envelope?
 
     public init(
-        toolCall: ToolCall,
+        functionCall: FunctionCall,
         preflight: ToolPreflight,
         requirement: ApprovalRequirement,
         preparedOperation: PreparedOperation.Envelope? = nil
     ) {
-        self.toolCall = toolCall
+        self.functionCall = functionCall
         self.preflight = preflight
         self.requirement = requirement
         self.preparedOperation = preparedOperation

@@ -17,7 +17,7 @@ public struct AgentExecutionTrace: Sendable, Codable, Hashable {
 
 public struct AgentExecutionTraceNode: Sendable, Codable, Hashable, Identifiable {
     public enum Kind: Sendable, Codable, Hashable {
-        case run(AgentRunner.Phase)
+        case run(AgentExecutor.Phase)
         case iteration(Int)
         case tool(AgentToolUseDisposition?)
         case event(Run.Event.State.Kind)
@@ -55,7 +55,7 @@ public extension AgentExecutionTrace {
     /// Project the checkpoint evidence, without mutating or duplicating persistence.
     static func run(
         session_id: String,
-        phase: AgentRunner.Phase,
+        phase: AgentExecutor.Phase,
         events: [Run.Event.State],
         tool_uses: [AgentToolUseRecord],
         invocations: [AgentExecutionInvocation] = []
@@ -85,7 +85,7 @@ public extension AgentExecutionTrace {
         // Earlier occurrences retain their event history, but not a future status.
         var final_iteration: [String: Int] = [:]
         for event in events {
-            if let tool_call_id = event.toolCallID {
+            if let tool_call_id = event.callID {
                 final_iteration[tool_call_id] = event.iteration
             }
         }
@@ -102,7 +102,7 @@ public extension AgentExecutionTrace {
                     title: event.kind.rawValue,
                     detail: event.summary
                 ))
-                guard let call_id = event.toolCallID else {
+                guard let call_id = event.callID else {
                     children.append(event_node)
                     continue
                 }
@@ -116,7 +116,7 @@ public extension AgentExecutionTrace {
                         id: key(["iteration", String(iteration), "tool", call_id]),
                         kind: .tool(record?.disposition),
                         reference_id: call_id,
-                        title: record?.toolCall.tool.rawValue ?? event.toolName ?? "tool call",
+                        title: record?.functionCall.name ?? event.toolName ?? "tool call",
                         detail: record?.result.map { $0.isError ? "error" : "completed" }
                     ), children: [event_node]))
                 }
@@ -140,7 +140,7 @@ public extension AgentExecutionTrace {
                     id: key(["unattributed", "tool", record.id]),
                     kind: .tool(record.disposition),
                     reference_id: record.id,
-                    title: record.toolCall.tool.rawValue,
+                    title: record.functionCall.name,
                     detail: nil
                 ))
             }))
@@ -216,13 +216,13 @@ public extension AgentRunStateSnapshot {
     }
 }
 
-public extension AgentRunner.Result {
+public extension AgentExecutor.Result {
     func execution_trace() throws -> AgentExecutionTrace {
         try .run(session_id: sessionID, phase: phase, events: events, tool_uses: toolUses, invocations: invocations)
     }
 }
 
-public extension AgentRunner.Checkpoint {
+public extension AgentExecutor.Checkpoint {
     func execution_trace() throws -> AgentExecutionTrace {
         try .run(session_id: id, phase: phase, events: events, tool_uses: resolvedToolUses, invocations: invocations)
     }

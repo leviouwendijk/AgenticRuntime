@@ -67,7 +67,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(original.installed, .none, "Initially empty.")
 
         _ = try await inventory.install(InventoryTool())
-        _ = try await inventory.install(ProgramExecutionBinding(InventoryProgram()))
+        _ = try await inventory.install(ProgramBinding(InventoryProgram()))
         _ = try await inventory.install(InferenceBinding(InventoryInference.self))
         let installed = await inventory.snapshot()
         try Expect.equal(installed.installed, selection, "Install adds executables.")
@@ -89,10 +89,10 @@ extension AgenticProgramRuntimeFlowTesting {
         let exposed = await inventory.snapshot()
         try Expect.equal(exposed.visible, selection, "Expose the enabled subset.")
         let tools = await inventory.tools()
-        let call = ToolCall(
+        let call = ToolInvocation(
             id: "inventory_probe",
             tool: toolID,
-            input: try JSONCoding.default.value(InventoryInput(value: "success"))
+            arguments: try JSONCoding.default.value(InventoryInput(value: "success"))
         )
         let executed = try await tools.call(call, workspace: nil)
         let decoded = try executed.result.output.decode(InventoryInput.self)
@@ -105,7 +105,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(projection.functions.count, 3,
             "All three installed, enabled, visible families are projected.")
 
-        let parsed = try InventoryTool.Request(parsing: CapabilityCall.Raw(
+        let parsed = try InventoryTool.Request(parsing: CapabilityCall(
             id: "inventory_typed_request",
             capability: InventoryTool.reference,
             input: try JSONCoding.default.value(InventoryInput(value: "typed"))
@@ -124,7 +124,11 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         do {
             _ = try await dispatcher.invoke(
-                .tool(call),
+                .tool(FunctionCall(
+                    id: call.id,
+                    name: call.tool.rawValue,
+                    input: call.arguments
+                )),
                 origin: .program
             )
             try Expect.equal(false, true, "A revoked Tool must not execute.")

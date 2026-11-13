@@ -3,8 +3,8 @@ import Foundation
 
 extension AgentLoop {
     func runLoop(
-        from initialCheckpoint: AgentRunner.Checkpoint
-    ) async throws -> AgentRunner.Result {
+        from initialCheckpoint: AgentExecutor.Checkpoint
+    ) async throws -> AgentExecutor.Result {
         var checkpoint = initialCheckpoint
 
         while true {
@@ -123,8 +123,8 @@ extension AgentLoop {
     }
 
     func performModelTurn(
-        from checkpoint: AgentRunner.Checkpoint
-    ) async throws -> AgentRunner.Checkpoint {
+        from checkpoint: AgentExecutor.Checkpoint
+    ) async throws -> AgentExecutor.Checkpoint {
         var current = checkpoint
         try ensure_run_invocation(in: &current)
         let model_id = "model:\(UUID().uuidString)"
@@ -139,7 +139,7 @@ extension AgentLoop {
         current.currentModelInvocationID = model_id
         try await saveCheckpoint(&current)
 
-        let next: AgentRunner.Checkpoint
+        let next: AgentExecutor.Checkpoint
         switch configuration.responseDelivery {
         case .buffered:
             next = try await performBufferedModelTurn(from: current)
@@ -166,8 +166,8 @@ extension AgentLoop {
     }
 
     func performBufferedModelTurn(
-        from checkpoint: AgentRunner.Checkpoint
-    ) async throws -> AgentRunner.Checkpoint {
+        from checkpoint: AgentExecutor.Checkpoint
+    ) async throws -> AgentExecutor.Checkpoint {
         var checkpoint = checkpoint
 
         try await compactIfNeeded(
@@ -185,7 +185,8 @@ extension AgentLoop {
                 from: checkpoint.originalRequest,
                 messages: checkpoint.state.messages,
                 definitions: advertisedTools,
-                iteration: checkpoint.state.iteration
+                iteration: checkpoint.state.iteration,
+                sessionID: checkpoint.id
             ),
             checkpoint: checkpoint
         )
@@ -230,7 +231,7 @@ extension AgentLoop {
                 )
             )
             invocationResult = result
-        } catch RuntimeToolCallBoundary.capabilities_changed {
+        } catch FunctionCallBoundaryError.capabilities_changed {
             try await finishNativeCapabilityBoundary(
                 invocations: await journal.snapshot(),
                 semanticInvocations: await journal.semanticSnapshot(),
@@ -238,7 +239,7 @@ extension AgentLoop {
             )
 
             return checkpoint
-        } catch AgentToolCallResolutionError.needsHumanReview(let review) {
+        } catch FunctionCallResolutionError.needsHumanReview(let review) {
             try await suspendForNativeApproval(
                 review,
                 invocations: await journal.snapshot(),
@@ -345,12 +346,12 @@ extension AgentLoop {
             )
         }
 
-        let toolCalls = toolCalls(
+        let functionCalls = functionCalls(
             in: response.message
         )
 
         if response.stopReason == AgentStopReason.tool_use,
-           !toolCalls.isEmpty {
+           !functionCalls.isEmpty {
             checkpoint.phase = .processing_tool_calls
         } else {
             checkpoint.phase = .completed
@@ -372,7 +373,7 @@ extension AgentLoop {
     }
 
     // func processToolCalls(
-    //     from checkpoint: AgentRunner.Checkpoint
+    //     from checkpoint: AgentExecutor.Checkpoint
     // ) async throws -> ToolProcessingOutcome {
     //     var checkpoint = checkpoint
 
@@ -382,7 +383,7 @@ extension AgentLoop {
     //         )
     //     }
 
-    //     let calls = toolCalls(
+    //     let calls = functionCalls(
     //         in: response.message
     //     )
 
@@ -398,33 +399,33 @@ extension AgentLoop {
     //         return .continueLoop(checkpoint)
     //     }
 
-    //     for toolCall in calls {
-    //         if toolCall.name == Standard.Tools.ClarifyWithUser.identifier.rawValue {
+    //     for functionCall in calls {
+    //         if functionCall.name == Standard.Tools.ClarifyWithUser.identifier.rawValue {
     //             return try await suspendForUserInput(
-    //                 toolCall,
+    //                 functionCall,
     //                 checkpoint: &checkpoint
     //             )
     //         }
 
-    //         try await recordToolCall(
-    //             toolCall
+    //         try await recordFunctionCall(
+    //             functionCall
     //         )
 
     //         let preflight: ToolPreflight
 
     //         do {
     //             preflight = try await toolRegistry.preflight(
-    //                 toolCall,
+    //                 functionCall,
     //                 workspace: workspace
     //             )
     //         } catch {
     //             let result = makeToolErrorResult(
-    //                 for: toolCall,
+    //                 for: functionCall,
     //                 error: error
     //             )
 
     //             appendToolResultBlock(
-    //                 .tool_result(result),
+    //                 .result(result),
     //                 to: &checkpoint.state
     //             )
 
@@ -436,8 +437,8 @@ extension AgentLoop {
     //                 .init(
     //                     kind: .tool_error,
     //                     iteration: checkpoint.state.iteration,
-    //                     toolCallID: toolCall.id,
-    //                     toolName: toolCall.name,
+    //                     callID: functionCall.id,
+    //                     toolName: functionCall.name,
     //                     summary: localizedDescription(for: error)
     //                 ),
     //                 to: &checkpoint
@@ -454,8 +455,8 @@ extension AgentLoop {
     //             .init(
     //                 kind: .tool_preflight,
     //                 iteration: checkpoint.state.iteration,
-    //                 toolCallID: toolCall.id,
-    //                 toolName: toolCall.name,
+    //                 callID: functionCall.id,
+    //                 toolName: functionCall.name,
     //                 summary: preflight.summary
     //             ),
     //             to: &checkpoint
@@ -471,19 +472,19 @@ extension AgentLoop {
     //                 .init(
     //                     kind: .tool_approved,
     //                     iteration: checkpoint.state.iteration,
-    //                     toolCallID: toolCall.id,
-    //                     toolName: toolCall.name,
+    //                     callID: functionCall.id,
+    //                     toolName: functionCall.name,
     //                     summary: "auto-approved by execution policy"
     //                 ),
     //                 to: &checkpoint
     //             )
 
-    //             let result = await executeApprovedToolCall(
-    //                 toolCall
+    //             let result = await executeApprovedCall(
+    //                 functionCall
     //             )
 
     //             appendToolResultBlock(
-    //                 .tool_result(result),
+    //                 .result(result),
     //                 to: &checkpoint.state
     //             )
 
@@ -495,8 +496,8 @@ extension AgentLoop {
     //                 .init(
     //                     kind: result.isError ? .tool_error : .tool_result,
     //                     iteration: checkpoint.state.iteration,
-    //                     toolCallID: toolCall.id,
-    //                     toolName: toolCall.name,
+    //                     callID: functionCall.id,
+    //                     toolName: functionCall.name,
     //                     summary: result.isError
     //                         ? "tool execution failed"
     //                         : "tool executed"
@@ -510,13 +511,13 @@ extension AgentLoop {
 
     //         case .denied_forbidden:
     //             let result = makeDeniedToolResult(
-    //                 for: toolCall,
+    //                 for: functionCall,
     //                 preflight: preflight,
     //                 requirement: requirement
     //             )
 
     //             appendToolResultBlock(
-    //                 .tool_result(result),
+    //                 .result(result),
     //                 to: &checkpoint.state
     //             )
 
@@ -528,8 +529,8 @@ extension AgentLoop {
     //                 .init(
     //                     kind: .tool_denied,
     //                     iteration: checkpoint.state.iteration,
-    //                     toolCallID: toolCall.id,
-    //                     toolName: toolCall.name,
+    //                     callID: functionCall.id,
+    //                     toolName: functionCall.name,
     //                     summary: "denied by execution policy"
     //                 ),
     //                 to: &checkpoint
@@ -551,19 +552,19 @@ extension AgentLoop {
     //                     .init(
     //                         kind: .tool_approved,
     //                         iteration: checkpoint.state.iteration,
-    //                         toolCallID: toolCall.id,
-    //                         toolName: toolCall.name,
+    //                         callID: functionCall.id,
+    //                         toolName: functionCall.name,
     //                         summary: "approved"
     //                     ),
     //                     to: &checkpoint
     //                 )
 
-    //                 let result = await executeApprovedToolCall(
-    //                     toolCall
+    //                 let result = await executeApprovedCall(
+    //                     functionCall
     //                 )
 
     //                 appendToolResultBlock(
-    //                     .tool_result(result),
+    //                     .result(result),
     //                     to: &checkpoint.state
     //                 )
 
@@ -575,8 +576,8 @@ extension AgentLoop {
     //                     .init(
     //                         kind: result.isError ? .tool_error : .tool_result,
     //                         iteration: checkpoint.state.iteration,
-    //                         toolCallID: toolCall.id,
-    //                         toolName: toolCall.name,
+    //                         callID: functionCall.id,
+    //                         toolName: functionCall.name,
     //                         summary: result.isError
     //                             ? "tool execution failed"
     //                             : "tool executed"
@@ -590,13 +591,13 @@ extension AgentLoop {
 
     //             case .denied:
     //                 let result = makeDeniedToolResult(
-    //                     for: toolCall,
+    //                     for: functionCall,
     //                     preflight: preflight,
     //                     requirement: requirement
     //                 )
 
     //                 appendToolResultBlock(
-    //                     .tool_result(result),
+    //                     .result(result),
     //                     to: &checkpoint.state
     //                 )
 
@@ -608,8 +609,8 @@ extension AgentLoop {
     //                     .init(
     //                         kind: .tool_denied,
     //                         iteration: checkpoint.state.iteration,
-    //                         toolCallID: toolCall.id,
-    //                         toolName: toolCall.name,
+    //                         callID: functionCall.id,
+    //                         toolName: functionCall.name,
     //                         summary: "denied after review"
     //                     ),
     //                     to: &checkpoint
@@ -621,7 +622,7 @@ extension AgentLoop {
 
     //             case .needshuman:
     //                 let pendingApproval = PendingApproval(
-    //                     toolCall: toolCall,
+    //                     functionCall: functionCall,
     //                     preflight: preflight,
     //                     requirement: requirement
     //                 )
@@ -637,8 +638,8 @@ extension AgentLoop {
     //                     .init(
     //                         kind: .pending_approval,
     //                         iteration: checkpoint.state.iteration,
-    //                         toolCallID: toolCall.id,
-    //                         toolName: toolCall.name,
+    //                         callID: functionCall.id,
+    //                         toolName: functionCall.name,
     //                         summary: preflight.summary
     //                     ),
     //                     to: &checkpoint

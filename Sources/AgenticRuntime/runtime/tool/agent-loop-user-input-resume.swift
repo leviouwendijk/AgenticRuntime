@@ -4,10 +4,10 @@ import Primitives
 
 extension AgentLoop {
     func resumeWithUserInput(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         userInput: String,
         metadata: [String: String]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resumeWithUserInput(
             checkpoint,
             reply: .text(
@@ -18,10 +18,10 @@ extension AgentLoop {
     }
 
     func resumeWithUserInput(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         reply: UserInputReply,
         metadata: [String: String]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         var checkpoint = checkpoint
 
         guard checkpoint.phase == .suspended
@@ -44,7 +44,7 @@ extension AgentLoop {
             )
         }
 
-        guard let toolCallID = suspension.metadata["toolCallID"] else {
+        guard let callID = suspension.metadata["callID"] else {
             throw AgentHistoryError.corruptedCheckpoint(
                 "user-input suspension without tool call id"
             )
@@ -72,10 +72,10 @@ extension AgentLoop {
             new
         }
 
-        let result = ToolCall.Response(
-            call: ToolCall.Reference(
-                id: toolCallID,
-                tool: ToolIdentifier(toolName)
+        let result = FunctionCall.Response(
+            call: FunctionCall.Reference(
+                id: callID,
+                name: toolName
             ),
             output: try JSONCoding.default.value(
                 UserInputResumePayload(
@@ -90,15 +90,15 @@ extension AgentLoop {
             isError: false
         )
 
-        let toolCall = ToolCall(
-            id: toolCallID,
-            tool: ToolIdentifier(toolName),
+        let functionCall = FunctionCall(
+            id: callID,
+            name: toolName,
             input: .object([:])
         )
 
         try await appendToolResult(
             result,
-            for: toolCall,
+            for: functionCall,
             disposition: .executed,
             to: &checkpoint,
             summary: response.isSkipped
@@ -107,7 +107,7 @@ extension AgentLoop {
         )
 
         try await appendSkippedSiblings(
-            after: toolCallID,
+            after: callID,
             to: &checkpoint,
             disposition: .skipped_after_user_input,
             reason: userInputSiblingReason

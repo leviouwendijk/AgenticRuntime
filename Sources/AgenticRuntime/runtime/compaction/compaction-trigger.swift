@@ -1,13 +1,16 @@
 import Agentic
+import Foundation
 
 public struct CompactionTrigger: Sendable, Codable, Hashable {
     public var maxMessageCount: Int?
     public var maxApproximateCharacterCount: Int?
     public var minimumCompactedMessageCount: Int
 
+    /// The character count is a fallback for routes without a declared input
+    /// limit (roughly 80k tokens); a known ContextBudget takes precedence.
     public init(
         maxMessageCount: Int? = 40,
-        maxApproximateCharacterCount: Int? = nil,
+        maxApproximateCharacterCount: Int? = 320_000,
         minimumCompactedMessageCount: Int = 8
     ) {
         self.maxMessageCount = maxMessageCount
@@ -20,17 +23,19 @@ public struct CompactionTrigger: Sendable, Codable, Hashable {
 
 public extension CompactionTrigger {
     func shouldCompact(
-        messages: [Message]
+        messages: [Message],
+        budget: ContextBudget = .unknown
     ) -> Bool {
         if let maxMessageCount,
            messages.count > maxMessageCount {
             return true
         }
 
-        if let maxApproximateCharacterCount,
+        if let characterLimit = budget.compactionCharacterCount
+            ?? maxApproximateCharacterCount,
            approximateCharacterCount(
                 in: messages
-           ) > maxApproximateCharacterCount {
+           ) > characterLimit {
             return true
         }
 
@@ -62,12 +67,20 @@ public extension CompactionTrigger {
                 partial += value.metadata.title?.count ?? 0
                 partial += value.metadata.filename?.count ?? 0
 
-            case .tool_call(let value):
-                partial += 64 + value.tool.rawValue.count
+            // Tool payloads are what the provider actually receives, so count
+            // their encoded size rather than only the tool name.
+            case .call(let value):
+                partial += 64 + encodedCharacterCount(of: value)
 
-            case .tool_result(let value):
-                partial += 96 + value.call.tool.rawValue.count
+            case .result(let value):
+                partial += 96 + encodedCharacterCount(of: value)
             }
         }
+    }
+
+    func encodedCharacterCount<Value: Encodable>(
+        of value: Value
+    ) -> Int {
+        (try? JSONEncoder().encode(value))?.count ?? 0
     }
 }

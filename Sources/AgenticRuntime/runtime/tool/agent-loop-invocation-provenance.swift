@@ -5,7 +5,7 @@ extension AgentLoop {
     /// The checkpoint is the sole owner of span state; result/trace layers read it.
     func begin_invocation(
         _ invocation: AgentExecutionInvocation,
-        to checkpoint: inout AgentRunner.Checkpoint
+        to checkpoint: inout AgentExecutor.Checkpoint
     ) throws {
         guard !checkpoint.invocations.contains(where: { $0.id == invocation.id }) else {
             throw AgentExecutionInvocationError.duplicate_id(invocation.id)
@@ -26,7 +26,7 @@ extension AgentLoop {
     func finish_invocation(
         id: String,
         state: AgentExecutionInvocation.State,
-        to checkpoint: inout AgentRunner.Checkpoint
+        to checkpoint: inout AgentExecutor.Checkpoint
     ) throws {
         guard let index = checkpoint.invocations.firstIndex(where: { $0.id == id }) else {
             throw AgentExecutionInvocationError.unknown_invocation(id)
@@ -36,7 +36,7 @@ extension AgentLoop {
 
     /// An established parent is a persisted model span, never the last event
     /// or a name-based guess. Legacy checkpoints fall back to the actual run.
-    func ensure_run_invocation(in checkpoint: inout AgentRunner.Checkpoint) throws {
+    func ensure_run_invocation(in checkpoint: inout AgentExecutor.Checkpoint) throws {
         let id = AgentExecutionInvocation.root_id(session_id: checkpoint.id)
         if !checkpoint.invocations.contains(where: { $0.id == id }) {
             try begin_invocation(
@@ -50,7 +50,7 @@ extension AgentLoop {
     func begin_tool_invocation(
         call_id: String,
         tool_name: String,
-        in checkpoint: inout AgentRunner.Checkpoint
+        in checkpoint: inout AgentExecutor.Checkpoint
     ) throws {
         let id = AgentExecutionInvocation.tool_id(session_id: checkpoint.id, call_id: call_id)
         guard !checkpoint.invocations.contains(where: { $0.id == id }) else { return }
@@ -84,9 +84,9 @@ extension AgentLoop {
     /// nested program run nor claims an unrecorded subagent stack.
     func observe_invocation_event(
         _ event: Run.Event.State,
-        in checkpoint: inout AgentRunner.Checkpoint
+        in checkpoint: inout AgentExecutor.Checkpoint
     ) throws {
-        guard let call_id = event.toolCallID,
+        guard let call_id = event.callID,
               let name = event.toolName else { return }
         switch event.kind {
         case .tool_preflight, .tool_approved, .tool_denied, .tool_skipped,

@@ -85,15 +85,15 @@ public struct AgentSessionRuntime: Sendable {
         return runtime
     }
 
-    public func makeRunner(
+    public func makeExecutor(
         model: RuntimeServices.Model,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         capabilityState: AgentCapabilityState,
         tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
-    ) throws -> AgentRunner {
+    ) throws -> AgentExecutor {
         var resolvedConfiguration = configuration
 
         if enableHistoryPersistence,
@@ -102,7 +102,7 @@ public struct AgentSessionRuntime: Sendable {
             resolvedConfiguration.historyPersistenceMode = .checkpointmutation
         }
 
-        return AgentRunner(
+        return AgentExecutor(
             model: model,
             configuration: resolvedConfiguration,
             tooling: tooling.using(
@@ -120,20 +120,20 @@ public struct AgentSessionRuntime: Sendable {
     public func run(
         _ request: AgentRequest,
         model: RuntimeServices.Model,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         capabilityState: AgentCapabilityState,
         tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try saveMetadata(
             metadata.withStatus(
                 .active
             )
         )
 
-        let runner = try makeRunner(
+        let executor = try makeExecutor(
             model: model,
             configuration: configuration,
             capabilityState: capabilityState,
@@ -143,7 +143,7 @@ public struct AgentSessionRuntime: Sendable {
             enableHistoryPersistence: enableHistoryPersistence
         )
 
-        let result = try await runner.run(
+        let result = try await executor.run(
             request,
             sessionID: sessionID
         )
@@ -161,20 +161,20 @@ public struct AgentSessionRuntime: Sendable {
 
     public func resume(
         model: RuntimeServices.Model,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         capabilityState: AgentCapabilityState,
         tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try saveMetadata(
             metadata.withStatus(
                 .active
             )
         )
 
-        let runner = try makeRunner(
+        let executor = try makeExecutor(
             model: model,
             configuration: configuration,
             capabilityState: capabilityState,
@@ -184,7 +184,7 @@ public struct AgentSessionRuntime: Sendable {
             enableHistoryPersistence: enableHistoryPersistence
         )
 
-        let result = try await runner.resume(
+        let result = try await executor.resume(
             sessionID: sessionID
         )
 
@@ -202,14 +202,14 @@ public struct AgentSessionRuntime: Sendable {
     public func resume(
         userInput: String,
         model: RuntimeServices.Model,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         capabilityState: AgentCapabilityState,
         tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resume(
             answer: .text(
                 userInput
@@ -228,14 +228,14 @@ public struct AgentSessionRuntime: Sendable {
     public func resume(
         answer: UserInputAnswer,
         model: RuntimeServices.Model,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         capabilityState: AgentCapabilityState,
         tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resume(
             reply: .answer(
                 answer
@@ -254,21 +254,21 @@ public struct AgentSessionRuntime: Sendable {
     public func resume(
         reply: UserInputReply,
         model: RuntimeServices.Model,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         capabilityState: AgentCapabilityState,
         tooling: RuntimeServices.Tooling = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         enableHistoryPersistence: Bool = true,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try saveMetadata(
             self.metadata.withStatus(
                 .active
             )
         )
 
-        let runner = try makeRunner(
+        let executor = try makeExecutor(
             model: model,
             configuration: configuration,
             capabilityState: capabilityState,
@@ -278,7 +278,7 @@ public struct AgentSessionRuntime: Sendable {
             enableHistoryPersistence: enableHistoryPersistence
         )
 
-        let result = try await runner.resume(
+        let result = try await executor.resume(
             sessionID: sessionID,
             reply: reply,
             metadata: metadata
@@ -365,7 +365,7 @@ private extension AgentSessionRuntime {
     }
 
     func status(
-        for result: AgentRunner.Result
+        for result: AgentExecutor.Result
     ) -> AgentSessionStatus {
         if result.isAwaitingApproval {
             return .awaiting_approval

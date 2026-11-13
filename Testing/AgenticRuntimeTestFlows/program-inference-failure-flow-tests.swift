@@ -250,8 +250,8 @@ private func runtimeInferenceFailureRealization()
 
 private func runtimeInferenceFailureRunner(
     probe: RuntimeInferenceFailureProbe
-) -> ProgramRunner {
-    ProgramRunner(
+) -> ProgramExecutor {
+    ProgramExecutor(
         services: .init(
             program: .init(
                 inference: RuntimeInferenceFailureExecutor(

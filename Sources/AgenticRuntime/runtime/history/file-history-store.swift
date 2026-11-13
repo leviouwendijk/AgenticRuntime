@@ -12,7 +12,7 @@ public actor FileHistoryStore: AgentHistoryStore {
 
     public func loadCheckpoint(
         sessionID: String
-    ) async throws -> AgentRunner.Checkpoint? {
+    ) async throws -> AgentExecutor.Checkpoint? {
         let url = checkpointURL(
             for: sessionID
         )
@@ -30,13 +30,13 @@ public actor FileHistoryStore: AgentHistoryStore {
         }
 
         return try JSONDecoder().decode(
-            AgentRunner.Checkpoint.self,
+            AgentExecutor.Checkpoint.self,
             from: data
         )
     }
 
     public func saveCheckpoint(
-        _ checkpoint: AgentRunner.Checkpoint
+        _ checkpoint: AgentExecutor.Checkpoint
     ) async throws {
         let url = checkpointURL(
             for: checkpoint.id

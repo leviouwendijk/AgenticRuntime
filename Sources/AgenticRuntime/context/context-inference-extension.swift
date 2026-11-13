@@ -4,7 +4,7 @@ import AgenticContext
 public extension Context {
     /// Opt-in harness bridge, running after model-facing tool projection and
     /// before the model invocation. A fresh Frame is prepared for each call.
-    /// Nothing here mutates AgentRunner's canonical checkpoint messages.
+    /// Nothing here mutates AgentExecutor's canonical checkpoint messages.
     actor InferenceExtension: AgentHarnessExtension {
         public let allocator: Allocator
         public let workingSetID: String
@@ -37,7 +37,7 @@ public extension Context {
 
         public func prepare(
             request: AgentRequest,
-            state: AgentRunner.State
+            state: AgentExecutor.State
         ) async throws -> AgentRequest {
             mostRecent = nil
             if let preparation {

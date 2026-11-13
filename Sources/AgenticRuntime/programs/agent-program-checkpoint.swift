@@ -169,9 +169,9 @@ public extension ProgramCheckpoint {
             ):
                 guard pendingApproval.requirement
                         == .needs_human_review,
-                      pendingApproval.toolCall.tool
+                      ToolIdentifier(pendingApproval.functionCall.name)
                         == toolIdentifier,
-                      pendingApproval.toolCall.input
+                      pendingApproval.functionCall.input
                         == checkpoint.suspendedStep.input
                 else {
                     throw ProgramReplayError
@@ -366,9 +366,9 @@ actor ProgramResumeControl {
                   let pendingApproval,
                   let decision
               ) = interactionResolution,
-              pendingApproval.toolCall.tool
+              ToolIdentifier(pendingApproval.functionCall.name)
                 == identifier,
-              pendingApproval.toolCall.input == input
+              pendingApproval.functionCall.input == input
         else {
             throw ProgramReplayError.step_mismatch(
                 index: index

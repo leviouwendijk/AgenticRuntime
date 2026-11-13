@@ -7,13 +7,13 @@ import TestFlows
 
 extension AgenticProgramRuntimeFlowTesting {
     static func runToolObservationHistory() throws -> [TestDiagnostic] {
-        let call = ToolCall(id: "history-observation", tool: "fixture", input: .null)
-        var batch = AgentToolUseBatch(assistantMessageID: "assistant", toolCalls: [call])
+        let call = FunctionCall(id: "history-observation", name: "fixture", input: .null)
+        var batch = AgentToolUseBatch(assistantMessageID: "assistant", functionCalls: [call])
         let observations: [ToolResultObservation] = [.init(kind: .detail, content: "exact evidence")]
         batch.mark(
-            toolCallID: call.id,
+            callID: call.id,
             disposition: .executed,
-            result: .init(call: .init(id: call.id, tool: call.tool), output: .null, isError: false),
+            result: .init(call: .init(id: call.id, name: call.name), output: .null, isError: false),
             observations: observations
         )
         let decoded = try JSONDecoder().decode(AgentToolUseBatch.self, from: JSONEncoder().encode(batch))

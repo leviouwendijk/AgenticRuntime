@@ -4,7 +4,7 @@ import Primitives
 extension AgentLoop {
     func toolBatch(
         from response: AgentResponse,
-        checkpoint: AgentRunner.Checkpoint
+        checkpoint: AgentExecutor.Checkpoint
     ) -> AgentToolUseBatch {
         checkpoint.toolBatch ?? AgentToolUseBatch(
             response: response
@@ -13,14 +13,14 @@ extension AgentLoop {
 
     func storeToolBatch(
         _ batch: AgentToolUseBatch,
-        to checkpoint: inout AgentRunner.Checkpoint
+        to checkpoint: inout AgentExecutor.Checkpoint
     ) {
         checkpoint.toolBatch = batch
         checkpoint.touch()
     }
 
     func finishToolBatch(
-        on checkpoint: inout AgentRunner.Checkpoint
+        on checkpoint: inout AgentExecutor.Checkpoint
     ) {
         if var batch = checkpoint.toolBatch {
             batch.completeIfTerminal()
@@ -37,18 +37,18 @@ extension AgentLoop {
     }
 
     func appendToolResult(
-        _ result: ToolCall.Response,
-        for toolCall: ToolCall,
+        _ result: FunctionCall.Response,
+        for functionCall: FunctionCall,
         disposition: AgentToolUseDisposition,
         recovery: Recovery.Record? = nil,
         observations: [ToolResultObservation] = [],
-        to checkpoint: inout AgentRunner.Checkpoint,
+        to checkpoint: inout AgentExecutor.Checkpoint,
         summary: String,
         eventKind: Run.Event.State.Kind? = nil
     ) async throws {
         if var batch = checkpoint.toolBatch {
             batch.mark(
-                toolCallID: toolCall.id,
+                callID: functionCall.id,
                 disposition: disposition,
                 result: result,
                 recovery: recovery,
@@ -59,7 +59,7 @@ extension AgentLoop {
         }
 
         appendToolResultBlock(
-            .tool_result(result),
+            .result(result),
             to: &checkpoint.state
         )
 
@@ -71,8 +71,8 @@ extension AgentLoop {
             .init(
                 kind: eventKind ?? (result.isError ? .tool_error : .tool_result),
                 iteration: checkpoint.state.iteration,
-                toolCallID: result.call.id,
-                toolName: result.call.tool.rawValue,
+                callID: result.call.id,
+                toolName: result.call.name,
                 summary: summary
             ),
             to: &checkpoint
@@ -81,15 +81,15 @@ extension AgentLoop {
 
     func markToolPreflight(
         _ preflight: ToolPreflight,
-        for toolCall: ToolCall,
-        on checkpoint: inout AgentRunner.Checkpoint
+        for functionCall: FunctionCall,
+        on checkpoint: inout AgentExecutor.Checkpoint
     ) {
         guard var batch = checkpoint.toolBatch else {
             return
         }
 
         batch.mark(
-            toolCallID: toolCall.id,
+            callID: functionCall.id,
             disposition: .preflighted,
             preflight: preflight
         )
@@ -99,16 +99,16 @@ extension AgentLoop {
     }
 
     func suspendToolBatch(
-        for toolCall: ToolCall,
+        for functionCall: FunctionCall,
         disposition: AgentToolUseDisposition,
-        on checkpoint: inout AgentRunner.Checkpoint
+        on checkpoint: inout AgentExecutor.Checkpoint
     ) {
         guard var batch = checkpoint.toolBatch else {
             return
         }
 
         batch.mark(
-            toolCallID: toolCall.id,
+            callID: functionCall.id,
             disposition: disposition
         )
         batch.suspend()
@@ -118,8 +118,8 @@ extension AgentLoop {
     }
 
     func appendSkippedSiblings(
-        after toolCallID: String,
-        to checkpoint: inout AgentRunner.Checkpoint,
+        after callID: String,
+        to checkpoint: inout AgentExecutor.Checkpoint,
         disposition: AgentToolUseDisposition,
         reason: String
     ) async throws {
@@ -138,16 +138,16 @@ extension AgentLoop {
             )
         }
 
-        for toolCall in batch.remaining(after: toolCallID) {
+        for functionCall in batch.remaining(after: callID) {
             let result = makeSkippedToolResult(
-                for: toolCall,
+                for: functionCall,
                 disposition: disposition,
                 reason: reason
             )
 
             try await appendToolResult(
                 result,
-                for: toolCall,
+                for: functionCall,
                 disposition: disposition,
                 to: &checkpoint,
                 summary: "skipped sibling tool call"
@@ -156,16 +156,16 @@ extension AgentLoop {
     }
 
     func makeSkippedToolResult(
-        for toolCall: ToolCall,
+        for functionCall: FunctionCall,
         disposition: AgentToolUseDisposition,
         reason: String
-    ) -> ToolCall.Response {
-        ToolCall.Response(
-            call: toolCall.reference,
+    ) -> FunctionCall.Response {
+        FunctionCall.Response(
+            call: functionCall.reference,
             output: .object([
                 "kind": .string("tool_error"),
-                "toolCallID": .string(toolCall.id),
-                "toolName": .string(toolCall.tool.rawValue),
+                "callID": .string(functionCall.id),
+                "toolName": .string(functionCall.name),
                 "disposition": .string(disposition.rawValue),
                 "message": .string(reason)
             ]),

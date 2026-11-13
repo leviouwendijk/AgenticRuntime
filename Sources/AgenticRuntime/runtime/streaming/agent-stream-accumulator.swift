@@ -21,17 +21,17 @@ public struct AgentStreamAccumulator: Sendable {
                 block
             )
 
-        case .toolcall(let toolCall):
-            partial.toolCalls.append(
-                toolCall
+        case .call(let functionCall):
+            partial.functionCalls.append(
+                functionCall
             )
             append(
-                .tool_call(toolCall)
+                .call(functionCall)
             )
 
-        case .toolresult(let result):
+        case .result(let result):
             append(
-                .tool_result(result)
+                .result(result)
             )
 
         case .completed(let response):

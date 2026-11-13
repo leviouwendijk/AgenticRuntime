@@ -89,7 +89,7 @@ public struct ProgramStepRecord:
     public var kind: ProgramStepKind
     public var input: JSONValue
     public var output: JSONValue?
-    public var toolResult: ToolCall.Response?
+    public var toolResult: FunctionCall.Response?
     public var inference: Inference
     public var recovery: Recovery.Record?
     public var suspension: Run.Suspension?
@@ -104,7 +104,7 @@ public struct ProgramStepRecord:
         kind: ProgramStepKind,
         input: JSONValue,
         output: JSONValue? = nil,
-        toolResult: ToolCall.Response? = nil,
+        toolResult: FunctionCall.Response? = nil,
         inference: Inference = .init(),
         recovery: Recovery.Record? = nil,
         suspension: Run.Suspension? = nil,
@@ -234,7 +234,7 @@ extension ProgramStepRecord {
     var replayableToolFailure: ProgramToolFailure? {
         guard case .tool(let identifier) = kind,
               let toolResult,
-              toolResult.call.tool == identifier,
+              ToolIdentifier(toolResult.call.name) == identifier,
               toolResult.isError,
               failure?.type
                 == String(reflecting: ProgramToolFailure.self)

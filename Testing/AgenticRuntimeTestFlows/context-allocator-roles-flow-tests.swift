@@ -41,7 +41,7 @@ private struct ContextAllocatorRoleFixtureProgram: Program {
 extension AgenticProgramRuntimeFlowTesting {
     static func runContextAllocatorRoles() async throws -> [TestDiagnostic] {
         let installed = InstalledCapabilities(
-            programs: [ProgramExecutionBinding(ContextAllocatorRoleFixtureProgram())],
+            programs: [ProgramBinding(ContextAllocatorRoleFixtureProgram())],
             agents: [AgentBinding(ContextAllocatorRoleFixtureAgent.self)]
         )
         let agentID = ContextAllocatorRoleFixtureAgent.definition.identifier
@@ -124,12 +124,12 @@ extension AgenticProgramRuntimeFlowTesting {
               let updated = second.orchestrator else {
             throw ContextAllocatorRoleFixtureError.incorrectRole
         }
-        let previousRunner = try runtime.makeAgentRunner(
+        let previousRunner = try runtime.makeAgentExecutor(
             identifiedBy: previous.identifier,
             model: .init(invoker: invoker),
             modelPreferences: previous.modelPreferences
         )
-        let updatedRunner = try runtime.makeAgentRunner(
+        let updatedRunner = try runtime.makeAgentExecutor(
             identifiedBy: updated.identifier,
             model: .init(invoker: invoker),
             modelPreferences: updated.modelPreferences

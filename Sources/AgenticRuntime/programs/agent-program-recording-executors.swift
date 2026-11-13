@@ -77,8 +77,8 @@ actor ProgramExecutionTrace {
     }
 }
 
-struct ProgramRecordingInferenceInvoker<ProgramType: Program>:
-    InferenceInvoking
+struct ProgramRecordingInferenceExecutor<ProgramType: Program>:
+    ProgramInferenceExecuting
 {
     let executor: any InferenceExecuting
     let realization: ProgramRealization<ProgramType>?
@@ -229,14 +229,14 @@ struct ProgramRecordingInferenceInvoker<ProgramType: Program>:
     }
 }
 
-struct ProgramRecordingToolInvoker:
-    ProgramToolInvoking
+struct ProgramRecordingToolExecutor:
+    ProgramToolExecuting
 {
-    let executor: any ProgramToolExecuting
+    let executor: any GovernedToolExecuting
     let trace: ProgramExecutionTrace
     let resumeControl: ProgramResumeControl?
 
-    func invoke<Input, Output>(
+    func execute<Input, Output>(
         _ identifier: ToolIdentifier,
         input: Input,
         as output: Output.Type
@@ -294,7 +294,7 @@ struct ProgramRecordingToolInvoker:
                     decision: resolution.decision
                 )
             } else {
-                execution = try await executor.invoke(
+                execution = try await executor.execute(
                     identifier,
                     input: inputValue
                 )
@@ -394,13 +394,13 @@ struct ProgramRecordingToolInvoker:
     }
 }
 
-struct ProgramRecordingProgramInvoker:
-    ProgramInvoking
+struct ProgramRecordingProgramExecutor:
+    ProgramExecuting
 {
-    let invoker: any ProgramInvoking
+    let programs: any ProgramExecuting
     let trace: ProgramExecutionTrace
 
-    func invoke<ProgramType: Program>(
+    func execute<ProgramType: Program>(
         _ program: ProgramType.Type,
         input: ProgramType.Input,
         in context: ProgramContext
@@ -430,7 +430,7 @@ struct ProgramRecordingProgramInvoker:
                 return output
             }
 
-            let output = try await invoker.invoke(
+            let output = try await programs.execute(
                 program,
                 input: input,
                 in: context

@@ -5,8 +5,7 @@ public enum AgenticApplicationComponent:
 {
     case catalog(Catalog)
     case tools([ToolBinding])
-    case toolProviders([any AgentToolProvider])
-    case programs([ProgramExecutionBinding])
+    case programs([ProgramBinding])
     case inferences([InferenceBinding])
     case adapters([any InferenceAdapter])
     case agents([AgentBinding])
@@ -114,8 +113,8 @@ public enum AgenticApplicationBuilder {
 @resultBuilder
 public enum AgenticApplicationProgramBuilder {
     public static func buildBlock(
-        _ registrations: [ProgramExecutionBinding]...
-    ) -> [ProgramExecutionBinding] {
+        _ registrations: [ProgramBinding]...
+    ) -> [ProgramBinding] {
         registrations.flatMap {
             $0
         }
@@ -123,64 +122,64 @@ public enum AgenticApplicationProgramBuilder {
 
     public static func buildExpression<ProgramType: Program>(
         _ program: ProgramType
-    ) -> [ProgramExecutionBinding] {
+    ) -> [ProgramBinding] {
         [
-            ProgramExecutionBinding(
+            ProgramBinding(
                 program
             ),
         ]
     }
 
     public static func buildExpression(
-        _ registration: ProgramExecutionBinding
-    ) -> [ProgramExecutionBinding] {
+        _ registration: ProgramBinding
+    ) -> [ProgramBinding] {
         [
             registration,
         ]
     }
 
     public static func buildExpression(
-        _ registrations: [ProgramExecutionBinding]
-    ) -> [ProgramExecutionBinding] {
+        _ registrations: [ProgramBinding]
+    ) -> [ProgramBinding] {
         registrations
     }
 
     public static func buildOptional(
-        _ registrations: [ProgramExecutionBinding]?
-    ) -> [ProgramExecutionBinding] {
+        _ registrations: [ProgramBinding]?
+    ) -> [ProgramBinding] {
         registrations ?? []
     }
 
     public static func buildEither(
-        first registrations: [ProgramExecutionBinding]
-    ) -> [ProgramExecutionBinding] {
+        first registrations: [ProgramBinding]
+    ) -> [ProgramBinding] {
         registrations
     }
 
     public static func buildEither(
-        second registrations: [ProgramExecutionBinding]
-    ) -> [ProgramExecutionBinding] {
+        second registrations: [ProgramBinding]
+    ) -> [ProgramBinding] {
         registrations
     }
 
     public static func buildArray(
-        _ registrations: [[ProgramExecutionBinding]]
-    ) -> [ProgramExecutionBinding] {
+        _ registrations: [[ProgramBinding]]
+    ) -> [ProgramBinding] {
         registrations.flatMap {
             $0
         }
     }
 
     public static func buildLimitedAvailability(
-        _ registrations: [ProgramExecutionBinding]
-    ) -> [ProgramExecutionBinding] {
+        _ registrations: [ProgramBinding]
+    ) -> [ProgramBinding] {
         registrations
     }
 }
 
 public func programs(
     @AgenticApplicationProgramBuilder
-    _ content: () -> [ProgramExecutionBinding]
+    _ content: () -> [ProgramBinding]
 ) -> AgenticApplicationComponent {
     .programs(
         content()
@@ -190,8 +189,8 @@ public func programs(
 public func program<ProgramType: Program>(
     _ program: ProgramType,
     realization: ProgramRealization<ProgramType>? = nil
-) -> ProgramExecutionBinding {
-    ProgramExecutionBinding(
+) -> ProgramBinding {
+    ProgramBinding(
         program,
         defaultRealization: realization
     )

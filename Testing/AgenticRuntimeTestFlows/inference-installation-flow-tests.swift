@@ -285,9 +285,9 @@ extension AgenticProgramRuntimeFlowTesting {
         do {
             _ = try await dispatcher.invoke(
                 .tool(
-                    ToolCall(
+                    FunctionCall(
                         id: "not-installed",
-                        tool: "fixture.uninstalled",
+                        name: "fixture.uninstalled",
                         input: .null
                     )
                 ),

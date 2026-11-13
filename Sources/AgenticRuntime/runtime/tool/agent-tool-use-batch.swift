@@ -26,24 +26,24 @@ public enum AgentToolUseDisposition: String, Sendable, Codable, Hashable, CaseIt
 }
 
 public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
-    public var toolCall: ToolCall
+    public var functionCall: FunctionCall
     public var disposition: AgentToolUseDisposition
     public var preflight: ToolPreflight?
-    public var result: ToolCall.Response?
+    public var result: FunctionCall.Response?
     public var recovery: Recovery.Record?
     public var observations: [ToolResultObservation]
     public var updatedAt: Date
 
     public init(
-        toolCall: ToolCall,
+        functionCall: FunctionCall,
         disposition: AgentToolUseDisposition = .pending,
         preflight: ToolPreflight? = nil,
-        result: ToolCall.Response? = nil,
+        result: FunctionCall.Response? = nil,
         recovery: Recovery.Record? = nil,
         observations: [ToolResultObservation] = [],
         updatedAt: Date = Date()
     ) {
-        self.toolCall = toolCall
+        self.functionCall = functionCall
         self.disposition = disposition
         self.preflight = preflight
         self.result = result
@@ -53,16 +53,16 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case toolCall, disposition, preflight, result, recovery, observations, updatedAt
+        case functionCall, disposition, preflight, result, recovery, observations, updatedAt
     }
 
     public init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
-            toolCall: try values.decode(ToolCall.self, forKey: .toolCall),
+            functionCall: try values.decode(FunctionCall.self, forKey: .functionCall),
             disposition: try values.decode(AgentToolUseDisposition.self, forKey: .disposition),
             preflight: try values.decodeIfPresent(ToolPreflight.self, forKey: .preflight),
-            result: try values.decodeIfPresent(ToolCall.Response.self, forKey: .result),
+            result: try values.decodeIfPresent(FunctionCall.Response.self, forKey: .result),
             recovery: try values.decodeIfPresent(Recovery.Record.self, forKey: .recovery),
             observations: try values.decodeIfPresent([ToolResultObservation].self, forKey: .observations) ?? [],
             updatedAt: try values.decode(Date.self, forKey: .updatedAt)
@@ -70,7 +70,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
     }
 
     public var id: String {
-        toolCall.id
+        functionCall.id
     }
 
     public var isTerminal: Bool {
@@ -111,7 +111,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
     public init(
         id: String = UUID().uuidString,
         assistantMessageID: String,
-        toolCalls: [ToolCall],
+        functionCalls: [FunctionCall],
         status: AgentToolUseStatus = .open,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
@@ -119,9 +119,9 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
         self.id = id
         self.assistantMessageID = assistantMessageID
         self.status = status
-        self.records = toolCalls.map {
+        self.records = functionCalls.map {
             AgentToolUseRecord(
-                toolCall: $0,
+                functionCall: $0,
                 updatedAt: updatedAt
             )
         }
@@ -135,7 +135,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
     ) {
         self.init(
             assistantMessageID: response.message.id,
-            toolCalls: response.message.toolUseCalls,
+            functionCalls: response.message.toolUseCalls,
             status: status
         )
     }
@@ -146,13 +146,13 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
     ) {
         self.init(
             assistantMessageID: assistantMessage.id,
-            toolCalls: assistantMessage.toolUseCalls,
+            functionCalls: assistantMessage.toolUseCalls,
             status: status
         )
     }
 
-    public var toolCalls: [ToolCall] {
-        records.map(\.toolCall)
+    public var functionCalls: [FunctionCall] {
+        records.map(\.functionCall)
     }
 
     public var pendingRecords: [AgentToolUseRecord] {
@@ -170,18 +170,18 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
     }
 
     public func record(
-        for toolCallID: String
+        for callID: String
     ) -> AgentToolUseRecord? {
         records.first {
-            $0.toolCall.id == toolCallID
+            $0.functionCall.id == callID
         }
     }
 
     public func remaining(
-        after toolCallID: String
-    ) -> [ToolCall] {
+        after callID: String
+    ) -> [FunctionCall] {
         guard let index = records.firstIndex(where: { record in
-            record.toolCall.id == toolCallID
+            record.functionCall.id == callID
         }) else {
             return []
         }
@@ -195,21 +195,21 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
         }
 
         return records[nextIndex...].compactMap { record in
-            record.isTerminal ? nil : record.toolCall
+            record.isTerminal ? nil : record.functionCall
         }
     }
 
     public mutating func mark(
-        toolCallID: String,
+        callID: String,
         disposition: AgentToolUseDisposition,
         preflight: ToolPreflight? = nil,
-        result: ToolCall.Response? = nil,
+        result: FunctionCall.Response? = nil,
         recovery: Recovery.Record? = nil,
         observations: [ToolResultObservation] = [],
         now: Date = Date()
     ) {
         guard let index = records.firstIndex(where: { record in
-            record.toolCall.id == toolCallID
+            record.functionCall.id == callID
         }) else {
             return
         }
@@ -264,9 +264,9 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
 }
 
 private extension Message {
-    var toolUseCalls: [ToolCall] {
+    var toolUseCalls: [FunctionCall] {
         content.blocks.compactMap { block in
-            guard case .tool_call(let call) = block else {
+            guard case .call(let call) = block else {
                 return nil
             }
 

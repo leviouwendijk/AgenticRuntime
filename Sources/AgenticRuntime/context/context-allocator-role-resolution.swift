@@ -24,6 +24,6 @@ public extension Context.Allocator.Program {
         guard let binding = installed.program(identifier) else {
             throw ContextAllocatorError.unavailableProgram(identifier)
         }
-        self.init(binding: binding.program)
+        self.init(binding: binding)
     }
 }

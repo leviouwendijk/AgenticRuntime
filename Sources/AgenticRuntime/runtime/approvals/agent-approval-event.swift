@@ -29,7 +29,7 @@ public struct AgentApprovalEvent:
     public let kind: Kind
     public let createdAt: Date
     public let iteration: Int
-    public let toolCallID: String?
+    public let callID: String?
     public let toolName: String?
     public let decision: ApprovalDecision?
     public let summary: String
@@ -41,7 +41,7 @@ public struct AgentApprovalEvent:
         kind: Kind,
         createdAt: Date = Date(),
         iteration: Int,
-        toolCallID: String? = nil,
+        callID: String? = nil,
         toolName: String? = nil,
         decision: ApprovalDecision? = nil,
         summary: String
@@ -52,7 +52,7 @@ public struct AgentApprovalEvent:
         self.kind = kind
         self.createdAt = createdAt
         self.iteration = iteration
-        self.toolCallID = toolCallID
+        self.callID = callID
         self.toolName = toolName
         self.decision = decision
         self.summary = summary
@@ -115,7 +115,7 @@ public extension AgentApprovalEvent {
             runEventID: runEvent.id,
             kind: kind,
             iteration: runEvent.iteration,
-            toolCallID: runEvent.toolCallID,
+            callID: runEvent.callID,
             toolName: runEvent.toolName,
             decision: decision,
             summary: runEvent.summary

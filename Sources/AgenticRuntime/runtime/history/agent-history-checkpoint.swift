@@ -1,7 +1,7 @@
 import Agentic
 import Foundation
 
-public extension AgentRunner {
+public extension AgentExecutor {
     enum Phase: String, Sendable, Codable, Hashable, CaseIterable {
         case ready_for_model
         case receiving_model_response
@@ -243,7 +243,7 @@ public extension AgentRunner {
     }
 }
 
-public extension AgentRunner.Checkpoint {
+public extension AgentExecutor.Checkpoint {
     var session: AgentSession {
         .init(
             id: id,

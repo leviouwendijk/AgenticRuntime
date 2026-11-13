@@ -1,6 +1,6 @@
 import Agentic
 
-public extension AgentRunner {
+public extension AgentExecutor {
     struct Configuration: Sendable, Codable, Hashable {
         public var runLimits: AgentRunLimits
         public var contextMode: Context.Mode
@@ -67,7 +67,7 @@ public extension AgentRunner {
     }
 }
 
-public extension AgentRunner.Configuration {
+public extension AgentExecutor.Configuration {
     var toolExecutionPolicy: ToolExecutionPolicy {
         .init(
             autonomyMode: autonomyMode,

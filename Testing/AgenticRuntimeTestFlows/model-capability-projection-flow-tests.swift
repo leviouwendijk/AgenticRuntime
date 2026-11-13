@@ -93,14 +93,14 @@ extension AgenticProgramRuntimeFlowTesting {
     static func runCapabilityContractAlignment() throws -> [TestDiagnostic] {
         let expectedInput = ProjectionInput.jsonschema.jsonvalue
         let expectedOutput = JSONValue.jsonschema.jsonvalue
-        let program = ProgramExecutionBinding(ProjectionProgram())
+        let program = ProgramBinding(ProjectionProgram())
         let inference = InferenceBinding(ProjectionInference.self)
         let tool = ToolBinding(ProjectionContractTool())
         let hostOnlyTool = ToolBinding(
             ProjectionContractTool(),
             modelContract: .hostOnly
         )
-        let agent = ProjectionChildAgent.descriptor
+        let agent = ProjectionChildAgent.contract
         try Expect.equal(program.reference, ProjectionProgram.reference,
             "Runtime Program execution retains Core bound identity")
         try Expect.equal(inference.reference, ProjectionInference.reference,
@@ -112,7 +112,6 @@ extension AgenticProgramRuntimeFlowTesting {
             ProjectionChildAgent.contract,
             ProjectionContractTool.contract,
             program.contract,
-            program.program.contract,
             inference.contract,
             tool.contract,
             hostOnlyTool.contract,
@@ -128,9 +127,9 @@ extension AgenticProgramRuntimeFlowTesting {
                 "All capability contracts derive their output schema from Output."
             )
         }
-        try Expect.equal(agent.input, expectedInput,
+        try Expect.equal(agent.input.jsonvalue, expectedInput,
             "Agent declaration retains typed input schema.")
-        try Expect.equal(agent.output, expectedOutput,
+        try Expect.equal(agent.output.jsonvalue, expectedOutput,
             "Agent declaration retains typed output schema.")
         try Expect.equal(program.semanticInputSchema.jsonvalue,
             inference.semanticInputSchema.jsonvalue,
@@ -212,13 +211,13 @@ extension AgenticProgramRuntimeFlowTesting {
             projection.functions, fromInventory.functions,
             "State and inventory callers share exactly one projection implementation."
         )
-        let programTarget = CapabilityInvocation.Target.program(
+        let programTarget = CapabilityReference.program(
             ProjectionProgram.definition.identifier
         )
-        let inferenceTarget = CapabilityInvocation.Target.inference(
+        let inferenceTarget = CapabilityReference.inference(
             ProjectionInference.definition.identifier
         )
-        let agentTarget = CapabilityInvocation.Target.agent(
+        let agentTarget = CapabilityReference.agent(
             ProjectionChildAgent.definition.identifier
         )
 

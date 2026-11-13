@@ -162,7 +162,7 @@ private struct ClassificationPropagationTool: Tool {
 
     func classify(
         _ error: any Error,
-        phase: ToolCall.Phase,
+        phase: ToolExecution.Phase,
         input _: Input?
     ) -> Recovery.Incident? {
         guard
@@ -199,7 +199,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 probe: probe
             )
         }
-        let runner = ProgramRunner(
+        let executor = ProgramExecutor(
             services: .init(
                 program: .init(
                     tools: GovernedProgramToolExecutor(
@@ -211,7 +211,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 )
             )
         )
-        let execution = try await runner.execute(
+        let execution = try await executor.execute(
             ClassificationPropagationProgram(),
             input: ClassificationPropagationInput()
         )

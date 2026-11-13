@@ -2,7 +2,7 @@ import Agentic
 
 public struct ModeRuntimeApplication: Sendable {
     public var selection: ModeSelection
-    public var configuration: AgentRunner.Configuration
+    public var configuration: AgentExecutor.Configuration
     public var modelSelection: AgentModelSelection
     public var toolRegistry: ToolRegistry
     /// Native, catalog-backed selection in the order requested by the Mode.
@@ -16,7 +16,7 @@ public struct ModeRuntimeApplication: Sendable {
 
     public init(
         selection: ModeSelection,
-        configuration: AgentRunner.Configuration,
+        configuration: AgentExecutor.Configuration,
         modelSelection: AgentModelSelection,
         toolRegistry: ToolRegistry,
         capabilityState: AgentCapabilityState,
@@ -45,7 +45,7 @@ public struct ModeRuntimeApplication: Sendable {
     /// that a realized agent has established.
     public init(
         selection: ModeSelection,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         tools: ToolRegistry,
         capabilityState: AgentCapabilityState,
         instructionCatalog: Catalog = .none,

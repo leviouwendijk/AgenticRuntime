@@ -5,7 +5,7 @@ import Foundation
 
 internal struct AgentLoop: Sendable {
     let model: RuntimeServices.Model
-    let configuration: AgentRunner.Configuration
+    let configuration: AgentExecutor.Configuration
     let tooling: RuntimeServices.Tooling
     let inventory: CapabilityInventory
     let delegation: AgentDelegation?
@@ -21,7 +21,7 @@ internal struct AgentLoop: Sendable {
 
     init(
         model: RuntimeServices.Model,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
         inventory: CapabilityInventory,
         delegation: AgentDelegation? = nil,
@@ -90,8 +90,8 @@ internal struct AgentLoop: Sendable {
     func run(
         _ request: AgentRequest,
         sessionID: String = UUID().uuidString
-    ) async throws -> AgentRunner.Result {
-        var checkpoint = AgentRunner.Checkpoint(
+    ) async throws -> AgentExecutor.Result {
+        var checkpoint = AgentExecutor.Checkpoint(
             id: sessionID,
             originalRequest: request,
             state: .init(
@@ -126,18 +126,18 @@ internal struct AgentLoop: Sendable {
     }
 
     func resume(
-        _ checkpoint: AgentRunner.Checkpoint
-    ) async throws -> AgentRunner.Result {
+        _ checkpoint: AgentExecutor.Checkpoint
+    ) async throws -> AgentExecutor.Result {
         try await runLoop(
             from: checkpoint
         )
     }
 
     func resume(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         userInput: String,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resumeWithUserInput(
             checkpoint,
             userInput: userInput,
@@ -146,10 +146,10 @@ internal struct AgentLoop: Sendable {
     }
 
     func resume(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         answer: UserInputAnswer,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resumeWithUserInput(
             checkpoint,
             reply: .answer(
@@ -160,10 +160,10 @@ internal struct AgentLoop: Sendable {
     }
 
     func resume(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         reply: UserInputReply,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resumeWithUserInput(
             checkpoint,
             reply: reply,
@@ -172,10 +172,10 @@ internal struct AgentLoop: Sendable {
     }
 
     func resume(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         workspaceAccessResolution: WorkspaceAccessResolution,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resumeWithWorkspaceAccess(
             checkpoint,
             resolution: workspaceAccessResolution,
@@ -184,10 +184,10 @@ internal struct AgentLoop: Sendable {
     }
 
     func resume(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         runLimitResolution: AgentRunLimitResolution,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resumeFromRunLimit(
             checkpoint,
             resolution: runLimitResolution,
@@ -196,9 +196,9 @@ internal struct AgentLoop: Sendable {
     }
 
     func resume(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         interaction response: Run.Interaction.Response
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         guard checkpoint.id == response.sessionID else {
             throw Run.Interaction.Error.sessionMismatch(
                 expected: checkpoint.id,
@@ -270,7 +270,7 @@ internal struct AgentLoop: Sendable {
 extension AgentLoop {
     struct ToolDenialPayload: Encodable, Sendable {
         let kind: String
-        let toolCallID: String
+        let callID: String
         let toolName: String
         let requirement: String
         let summary: String
@@ -278,14 +278,14 @@ extension AgentLoop {
 
     struct ToolErrorPayload: Encodable, Sendable {
         let kind: String
-        let toolCallID: String
+        let callID: String
         let toolName: String
         let message: String
     }
 
     struct ToolSkipPayload: Encodable, Sendable {
         let kind: String
-        let toolCallID: String
+        let callID: String
         let toolName: String
         let summary: String
     }
@@ -304,7 +304,7 @@ extension AgentLoop {
     }
 
     enum ToolProcessingOutcome {
-        case continueLoop(AgentRunner.Checkpoint)
-        case result(AgentRunner.Result)
+        case continueLoop(AgentExecutor.Checkpoint)
+        case result(AgentExecutor.Result)
     }
 }

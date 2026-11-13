@@ -34,14 +34,14 @@ extension AgenticProgramRuntimeFlowTesting {
                 "fixture_request": "transport",
             ]
         )
-        let runner = AgentRunner(
+        let executor = AgentExecutor(
             model: .init(
                 invoker: invoker,
                 selection: selection
             ),
             capabilityState: AgentCapabilityState(installed: .none)
         )
-        let result = try await runner.run(
+        let result = try await executor.run(
             request,
             sessionID: "fixture-model-invocation-buffered"
         )
@@ -66,7 +66,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "Runtime transports the runner model selection through AgentModelInvocation"
         )
         try Expect.equal(
-            invocation.context.toolCallResolver != nil,
+            invocation.context.functionCallResolver != nil,
             true,
             "Runtime supplies the governed model tool-call resolver through invocation context"
         )
@@ -102,7 +102,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ),
             .field(
                 "context_tool_resolver",
-                String(invocation.context.toolCallResolver != nil)
+                String(invocation.context.functionCallResolver != nil)
             ),
         ]
     }
@@ -124,10 +124,10 @@ extension AgenticProgramRuntimeFlowTesting {
                 ),
             ]
         )
-        var configuration = AgentRunner.Configuration.default
+        var configuration = AgentExecutor.Configuration.default
         configuration.responseDelivery = .stream
 
-        let runner = AgentRunner(
+        let executor = AgentExecutor(
             model: .init(
                 invoker: invoker,
                 selection: selection
@@ -135,7 +135,7 @@ extension AgenticProgramRuntimeFlowTesting {
             configuration: configuration,
             capabilityState: AgentCapabilityState(installed: .none)
         )
-        let result = try await runner.run(
+        let result = try await executor.run(
             request,
             sessionID: "fixture-model-invocation-stream"
         )
@@ -208,7 +208,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let invoker = FixtureModelInvoker(
             recorder: recorder
         )
-        let runner = AgentRunner(
+        let executor = AgentExecutor(
             model: .init(
                 invoker: invoker
             ),
@@ -223,7 +223,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ]
         )
 
-        _ = try await runner.run(
+        _ = try await executor.run(
             request,
             sessionID: "fixture-mode-model-selection"
         )
@@ -264,7 +264,7 @@ extension AgenticProgramRuntimeFlowTesting {
     {
         let modelRecorder = FixtureModelInvocationRecorder()
         let eventSink = FixtureRuntimeEventSink()
-        let runner = AgentRunner(
+        let executor = AgentExecutor(
             model: .init(
                 invoker: FixtureModelInvoker(
                     recorder: modelRecorder
@@ -286,7 +286,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ]
         )
 
-        _ = try await runner.run(
+        _ = try await executor.run(
             request,
             sessionID: "fixture-runtime-recording-services"
         )
@@ -301,7 +301,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             messages.last?.content.text,
             "fixture-response",
-            "AgentRunner propagates recording services into Agent execution"
+            "AgentExecutor propagates recording services into Agent execution"
         )
 
         return [

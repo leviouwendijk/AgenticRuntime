@@ -3,8 +3,8 @@ import Foundation
 
 extension AgentLoop {
     func performStreamingModelTurn(
-        from checkpoint: AgentRunner.Checkpoint
-    ) async throws -> AgentRunner.Checkpoint {
+        from checkpoint: AgentExecutor.Checkpoint
+    ) async throws -> AgentExecutor.Checkpoint {
         var checkpoint = checkpoint
 
         try await compactIfNeeded(
@@ -22,7 +22,8 @@ extension AgentLoop {
                 from: checkpoint.originalRequest,
                 messages: checkpoint.state.messages,
                 definitions: advertisedTools,
-                iteration: checkpoint.state.iteration
+                iteration: checkpoint.state.iteration,
+                sessionID: checkpoint.id
             ),
             checkpoint: checkpoint
         )
@@ -159,7 +160,7 @@ extension AgentLoop {
                 nativeInvocations: await journal.snapshot(),
                 nativeSemanticInvocations: await journal.semanticSnapshot()
             )
-        } catch RuntimeToolCallBoundary.capabilities_changed {
+        } catch FunctionCallBoundaryError.capabilities_changed {
             try await finishNativeCapabilityBoundary(
                 invocations: await journal.snapshot(),
                 semanticInvocations: await journal.semanticSnapshot(),
@@ -167,7 +168,7 @@ extension AgentLoop {
             )
 
             return checkpoint
-        } catch AgentToolCallResolutionError.needsHumanReview(let review) {
+        } catch FunctionCallResolutionError.needsHumanReview(let review) {
             try await suspendForNativeApproval(
                 review,
                 invocations: await journal.snapshot(),
@@ -213,11 +214,11 @@ extension AgentLoop {
     private func finalizeStreamingModelTurn(
         preparedRequest: AgentRequest,
         result: AgentModelInvocation.Result,
-        checkpoint: AgentRunner.Checkpoint,
+        checkpoint: AgentExecutor.Checkpoint,
         turnIndex: Int,
         nativeInvocations: [ToolInvocation.Result],
         nativeSemanticInvocations: [ModelSemanticInvocationResult]
-    ) async throws -> AgentRunner.Checkpoint {
+    ) async throws -> AgentExecutor.Checkpoint {
         var checkpoint = checkpoint
         let response = result.response
 
@@ -273,12 +274,12 @@ extension AgentLoop {
             )
         }
 
-        let toolCalls = toolCalls(
+        let functionCalls = functionCalls(
             in: response.message
         )
 
         if response.stopReason == AgentStopReason.tool_use,
-           !toolCalls.isEmpty {
+           !functionCalls.isEmpty {
             checkpoint.phase = .processing_tool_calls
         } else {
             checkpoint.phase = .completed
@@ -292,7 +293,7 @@ extension AgentLoop {
     }
 
     private func failStreamingTurn(
-        checkpoint: inout AgentRunner.Checkpoint,
+        checkpoint: inout AgentExecutor.Checkpoint,
         accumulator: AgentStreamAccumulator,
         error: Error
     ) async throws {
@@ -331,7 +332,7 @@ extension AgentLoop {
     private func recordStreamProgress(
         _ event: AgentStreamEvent,
         accumulator: AgentStreamAccumulator,
-        checkpoint: inout AgentRunner.Checkpoint,
+        checkpoint: inout AgentExecutor.Checkpoint,
         checkpointState: inout AgentStreamCheckpointState
     ) async throws {
         checkpointState.record(
@@ -342,27 +343,27 @@ extension AgentLoop {
         case .messagedelta:
             return
 
-        case .toolcall(let toolCall):
+        case .call(let functionCall):
             try await appendRunEvent(
                 .init(
                     kind: .model_stream_tool_call,
                     iteration: checkpoint.state.iteration,
                     messageID: accumulator.partial.messageID,
-                    toolCallID: toolCall.id,
-                    toolName: toolCall.tool.rawValue,
+                    callID: functionCall.id,
+                    toolName: functionCall.name,
                     summary: "streamed tool call"
                 ),
                 to: &checkpoint
             )
 
-        case .toolresult(let result):
+        case .result(let result):
             try await appendRunEvent(
                 .init(
                     kind: result.isError ? .tool_error : .tool_result,
                     iteration: checkpoint.state.iteration,
                     messageID: accumulator.partial.messageID,
-                    toolCallID: result.call.id,
-                    toolName: result.call.tool.rawValue,
+                    callID: result.call.id,
+                    toolName: result.call.name,
                     summary: result.isError
                         ? "streamed tool result error"
                         : "streamed tool result"

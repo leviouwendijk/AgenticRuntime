@@ -239,7 +239,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let suspension = Run.Suspension.workspace_access(
             turnRequest,
             metadata: [
-                "toolCallID": "fixture-request",
+                "callID": "fixture-request",
                 "toolName": "request_path_grant"
             ]
         )

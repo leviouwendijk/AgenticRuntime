@@ -23,10 +23,10 @@ extension AgenticProgramRuntimeFlowTesting {
                 "fixture_services": "shared",
             ]
         )
-        let runner = ProgramRunner(
+        let executor = ProgramExecutor(
             services: services
         )
-        let execution = try await runner.execute(
+        let execution = try await executor.execute(
             FixtureProgram(),
             input: .init(
                 value: "services",
@@ -77,14 +77,14 @@ extension AgenticProgramRuntimeFlowTesting {
         async throws
         -> [TestDiagnostic]
     {
-        let runner = ProgramRunner(
+        let executor = ProgramExecutor(
             services: .init(
                 program: .init(
                     tools: FixtureProgramToolExecutor()
                 )
             )
         )
-        let execution = try await runner.execute(
+        let execution = try await executor.execute(
             FixtureProgram(),
             input: .init(
                 value: "hello",
@@ -178,14 +178,14 @@ extension AgenticProgramRuntimeFlowTesting {
         async throws
         -> [TestDiagnostic]
     {
-        let runner = ProgramRunner(
+        let executor = ProgramExecutor(
             services: .init(
                 program: .init(
                     tools: FixtureProgramToolExecutor()
                 )
             )
         )
-        let execution = try await runner.execute(
+        let execution = try await executor.execute(
             FixtureProgram(),
             input: .init(
                 value: "failure",
@@ -252,14 +252,14 @@ extension AgenticProgramRuntimeFlowTesting {
                     FixtureInferenceRealization.self
                 )
             }
-        let runner = ProgramRunner(
+        let executor = ProgramExecutor(
             services: .init(
                 program: .init(
                     inference: FixtureProgramInferenceExecutor()
                 )
             )
         )
-        let execution = try await runner.execute(
+        let execution = try await executor.execute(
             FixtureInferenceProgram(),
             input: .init(
                 value: "hello"
@@ -365,7 +365,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "inference executor metadata remains on canonical inference evidence"
         )
 
-        let missingBindingExecution = try await runner.execute(
+        let missingBindingExecution = try await executor.execute(
             FixtureInferenceProgram(),
             input: .init(
                 value: "missing"
@@ -531,9 +531,9 @@ private enum FixtureProgramToolError:
 }
 
 private struct FixtureProgramToolExecutor:
-    ProgramToolExecuting
+    GovernedToolExecuting
 {
-    func invoke(
+    func execute(
         _ identifier: ToolIdentifier,
         input: JSONValue
     ) async throws -> ToolExecution.Result {
@@ -546,8 +546,8 @@ private struct FixtureProgramToolExecutor:
         )
 
         return ToolExecution.Result(
-            result: ToolCall.Response(
-                call: .init(id: "fixture-\(identifier.rawValue)", tool: identifier),
+            result: FunctionCall.Response(
+                call: .init(id: "fixture-\(identifier.rawValue)", name: identifier.rawValue),
                 output: try JSONValue.encoding(
                     FixtureOutput(
                         value: "tool:\(decoded.value)"

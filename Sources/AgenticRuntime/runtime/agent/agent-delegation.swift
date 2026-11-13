@@ -29,7 +29,7 @@ public actor AgentDelegation {
 
     public struct Snapshot: Sendable {
         public let session: Session
-        public let phase: AgentRunner.Phase?
+        public let phase: AgentExecutor.Phase?
         public let requestedScope: String?
         public let executing: Bool
         public let settled: Bool
@@ -63,9 +63,9 @@ public actor AgentDelegation {
         let realization: AgentRealization
         let capabilities: AgentCapabilityState
         var settled: Bool
-        var runner: AgentRunner? = nil
+        var executor: AgentExecutor? = nil
         var executing: Bool = false
-        var latestResult: AgentRunner.Result? = nil
+        var latestResult: AgentExecutor.Result? = nil
         var requestedScope: String? = nil
         var responseFormat: AgentResponseFormat? = nil
         var mutationsWithdrawn: Bool = false
@@ -81,7 +81,7 @@ public actor AgentDelegation {
     private var entries: [String: Entry]
 
     /// The root's live capability state should be the same state held by its
-    /// AgentRunner. Runtime composition is responsible for sharing that actor.
+    /// AgentExecutor. Runtime composition is responsible for sharing that actor.
     public init(
         runtime: AgenticRuntime,
         root: AgentIdentifier,
@@ -115,7 +115,7 @@ public actor AgentDelegation {
         entries[id]?.session
     }
 
-    public func latestResult(_ id: String) -> AgentRunner.Result? {
+    public func latestResult(_ id: String) -> AgentExecutor.Result? {
         entries[id]?.latestResult
     }
 
@@ -151,17 +151,17 @@ public actor AgentDelegation {
         mode: Run.Interruption.Mode,
         reason: String?
     ) async {
-        let active = entries.values.compactMap { entry -> AgentRunner? in
+        let active = entries.values.compactMap { entry -> AgentExecutor? in
             guard !entry.settled,
                   isDescendant(entry.session, of: parentID) else {
                 return nil
             }
-            return entry.runner
+            return entry.executor
         }
         await withTaskGroup(of: Void.self) { group in
-            for runner in active {
+            for executor in active {
                 group.addTask {
-                    await runner.requestInterruption(mode, reason: reason)
+                    await executor.requestInterruption(mode, reason: reason)
                 }
             }
         }
@@ -175,7 +175,7 @@ public actor AgentDelegation {
         _ sessionID: String,
         mode: Run.Interruption.Mode,
         reason: String? = nil
-    ) async throws -> AgentRunner.Result? {
+    ) async throws -> AgentExecutor.Result? {
         guard let entry = entries[sessionID] else {
             throw Failure.unknownSession(sessionID)
         }
@@ -185,7 +185,7 @@ public actor AgentDelegation {
         guard !entry.settled else {
             throw Failure.settledSession(sessionID)
         }
-        guard let runner = entry.runner else {
+        guard let executor = entry.executor else {
             throw Failure.executionNotStarted(sessionID)
         }
         guard !entries.values.contains(where: {
@@ -194,11 +194,11 @@ public actor AgentDelegation {
             throw Failure.activeDescendants(sessionID)
         }
         if entry.executing || entry.latestResult == nil {
-            await runner.requestInterruption(mode, reason: reason)
+            await executor.requestInterruption(mode, reason: reason)
             return nil
         }
-        return try await perform(sessionID) { runner in
-            try await runner.interrupt(
+        return try await perform(sessionID) { executor in
+            try await executor.interrupt(
                 sessionID: sessionID,
                 mode: mode,
                 reason: reason
@@ -224,7 +224,7 @@ public actor AgentDelegation {
             throw Failure.workerNotTerminal(sessionID)
         }
         if entry.mutationsWithdrawn { return }
-        if let workspace = entry.runner?.tooling.workspace,
+        if let workspace = entry.executor?.tooling.workspace,
            case .coordinated(let participant) = workspace.execution.mutations {
             try await participant.close()
         }
@@ -235,7 +235,7 @@ public actor AgentDelegation {
     public func withdrawWorkerMutations() async {
         for entry in entries.values {
             guard entry.session.parentSessionID != nil,
-                  let context = entry.runner?.tooling.workspace else {
+                  let context = entry.executor?.tooling.workspace else {
                 continue
             }
             if case .coordinated(let participant) = context.execution.mutations {
@@ -342,7 +342,7 @@ public actor AgentDelegation {
 
     /// Settle only a terminal child. The eventual caller must retain the
     /// reservation when the child suspends, awaits approval or is interruptible.
-    public func settle(_ result: AgentRunner.Result) throws {
+    public func settle(_ result: AgentExecutor.Result) throws {
         let sessionID = result.sessionID
         guard result.isCompleted || result.isFailed || result.isInterrupted else {
             throw Failure.nonterminalResult(sessionID)
@@ -375,10 +375,10 @@ public actor AgentDelegation {
         from parentSessionID: String,
         sessionID: String,
         model: RuntimeServices.Model,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
         recording: RuntimeServices.Recording = .init()
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         let session = try await begin(
             agent,
             from: parentSessionID,
@@ -402,7 +402,7 @@ public actor AgentDelegation {
         if let childRunLimits {
             childConfiguration.runLimits = childRunLimits
         }
-        entry.runner = runtime.makeAgentRunner(
+        entry.executor = runtime.makeAgentExecutor(
             realization: entry.realization,
             capabilityState: entry.capabilities,
             model: model,
@@ -412,21 +412,25 @@ public actor AgentDelegation {
             recording: .init(
                 historyStore: recording.historyStore,
                 eventSinks: [],
-                stateSinks: [],
+                // Children keep feeding session history so their compacted
+                // context stays retrievable; presentation sinks stay parent-only.
+                stateSinks: recording.stateSinks.filter {
+                    $0 is AgentSessionHistory
+                },
                 costTracker: recording.costTracker
             )
         )
         entries[session.id] = entry
-        return try await perform(session.id) { runner in
-            try await runner.run(request, sessionID: session.id)
+        return try await perform(session.id) { executor in
+            try await executor.run(request, sessionID: session.id)
         }
     }
 
     /// Continue the same admitted child runner rather than starting another
     /// root Agent. The runner owns its checkpoint restoration semantics.
-    public func resume(_ sessionID: String) async throws -> AgentRunner.Result {
-        try await perform(sessionID) { runner in
-            try await runner.resume(sessionID: sessionID)
+    public func resume(_ sessionID: String) async throws -> AgentExecutor.Result {
+        try await perform(sessionID) { executor in
+            try await executor.resume(sessionID: sessionID)
         }
     }
 
@@ -434,9 +438,9 @@ public actor AgentDelegation {
         _ sessionID: String,
         reply: UserInputReply,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
-        try await perform(sessionID) { runner in
-            try await runner.resume(
+    ) async throws -> AgentExecutor.Result {
+        try await perform(sessionID) { executor in
+            try await executor.resume(
                 sessionID: sessionID,
                 reply: reply,
                 metadata: metadata
@@ -447,15 +451,15 @@ public actor AgentDelegation {
     public func resume(
         _ sessionID: String,
         interaction response: Run.Interaction.Response
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         guard response.sessionID == sessionID else {
             throw Run.Interaction.Error.sessionMismatch(
                 expected: sessionID,
                 received: response.sessionID
             )
         }
-        return try await perform(sessionID) { runner in
-            try await runner.resume(interaction: response)
+        return try await perform(sessionID) { executor in
+            try await executor.resume(interaction: response)
         }
     }
 
@@ -464,8 +468,8 @@ public actor AgentDelegation {
     /// may still require repair or resumption. No implicit root retry occurs.
     private func perform(
         _ sessionID: String,
-        operation: @Sendable (AgentRunner) async throws -> AgentRunner.Result
-    ) async throws -> AgentRunner.Result {
+        operation: @Sendable (AgentExecutor) async throws -> AgentExecutor.Result
+    ) async throws -> AgentExecutor.Result {
         guard var entry = entries[sessionID] else {
             throw Failure.unknownSession(sessionID)
         }
@@ -475,13 +479,13 @@ public actor AgentDelegation {
         guard !entry.executing else {
             throw Failure.executionInProgress(sessionID)
         }
-        guard let runner = entry.runner else {
+        guard let executor = entry.executor else {
             throw Failure.executionNotStarted(sessionID)
         }
         entry.executing = true
         entries[sessionID] = entry
         do {
-            let result = try await operation(runner)
+            let result = try await operation(executor)
             guard result.sessionID == sessionID else {
                 throw Failure.resultIdentityMismatch(
                     expected: sessionID,

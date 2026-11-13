@@ -1,4 +1,4 @@
-public extension AgentRunner {
+public extension AgentExecutor {
     func requestInterruption(
         _ mode: Run.Interruption.Mode,
         reason: String? = nil
@@ -13,7 +13,7 @@ public extension AgentRunner {
         sessionID: String,
         mode: Run.Interruption.Mode,
         reason: String? = nil
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }

@@ -1,7 +1,7 @@
-public extension AgentRunner {
+public extension AgentExecutor {
     func resume(
         interaction response: Run.Interaction.Response
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }

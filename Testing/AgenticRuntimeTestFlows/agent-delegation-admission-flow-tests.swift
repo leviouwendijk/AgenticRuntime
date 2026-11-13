@@ -143,7 +143,7 @@ private enum DelegationReentrantRootFixture: Agent {
     )
 }
 
-private func terminalDelegationResult(_ sessionID: String) -> AgentRunner.Result {
+private func terminalDelegationResult(_ sessionID: String) -> AgentExecutor.Result {
     .completed(
         sessionID: sessionID,
         response: AgentResponse(
@@ -250,7 +250,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
         var denied_nonterminal = false
         do {
-            try await admission.settle(AgentRunner.Result(
+            try await admission.settle(AgentExecutor.Result(
                 sessionID: "grandchild-session",
                 phase: .suspended,
                 response: nil,
@@ -409,13 +409,13 @@ extension AgenticProgramRuntimeFlowTesting {
 }
 
 private actor DelegatedCheckpointStore: AgentHistoryStore {
-    private var values: [String: AgentRunner.Checkpoint] = [:]
+    private var values: [String: AgentExecutor.Checkpoint] = [:]
 
-    func loadCheckpoint(sessionID: String) async throws -> AgentRunner.Checkpoint? {
+    func loadCheckpoint(sessionID: String) async throws -> AgentExecutor.Checkpoint? {
         values[sessionID]
     }
 
-    func saveCheckpoint(_ checkpoint: AgentRunner.Checkpoint) async throws {
+    func saveCheckpoint(_ checkpoint: AgentExecutor.Checkpoint) async throws {
         values[checkpoint.id] = checkpoint
     }
 
@@ -521,9 +521,9 @@ private struct DelegatedTextRouteInvoker: AgentModelInvoking {
                 message: Message(
                     role: .assistant,
                     content: MessageContent(blocks: [
-                        .tool_call(ToolCall(
+                        .call(FunctionCall(
                             id: "delegation-text-call",
-                            tool: ToolIdentifier(rawValue: function),
+                            name: function,
                             input: .object([
                                 "arguments": .string("Perform the bounded task")
                             ])
@@ -609,7 +609,7 @@ extension AgenticProgramRuntimeFlowTesting {
             install(DelegationPreferredSelectionFixture.self)
         }
         let runtime = try await AgenticRuntime(application: application)
-        let root = try runtime.makeAgentRunner(
+        let root = try runtime.makeAgentExecutor(
             identifiedBy: DelegationRootFixture.identifier,
             model: .init(invoker: DelegatedExecutionModel(recorder: .init()))
         )
@@ -640,7 +640,7 @@ extension AgenticProgramRuntimeFlowTesting {
             model: model
         )
         try Expect.true(child.isCompleted, "Governed child executes to completion")
-        try Expect.equal(child.sessionID, "real-child", "Reserved child identity reaches AgentRunner")
+        try Expect.equal(child.sessionID, "real-child", "Reserved child identity reaches AgentExecutor")
         try Expect.equal(
             child.response?.message.content.text,
             "delegated child completed",
@@ -670,7 +670,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let lineage = await admission.session("real-child")
         try Expect.equal(lineage?.parentSessionID, "real-parent", "Executed child keeps parent lineage")
 
-        let preferredRunner = try runtime.makeAgentRunner(
+        let preferredRunner = try runtime.makeAgentExecutor(
             identifiedBy: DelegationPreferredSelectionFixture.identifier,
             model: model
         )
@@ -694,7 +694,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "Agent override cannot weaken inherited hard restrictions"
         )
 
-        let explicitRunner = try runtime.makeAgentRunner(
+        let explicitRunner = try runtime.makeAgentExecutor(
             identifiedBy: DelegationPreferredSelectionFixture.identifier,
             model: model,
             modelPreferences: .init(
@@ -767,7 +767,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let inventory = CapabilityInventory(installed: runtime.installed, state: modelState)
         let projection = try await inventory.modelProjection()
-        let agentTarget = CapabilityInvocation.Target.agent(DelegationLeafFixture.identifier)
+        let agentTarget = CapabilityReference.agent(DelegationLeafFixture.identifier)
         let function = try Expect.notNil(
             projection.name(for: agentTarget),
             "Visible Agent capabilities are model-callable"
@@ -819,7 +819,7 @@ extension AgenticProgramRuntimeFlowTesting {
             recorder: textRecorder,
             function: textFunction
         )
-        let textRunner = AgentRunner(
+        let textRunner = AgentExecutor(
             model: .init(invoker: textInvoker, selection: model.selection),
             inventory: textInventory,
             delegation: textDelegation
@@ -847,8 +847,8 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let forwardedResults = textCalls.last?.request.messages
             .flatMap(\.content.blocks)
-            .compactMap { block -> ToolCall.Response? in
-                if case .tool_result(let response) = block { return response }
+            .compactMap { block -> FunctionCall.Response? in
+                if case .result(let response) = block { return response }
                 return nil
             } ?? []
         try Expect.equal(
@@ -882,7 +882,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let resumeRecorder = DelegatedTextRouteRecorder()
         let resumeHistory = DelegatedCheckpointStore()
-        let resumeRunner = AgentRunner(
+        let resumeRunner = AgentExecutor(
             model: .init(
                 invoker: DelegatedTextRouteInvoker(
                     recorder: resumeRecorder,
@@ -922,8 +922,8 @@ extension AgenticProgramRuntimeFlowTesting {
             "Parent resumes once without invoking the stopped child model")
         let resumedResults = resumeInvocations.last?.request.messages
             .flatMap(\.content.blocks)
-            .compactMap { block -> ToolCall.Response? in
-                if case .tool_result(let response) = block { return response }
+            .compactMap { block -> FunctionCall.Response? in
+                if case .result(let response) = block { return response }
                 return nil
             } ?? []
         try Expect.true(resumedResults.first?.isError == true,

@@ -2,10 +2,10 @@ import Agentic
 
 extension AgentLoop {
     func interrupt(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         mode: Run.Interruption.Mode,
         reason: String? = nil
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         var checkpoint = checkpoint
 
         try await applyInterruption(
@@ -42,7 +42,7 @@ extension AgentLoop {
 
     // Recheck at the final execution boundary, not only when a tool batch starts.
     func interruptionBeforeToolExecution(
-        _ checkpoint: AgentRunner.Checkpoint
+        _ checkpoint: AgentExecutor.Checkpoint
     ) async throws -> ToolProcessingOutcome? {
         guard let request = await requestedUrgentInterruption() else {
             return nil
@@ -58,7 +58,7 @@ extension AgentLoop {
     }
 
     func applyInterruption(
-        to checkpoint: inout AgentRunner.Checkpoint,
+        to checkpoint: inout AgentExecutor.Checkpoint,
         request: Run.Interruption
     ) async throws {
         try await closeOutstandingToolCallsForInterruption(
@@ -88,7 +88,7 @@ extension AgentLoop {
     }
 
     func interruptStreamingTurn(
-        checkpoint: inout AgentRunner.Checkpoint,
+        checkpoint: inout AgentExecutor.Checkpoint,
         accumulator: AgentStreamAccumulator,
         request: Run.Interruption
     ) async throws {
@@ -126,11 +126,11 @@ extension AgentLoop {
     }
 
     private func closeOutstandingToolCallsForInterruption(
-        in checkpoint: inout AgentRunner.Checkpoint
+        in checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         if checkpoint.toolBatch == nil,
            let response = checkpoint.lastResponse,
-           !toolCalls(in: response.message).isEmpty
+           !functionCalls(in: response.message).isEmpty
         {
             checkpoint.toolBatch = AgentToolUseBatch(
                 response: response
@@ -146,14 +146,14 @@ extension AgentLoop {
 
         for record in batch.records where !record.isTerminal {
             let result = makeSkippedToolResult(
-                for: record.toolCall,
+                for: record.functionCall,
                 disposition: .skipped_by_user,
                 reason: reason
             )
 
             try await appendToolResult(
                 result,
-                for: record.toolCall,
+                for: record.functionCall,
                 disposition: .skipped_by_user,
                 to: &checkpoint,
                 summary: "skipped because run was interrupted",

@@ -23,7 +23,7 @@ extension AgentLoop {
             throw RuntimeModelToolAuthorizationError.invalidProjection
         }
         return AgentModelInvocationContext(
-            toolCallResolver: RuntimeModelCapabilityCallResolver(
+            functionCallResolver: CapabilityFunctionCallResolver(
                 dispatcher: await modelDispatcher(sessionID: sessionID, journal: journal),
                 projection: projection,
                 journal: journal

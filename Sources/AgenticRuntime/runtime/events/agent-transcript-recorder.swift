@@ -42,19 +42,19 @@ public actor AgentTranscriptRecorder: Run.EventSink {
         )
     }
 
-    public func recordToolCall(
-        _ toolCall: ToolCall
+    public func recordFunctionCall(
+        _ functionCall: FunctionCall
     ) async throws {
         try await store.append(
-            .tool_call(toolCall)
+            .call(functionCall)
         )
     }
 
     public func recordToolResult(
-        _ result: ToolCall.Response
+        _ result: FunctionCall.Response
     ) async throws {
         try await store.append(
-            .tool_result(result)
+            .result(result)
         )
     }
 
@@ -116,9 +116,9 @@ private extension AgentTranscriptRecorder {
             )
         }
 
-        if let toolCallID = event.toolCallID {
+        if let callID = event.callID {
             lines.append(
-                "toolCallID=\(toolCallID)"
+                "callID=\(callID)"
             )
         }
 

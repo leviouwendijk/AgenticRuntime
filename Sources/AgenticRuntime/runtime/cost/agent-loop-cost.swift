@@ -4,7 +4,7 @@ extension AgentLoop {
     func applyProjectedCost(
         for request: AgentRequest,
         route: AgentModelRoute,
-        to checkpoint: inout AgentRunner.Checkpoint,
+        to checkpoint: inout AgentExecutor.Checkpoint,
         turnIndex: Int
     ) async throws {
         guard let costTracker = recording.costTracker else {
@@ -37,7 +37,7 @@ extension AgentLoop {
     func applyActualCost(
         response: AgentResponse,
         route: AgentModelRouteRecord,
-        to checkpoint: inout AgentRunner.Checkpoint,
+        to checkpoint: inout AgentExecutor.Checkpoint,
         turnIndex: Int
     ) async throws {
         guard let costTracker = recording.costTracker else {

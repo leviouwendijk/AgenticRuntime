@@ -2,10 +2,10 @@ import Agentic
 
 extension AgentLoop {
     func resume(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         approvalDecision: ApprovalDecision,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resumeApproval(
             checkpoint,
             decision: approvalDecision,
@@ -16,10 +16,10 @@ extension AgentLoop {
 
 extension AgentLoop {
     func resumeApproval(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         decision: ApprovalDecision,
         metadata: [String: String]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         var checkpoint = checkpoint
 
         guard let pendingApproval = checkpoint.resolvedSuspension?.pendingApproval else {
@@ -34,8 +34,8 @@ extension AgentLoop {
                 .init(
                     kind: .tool_approved,
                     iteration: checkpoint.state.iteration,
-                    toolCallID: pendingApproval.toolCall.id,
-                    toolName: pendingApproval.toolCall.tool.rawValue,
+                    callID: pendingApproval.functionCall.id,
+                    toolName: pendingApproval.functionCall.name,
                     summary: metadata["summary"] ?? "approved after suspended review"
                 ),
                 to: &checkpoint
@@ -53,7 +53,7 @@ extension AgentLoop {
                 )
             }
 
-            let execution = try await executeApprovedToolCall(
+            let execution = try await executeApprovedCall(
                 pendingApproval,
                 advertisedTools: checkpoint.lastAdvertisedTools
             )
@@ -61,7 +61,7 @@ extension AgentLoop {
 
             try await appendToolResult(
                 result,
-                for: pendingApproval.toolCall,
+                for: pendingApproval.functionCall,
                 disposition: result.isError ? .failed_execution : .executed,
                 recovery: execution.recovery,
                 observations: execution.observations,
@@ -75,7 +75,7 @@ extension AgentLoop {
 
             if pendingApproval.preflight.mayInvalidateSourceState {
                 try await appendSkippedSiblings(
-                    after: pendingApproval.toolCall.id,
+                    after: pendingApproval.functionCall.id,
                     to: &checkpoint,
                     disposition: .skipped_after_mutation,
                     reason: staleMutationSiblingReason
@@ -98,14 +98,14 @@ extension AgentLoop {
 
         case .denied:
             let result = try makeDeniedToolResult(
-                for: pendingApproval.toolCall,
+                for: pendingApproval.functionCall,
                 preflight: pendingApproval.preflight,
                 requirement: pendingApproval.requirement
             )
 
             try await appendToolResult(
                 result,
-                for: pendingApproval.toolCall,
+                for: pendingApproval.functionCall,
                 disposition: .skipped_after_denial,
                 to: &checkpoint,
                 summary: metadata["summary"] ?? "denied after suspended review"
@@ -115,15 +115,15 @@ extension AgentLoop {
                 .init(
                     kind: .tool_denied,
                     iteration: checkpoint.state.iteration,
-                    toolCallID: pendingApproval.toolCall.id,
-                    toolName: pendingApproval.toolCall.tool.rawValue,
+                    callID: pendingApproval.functionCall.id,
+                    toolName: pendingApproval.functionCall.name,
                     summary: metadata["summary"] ?? "denied after suspended review"
                 ),
                 to: &checkpoint
             )
 
             try await appendSkippedSiblings(
-                after: pendingApproval.toolCall.id,
+                after: pendingApproval.functionCall.id,
                 to: &checkpoint,
                 disposition: .skipped_after_denial,
                 reason: deniedSiblingReason
@@ -143,13 +143,13 @@ extension AgentLoop {
 
         case .skipped:
             let result = try makeSkippedToolResult(
-                for: pendingApproval.toolCall,
+                for: pendingApproval.functionCall,
                 summary: metadata["summary"] ?? "skipped after suspended review"
             )
 
             try await appendToolResult(
                 result,
-                for: pendingApproval.toolCall,
+                for: pendingApproval.functionCall,
                 disposition: .skipped_by_user,
                 to: &checkpoint,
                 summary: metadata["summary"] ?? "skipped after suspended review"
@@ -159,8 +159,8 @@ extension AgentLoop {
                 .init(
                     kind: .tool_skipped,
                     iteration: checkpoint.state.iteration,
-                    toolCallID: pendingApproval.toolCall.id,
-                    toolName: pendingApproval.toolCall.tool.rawValue,
+                    callID: pendingApproval.functionCall.id,
+                    toolName: pendingApproval.functionCall.name,
                     summary: metadata["summary"] ?? "skipped after suspended review"
                 ),
                 to: &checkpoint

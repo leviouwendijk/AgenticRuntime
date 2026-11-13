@@ -68,7 +68,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let suspension = Run.Suspension.run_limit(
             exhaustion
         )
-        let checkpoint = AgentRunner.Checkpoint(
+        let checkpoint = AgentExecutor.Checkpoint(
             id: sessionID,
             originalRequest: request,
             state: .init(
@@ -86,7 +86,7 @@ extension AgenticProgramRuntimeFlowTesting {
             checkpoint
         )
 
-        let runner = AgentRunner(
+        let executor = AgentExecutor(
             model: .init(
                 invoker: RunLimitNeverInvoker()
             ),
@@ -105,7 +105,7 @@ extension AgenticProgramRuntimeFlowTesting {
             sessionID: sessionID,
             suspension: suspension
         )
-        let result = try await runner.resume(
+        let result = try await executor.resume(
             interaction: Run.Interaction.Response(
                 request: interactionRequest,
                 resolution: .run_limit(
@@ -195,7 +195,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "durable checkpoint retains the explicit stop event"
         )
 
-        let restored = try await runner.resume(
+        let restored = try await executor.resume(
             sessionID: sessionID
         )
 

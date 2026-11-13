@@ -15,12 +15,12 @@ public extension Run {
             _ message: Message
         ) async throws
 
-        func recordToolCall(
-            _ toolCall: ToolCall
+        func recordFunctionCall(
+            _ functionCall: FunctionCall
         ) async throws
 
         func recordToolResult(
-            _ result: ToolCall.Response
+            _ result: FunctionCall.Response
         ) async throws
 
         func recordSessionBranch(
@@ -40,13 +40,13 @@ public extension Run.EventSink {
     ) async throws {
     }
 
-    func recordToolCall(
-        _ toolCall: ToolCall
+    func recordFunctionCall(
+        _ functionCall: FunctionCall
     ) async throws {
     }
 
     func recordToolResult(
-        _ result: ToolCall.Response
+        _ result: FunctionCall.Response
     ) async throws {
     }
 

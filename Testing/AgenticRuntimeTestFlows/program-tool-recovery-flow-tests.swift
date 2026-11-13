@@ -178,7 +178,7 @@ private struct ProgramToolRecoveryFixtureTool: Tool {
 
     func classify(
         _ error: any Error,
-        phase: ToolCall.Phase,
+        phase: ToolExecution.Phase,
         input _: Input?
     ) -> Recovery.Incident? {
         guard
@@ -224,9 +224,9 @@ private struct ProgramToolRecoveryFixtureTool: Tool {
 
     func reconcile(
         _ input: Input,
-        after failure: ToolCall.Failure,
+        after failure: ToolExecution.Failure,
         in _: ToolContext
-    ) async throws -> ToolCall.Reconciliation<Output>? {
+    ) async throws -> ToolExecution.Reconciliation<Output>? {
         _ = input
 
         guard failure.phase == .call else {
@@ -324,7 +324,7 @@ private func runProgramToolRecovery(
         ),
         recovery: programToolRecoveryPolicy()
     )
-    let execution = try await executor.invoke(
+    let execution = try await executor.execute(
         tool.identifier,
         input: try JSONValue.encoding(
             ProgramToolRecoveryInput()
@@ -363,19 +363,19 @@ private func runProgramToolResumeRecovery()
         ),
         recovery: programToolRecoveryPolicy()
     )
-    let call = ToolCall(
+    let call = FunctionCall(
         id: "fixture-program-resume-recovery",
-        tool: tool.identifier,
+        name: tool.identifier.rawValue,
         input: try JSONValue.encoding(
             ProgramToolRecoveryInput()
         )
     )
     let invocation = ToolInvocation(
         id: call.id,
-        tool: call.tool,
+        tool: ToolIdentifier(call.name),
         arguments: call.input
     )
-    let review = try await executor.invoker.review(
+    let review = try await executor.tools.review(
         invocation,
         context: executor.context
     )
@@ -388,7 +388,7 @@ private func runProgramToolResumeRecovery()
 
     let execution = try await executor.resume(
         pendingApproval: PendingApproval(
-            toolCall: call,
+            functionCall: call,
             preflight: review.preflight,
             requirement: review.requirement
         ),
@@ -449,7 +449,7 @@ private struct ProgramToolRecoveryProgram: Program {
                 guard
                     failure.effect == .applied,
                     failure.result.isError,
-                    failure.result.call.tool == ToolIdentifier("fixture.program_tool_recovery"),
+                    ToolIdentifier(failure.result.call.name) == ToolIdentifier("fixture.program_tool_recovery"),
                     failure.result.output != .null
                 else {
                     throw failure
@@ -469,7 +469,7 @@ private struct ProgramToolRecoveryProgram: Program {
                 guard
                     failure.effect == .unknown,
                     failure.result.isError,
-                    failure.result.call.tool == ToolIdentifier("fixture.program_tool_recovery"),
+                    ToolIdentifier(failure.result.call.name) == ToolIdentifier("fixture.program_tool_recovery"),
                     failure.result.output != .null
                 else {
                     return .recover(
@@ -507,14 +507,14 @@ private func runRecordedProgramToolRecovery(
         ),
         recovery: programToolRecoveryPolicy()
     )
-    let runner = ProgramRunner(
+    let programExecutor = ProgramExecutor(
         services: .init(
             program: .init(
                 tools: executor
             )
         )
     )
-    let execution = try await runner.execute(
+    let execution = try await programExecutor.execute(
         ProgramToolRecoveryProgram(
             handling: handling
         ),

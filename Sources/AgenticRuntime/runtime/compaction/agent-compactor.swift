@@ -12,15 +12,23 @@ public struct AgentCompactor: Sendable {
 
     /// Only the request projection is compacted. Checkpoint history is canonical.
     /// Source messages remain accessible in their original order and with IDs.
+    /// When `sessionID` is supplied, the summary names the exact compacted
+    /// message range so the agent can read it back via read_session_history.
     public func project(
         messages: [Message],
-        iteration: Int
+        iteration: Int,
+        sessionID: String? = nil,
+        budget: ContextBudget = .unknown
     ) -> Projection? {
-        guard strategy.trigger.shouldCompact(messages: messages) else {
+        guard strategy.trigger.shouldCompact(messages: messages, budget: budget) else {
             return nil
         }
         let prefix = leadingSystemPreservationCount(in: messages)
-        let upperBound = max(prefix, messages.count - strategy.retention.preserveRecentMessageCount)
+        // Quantized so the cut, and with it the request prefix, advances in
+        // steps rather than every iteration; providers can then reuse cached prefixes.
+        let retained = messages.count - strategy.retention.preserveRecentMessageCount
+        let quantized = (retained / Self.boundaryStep) * Self.boundaryStep
+        let upperBound = max(prefix, quantized)
         guard upperBound > prefix else { return nil }
 
         // Cut at a user-turn boundary, never inside a tool exchange.
@@ -31,7 +39,11 @@ public struct AgentCompactor: Sendable {
         guard compactable.count >= strategy.trigger.minimumCompactedMessageCount else {
             return nil
         }
-        let summary = makeSummaryMessage(compacting: compactable, iteration: iteration)
+        let summary = makeSummaryMessage(
+            compacting: compactable,
+            boundary: boundary,
+            sessionID: sessionID
+        )
         let projected = Array(messages[..<prefix]) + [summary] + Array(messages[boundary...])
         let report = CompactedHistory(
             summaryMessageID: summary.id,
@@ -42,6 +54,8 @@ public struct AgentCompactor: Sendable {
         return Projection(messages: projected, history: report)
     }
 
+    static let boundaryStep = 16
+
     public struct Projection: Sendable {
         public let messages: [Message]
         public let history: CompactedHistory
@@ -49,8 +63,16 @@ public struct AgentCompactor: Sendable {
 
     /// Compatibility entry point: reports a projected compaction but does
     /// NOT mutate checkpoint.state.messages.
-    public func compact(checkpoint: AgentRunner.Checkpoint) -> CompactedHistory? {
-        project(messages: checkpoint.state.messages, iteration: checkpoint.state.iteration)?.history
+    public func compact(
+        checkpoint: AgentExecutor.Checkpoint,
+        budget: ContextBudget = .unknown
+    ) -> CompactedHistory? {
+        project(
+            messages: checkpoint.state.messages,
+            iteration: checkpoint.state.iteration,
+            sessionID: checkpoint.id,
+            budget: budget
+        )?.history
     }
 }
 
@@ -81,15 +103,18 @@ private extension AgentCompactor {
         return count
     }
 
+    /// Derived only from the compacted messages and cut position, never from the
+    /// iteration, so an unchanged cut renders byte-identical summaries.
     func makeSummaryMessage(
         compacting messages: [Message],
-        iteration: Int
+        boundary: Int,
+        sessionID: String?
     ) -> Message {
-        let id = "agentic.compaction.\(iteration).\(messages.count)"
+        let id = "agentic.compaction.\(boundary).\(messages.count)"
 
         var lines: [String] = [
             "[agentic.compaction]",
-            "Compacted \(messages.count) earlier message(s) before iteration \(iteration).",
+            "Compacted \(messages.count) earlier message(s).",
             "Recent messages remain verbatim below.",
             ""
         ]
@@ -111,6 +136,15 @@ private extension AgentCompactor {
             from: messages
         ) {
             lines.append("- \(excerpt)")
+        }
+
+        if let sessionID,
+           let first = messages.first?.id,
+           let last = messages.last?.id {
+            lines.append("")
+            lines.append(
+                "These messages are retained in full. Read them with read_session_history(sessionID: \"\(sessionID)\", fromMessageID: \"\(first)\", throughMessageID: \"\(last)\")."
+            )
         }
 
         return .init(
@@ -224,11 +258,11 @@ private extension AgentCompactor {
 
                 return "resource \(value.modality.rawValue)"
 
-            case .tool_call(let value):
-                return "tool call \(value.tool.rawValue)"
+            case .call(let value):
+                return "tool call \(value.name)"
 
-            case .tool_result(let value):
-                let name = value.call.tool.rawValue
+            case .result(let value):
+                let name = value.call.name
                 return value.isError
                     ? "tool result \(name) error"
                     : "tool result \(name)"

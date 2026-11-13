@@ -9,8 +9,8 @@ public struct AgentRunStateSnapshot:
     public let sessionID: String
     public let startedAt: Date
     public let updatedAt: Date
-    public let phase: AgentRunner.Phase
-    public let state: AgentRunner.State
+    public let phase: AgentExecutor.Phase
+    public let state: AgentExecutor.State
     public let runLimits: AgentRunLimits
     public let events: [Run.Event.State]
     /// Nil only when decoding a legacy presentation snapshot.
@@ -28,7 +28,7 @@ public struct AgentRunStateSnapshot:
     public let capabilities: AgentCapabilityState.Snapshot
 
     init(
-        checkpoint: AgentRunner.Checkpoint
+        checkpoint: AgentExecutor.Checkpoint
     ) {
         self.sessionID = checkpoint.id
         self.startedAt = checkpoint.startedAt

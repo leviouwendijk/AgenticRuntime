@@ -3,9 +3,9 @@ import AgenticContext
 import Workspace
 import Foundation
 
-public actor AgentRunner {
+public actor AgentExecutor {
     public let model: RuntimeServices.Model
-    public let configuration: AgentRunner.Configuration
+    public let configuration: AgentExecutor.Configuration
     public let tooling: RuntimeServices.Tooling
     /// Host-issued delegation authority retained across checkpoint resumption.
     private weak var delegation: AgentDelegation?
@@ -25,7 +25,7 @@ public actor AgentRunner {
     /// Callers cannot inject an unrelated capability state beside it.
     public init(
         model: RuntimeServices.Model,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
         inventory: CapabilityInventory,
         delegation: AgentDelegation? = nil,
@@ -48,7 +48,7 @@ public actor AgentRunner {
     /// inventory is constructed once and thereafter owns that state.
     public init(
         model: RuntimeServices.Model,
-        configuration: AgentRunner.Configuration = .default,
+        configuration: AgentExecutor.Configuration = .default,
         tooling: RuntimeServices.Tooling = .init(),
         capabilityState: AgentCapabilityState,
         delegation: AgentDelegation? = nil,
@@ -75,10 +75,10 @@ public actor AgentRunner {
     public func run(
         _ request: AgentRequest,
         sessionID: String = UUID().uuidString
-    ) async throws -> AgentRunner.Result {
-        let executor = try await makeAgentLoop(sessionID: sessionID)
+    ) async throws -> AgentExecutor.Result {
+        let loop = try await makeAgentLoop(sessionID: sessionID)
 
-        return try await executor.run(
+        return try await loop.run(
             request,
             sessionID: sessionID
         )
@@ -86,7 +86,7 @@ public actor AgentRunner {
 
     public func resume(
         sessionID: String
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }
@@ -103,8 +103,8 @@ public actor AgentRunner {
         case .suspended,
              .awaiting_approval:
             if checkpoint.resolvedSuspension?.metadata["delegated_child_session_id"] != nil {
-                let executor = try await makeAgentLoop(restoring: checkpoint)
-                if let reconciled = try await executor.resumeTerminatedDelegatedChild(checkpoint) {
+                let loop = try await makeAgentLoop(restoring: checkpoint)
+                if let reconciled = try await loop.resumeTerminatedDelegatedChild(checkpoint) {
                     return reconciled
                 }
             }
@@ -129,11 +129,11 @@ public actor AgentRunner {
 
         case .ready_for_model,
              .processing_tool_calls:
-            let executor = try await makeAgentLoop(
+            let loop = try await makeAgentLoop(
                 restoring: checkpoint
             )
 
-            return try await executor.resume(
+            return try await loop.resume(
                 checkpoint
             )
 
@@ -177,7 +177,7 @@ public actor AgentRunner {
         sessionID: String,
         userInput: String,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resume(
             sessionID: sessionID,
             answer: .text(
@@ -191,7 +191,7 @@ public actor AgentRunner {
         sessionID: String,
         answer: UserInputAnswer,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         try await resume(
             sessionID: sessionID,
             reply: .answer(
@@ -205,7 +205,7 @@ public actor AgentRunner {
         sessionID: String,
         reply: UserInputReply,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }
@@ -218,11 +218,11 @@ public actor AgentRunner {
             )
         }
 
-        let executor = try await makeAgentLoop(
+        let loop = try await makeAgentLoop(
             restoring: checkpoint
         )
 
-        return try await executor.resume(
+        return try await loop.resume(
             checkpoint,
             reply: reply,
             metadata: metadata
@@ -230,9 +230,9 @@ public actor AgentRunner {
     }
 }
 
-extension AgentRunner {
+extension AgentExecutor {
     func makeAgentLoop(
-        restoring checkpoint: AgentRunner.Checkpoint? = nil,
+        restoring checkpoint: AgentExecutor.Checkpoint? = nil,
         sessionID: String? = nil
     ) async throws -> AgentLoop {
         if let checkpoint {
@@ -304,8 +304,8 @@ extension AgentRunner {
     }
 
     func suspendedResult(
-        from checkpoint: AgentRunner.Checkpoint
-    ) throws -> AgentRunner.Result {
+        from checkpoint: AgentExecutor.Checkpoint
+    ) throws -> AgentExecutor.Result {
         guard let suspension = checkpoint.resolvedSuspension else {
             throw AgentHistoryError.corruptedCheckpoint(
                 "suspended checkpoint without suspension payload"
@@ -326,7 +326,7 @@ extension AgentRunner {
     }
 }
 
-public extension AgentRunner {
+public extension AgentExecutor {
     init(
         model: RuntimeServices.Model,
         modeApplication: ModeRuntimeApplication,

@@ -10,13 +10,19 @@ extension AgentLoop {
         from request: AgentRequest,
         messages: [Message],
         definitions: [ToolDescriptor],
-        iteration: Int
+        iteration: Int,
+        sessionID: String
     ) async throws -> AgentRequest {
         let projected: [Message]
         if configuration.contextMode == .accumulating,
            let strategy = configuration.compactionStrategy {
             projected = AgentCompactor(strategy: strategy)
-                .project(messages: messages, iteration: iteration)?.messages ?? messages
+                .project(
+                    messages: messages,
+                    iteration: iteration,
+                    sessionID: sessionID,
+                    budget: contextBudget()
+                )?.messages ?? messages
         } else {
             projected = messages
         }
@@ -27,6 +33,20 @@ extension AgentLoop {
             responseFormat: request.responseFormat,
             invocationoptions: request.invocationoptions,
             metadata: request.metadata
+        )
+    }
+
+    /// Budget of the route the broker would choose for this request. Routing is
+    /// side-effect free here; unknown limits fall back to the trigger's own caps.
+    func contextBudget() -> ContextBudget {
+        guard let broker = model.invoker as? ModelBroker,
+              let routed = try? broker.route(selection: model.selection)
+        else {
+            return .unknown
+        }
+
+        return .init(
+            inputTokenLimit: routed.route.profile.limits.inputTokens
         )
     }
 
@@ -63,11 +83,11 @@ extension AgentLoop {
         }
     }
 
-    func toolCalls(
+    func functionCalls(
         in message: Message
-    ) -> [ToolCall] {
+    ) -> [FunctionCall] {
         message.content.blocks.compactMap { block in
-            guard case .tool_call(let value) = block else {
+            guard case .call(let value) = block else {
                 return nil
             }
 
@@ -77,7 +97,7 @@ extension AgentLoop {
 
     func appendToolResultBlock(
         _ block: MessageContentBlock,
-        to state: inout AgentRunner.State
+        to state: inout AgentExecutor.State
     ) {
         if configuration.appendToolResultsAsMessages {
             state.messages.append(
@@ -128,26 +148,26 @@ extension AgentLoop {
         )
     }
 
-    func executeApprovedToolCall(
+    func executeApprovedCall(
         _ pendingApproval: PendingApproval,
         advertisedTools: [ToolIdentifier]?
     ) async throws -> ToolExecution.Result {
         let available = await capabilityState.available
-        guard advertisedTools?.contains(pendingApproval.toolCall.tool) == true,
-              available.tools.contains(pendingApproval.toolCall.tool)
+        guard advertisedTools?.contains(ToolIdentifier(pendingApproval.functionCall.name)) == true,
+              available.tools.contains(ToolIdentifier(pendingApproval.functionCall.name))
         else {
-            throw AgentToolCallResolutionError.toolNotVisible(
-                pendingApproval.toolCall.tool
+            throw FunctionCallResolutionError.toolNotVisible(
+                ToolIdentifier(pendingApproval.functionCall.name)
             )
         }
 
-        let invoker = ToolInvoker(
+        let invoker = ToolExecutor(
             registry: (await currentTools()),
             policy: configuration.toolExecutionPolicy,
             recovery: configuration.recovery
         )
         let invocation = try (await currentTools()).invocation(
-            for: pendingApproval.toolCall
+            for: pendingApproval.functionCall
         )
         // The approved plan is the one captured by the checkpoint, not a
         // freshly generated preflight/plan with a different identity.
@@ -172,9 +192,9 @@ extension AgentLoop {
     ) async throws -> ToolExecution.Result {
         let available = await capabilityState.available
         guard available.tools.contains(review.invocation.tool) else {
-            throw AgentToolCallResolutionError.toolNotVisible(review.invocation.tool)
+            throw FunctionCallResolutionError.toolNotVisible(review.invocation.tool)
         }
-        let invoker = ToolInvoker(
+        let invoker = ToolExecutor(
             registry: (await currentTools()),
             policy: configuration.toolExecutionPolicy,
             recovery: configuration.recovery,
@@ -210,64 +230,64 @@ extension AgentLoop {
     }
 
     func makeDeniedToolResult(
-        for toolCall: ToolCall,
+        for functionCall: FunctionCall,
         preflight: ToolPreflight,
         requirement: ApprovalRequirement
-    ) throws -> ToolCall.Response {
+    ) throws -> FunctionCall.Response {
         let payload = ToolDenialPayload(
             kind: "tool_denied",
-            toolCallID: toolCall.id,
-            toolName: toolCall.tool.rawValue,
+            callID: functionCall.id,
+            toolName: functionCall.name,
             requirement: requirement.rawValue,
             summary: preflight.summary
         )
 
-        return ToolCall.Response(
-            call: toolCall.reference,
+        return FunctionCall.Response(
+            call: functionCall.reference,
             output: try JSONCoding.default.value(payload),
             isError: true
         )
     }
 
     func makeSkippedToolResult(
-        for toolCall: ToolCall,
+        for functionCall: FunctionCall,
         summary: String = "Skipped explicitly by the operator."
-    ) throws -> ToolCall.Response {
+    ) throws -> FunctionCall.Response {
         let payload = ToolSkipPayload(
             kind: "tool_skipped",
-            toolCallID: toolCall.id,
-            toolName: toolCall.tool.rawValue,
+            callID: functionCall.id,
+            toolName: functionCall.name,
             summary: summary
         )
 
-        return ToolCall.Response(
-            call: toolCall.reference,
+        return FunctionCall.Response(
+            call: functionCall.reference,
             output: try JSONCoding.default.value(payload),
             isError: false
         )
     }
 
     func makeToolErrorResult(
-        for toolCall: ToolCall,
+        for functionCall: FunctionCall,
         error: Error
-    ) throws -> ToolCall.Response {
+    ) throws -> FunctionCall.Response {
         let payload = ToolErrorPayload(
             kind: "tool_error",
-            toolCallID: toolCall.id,
-            toolName: toolCall.tool.rawValue,
+            callID: functionCall.id,
+            toolName: functionCall.name,
             message: localizedDescription(for: error)
         )
 
-        return ToolCall.Response(
-            call: toolCall.reference,
+        return FunctionCall.Response(
+            call: functionCall.reference,
             output: try JSONCoding.default.value(payload),
             isError: true
         )
     }
 
     func suspendedResult(
-        from checkpoint: AgentRunner.Checkpoint
-    ) throws -> AgentRunner.Result {
+        from checkpoint: AgentExecutor.Checkpoint
+    ) throws -> AgentExecutor.Result {
         guard let suspension = checkpoint.resolvedSuspension else {
             throw AgentHistoryError.corruptedCheckpoint(
                 "suspended checkpoint without suspension payload"
@@ -289,7 +309,7 @@ extension AgentLoop {
 
     func suspendForUserInput(
         _ invocation: ToolInvocation,
-        checkpoint: inout AgentRunner.Checkpoint
+        checkpoint: inout AgentExecutor.Checkpoint
     ) async throws -> ToolProcessingOutcome {
         let input = try JSONCoding.default.decode(
             Standard.Tools.ClarifyWithUser.Input.self,
@@ -299,7 +319,7 @@ extension AgentLoop {
         let suspension = Run.Suspension.user_input(
             request,
             metadata: [
-                "toolCallID": invocation.id,
+                "callID": invocation.id,
                 "toolName": invocation.tool.rawValue
             ]
         )
@@ -312,7 +332,7 @@ extension AgentLoop {
             .init(
                 kind: .pending_user_input,
                 iteration: checkpoint.state.iteration,
-                toolCallID: invocation.id,
+                callID: invocation.id,
                 toolName: invocation.tool.rawValue,
                 summary: request.prompt
             ),
@@ -332,14 +352,14 @@ extension AgentLoop {
 
     func suspendForWorkspaceAccess(
         _ request: WorkspaceAccessRequest,
-        toolCall: ToolCall,
-        checkpoint: inout AgentRunner.Checkpoint
+        functionCall: FunctionCall,
+        checkpoint: inout AgentExecutor.Checkpoint
     ) async throws -> ToolProcessingOutcome {
         let suspension = Run.Suspension.workspace_access(
             request,
             metadata: [
-                "toolCallID": toolCall.id,
-                "toolName": toolCall.tool.rawValue
+                "callID": functionCall.id,
+                "toolName": functionCall.name
             ]
         )
 
@@ -351,8 +371,8 @@ extension AgentLoop {
             .init(
                 kind: .pending_workspace_access,
                 iteration: checkpoint.state.iteration,
-                toolCallID: toolCall.id,
-                toolName: toolCall.tool.rawValue,
+                callID: functionCall.id,
+                toolName: functionCall.name,
                 summary: "workspace access resolution required"
             ),
             to: &checkpoint
@@ -384,7 +404,7 @@ extension AgentLoop {
     }
 
     func compactIfNeeded(
-        _ checkpoint: inout AgentRunner.Checkpoint
+        _ checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         guard configuration.contextMode == .accumulating,
               let strategy = configuration.compactionStrategy else {
@@ -400,7 +420,8 @@ extension AgentLoop {
         )
 
         guard let compacted = compactor.compact(
-            checkpoint: checkpoint
+            checkpoint: checkpoint,
+            budget: contextBudget()
         ) else {
             return
         }
@@ -423,7 +444,7 @@ extension AgentLoop {
     }
 
     func saveCheckpoint(
-        _ checkpoint: inout AgentRunner.Checkpoint
+        _ checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         let root_id = AgentExecutionInvocation.root_id(session_id: checkpoint.id)
         if let index = checkpoint.invocations.firstIndex(where: { $0.id == root_id }) {
@@ -466,7 +487,7 @@ extension AgentLoop {
     }
 
     func publishRunState(
-        _ checkpoint: AgentRunner.Checkpoint
+        _ checkpoint: AgentExecutor.Checkpoint
     ) async {
         guard !recording.stateSinks.isEmpty else {
             return
@@ -485,7 +506,7 @@ extension AgentLoop {
 
     func appendRunEvent(
         _ event: Run.Event.State,
-        to checkpoint: inout AgentRunner.Checkpoint
+        to checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         try observe_invocation_event(event, in: &checkpoint)
         checkpoint.events.append(
@@ -517,18 +538,18 @@ extension AgentLoop {
         }
     }
 
-    func recordToolCall(
-        _ toolCall: ToolCall
+    func recordFunctionCall(
+        _ functionCall: FunctionCall
     ) async throws {
         for sink in recording.eventSinks {
-            try await sink.recordToolCall(
-                toolCall
+            try await sink.recordFunctionCall(
+                functionCall
             )
         }
     }
 
     func recordToolResult(
-        _ result: ToolCall.Response
+        _ result: FunctionCall.Response
     ) async throws {
         for sink in recording.eventSinks {
             try await sink.recordToolResult(

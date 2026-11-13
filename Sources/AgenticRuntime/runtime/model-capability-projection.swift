@@ -26,12 +26,12 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
     }
 
     public struct Entry: Sendable, Codable, Hashable {
-        public let function: ModelFunctionDescriptor
-        public let target: CapabilityInvocation.Target
+        public let function: FunctionDescriptor
+        public let target: CapabilityReference
 
         public init(
-            function: ModelFunctionDescriptor,
-            target: CapabilityInvocation.Target
+            function: FunctionDescriptor,
+            target: CapabilityReference
         ) {
             self.function = function
             self.target = target
@@ -47,16 +47,16 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
     }
 
     public let entries: [Entry]
-    private let targetsByName: [String: CapabilityInvocation.Target]
+    private let targetsByName: [String: CapabilityReference]
 
     /// Provider declarations only; semantic invocation identities remain
     /// bound to this exact projection, never encoded into provider inputs.
-    public var functions: [ModelFunctionDescriptor] {
+    public var functions: [FunctionDescriptor] {
         entries.map(\.function)
     }
 
     init(_ candidates: [Entry]) throws {
-        var targetsByName: [String: CapabilityInvocation.Target] = [:]
+        var targetsByName: [String: CapabilityReference] = [:]
         for entry in candidates {
             guard targetsByName.updateValue(
                 entry.target,
@@ -74,11 +74,11 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
     /// The exact lookup table belonging to this model request's projection.
     /// Invocation checks live Agent availability again; the request-bound
     /// function mapping is retained independently of later projection changes.
-    public func target(named name: String) -> CapabilityInvocation.Target? {
+    public func target(named name: String) -> CapabilityReference? {
         targetsByName[name]
     }
 
-    public func name(for target: CapabilityInvocation.Target) -> String? {
+    public func name(for target: CapabilityReference) -> String? {
         entries.first(where: { $0.target == target })?.function.name
     }
 

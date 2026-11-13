@@ -55,9 +55,9 @@ extension AgenticProgramRuntimeFlowTesting {
         async throws
         -> [TestDiagnostic]
     {
-        let runner = ProgramRunner()
+        let executor = ProgramExecutor()
 
-        let initial = try await runner.execute(
+        let initial = try await executor.execute(
             ProgramUserInputResumeFixture(),
             input: "seed",
             sessionID: "fixture-program-user-input-resume"
@@ -117,7 +117,7 @@ extension AgenticProgramRuntimeFlowTesting {
         var requiredSkipRejected = false
 
         do {
-            _ = try await runner.resume(
+            _ = try await executor.resume(
                 ProgramUserInputResumeFixture(),
                 from: durableFirstCheckpoint,
                 interaction: Run.Interaction.Response(
@@ -137,7 +137,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "required Program input rejects explicit skip before replay resumes"
         )
 
-        let afterRequiredAnswer = try await runner.resume(
+        let afterRequiredAnswer = try await executor.resume(
             ProgramUserInputResumeFixture(),
             from: durableFirstCheckpoint,
             interaction: Run.Interaction.Response(
@@ -221,7 +221,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ProgramCheckpoint.self
         )
 
-        let optionalAnswerResult = try await runner.resume(
+        let optionalAnswerResult = try await executor.resume(
             ProgramUserInputResumeFixture(),
             from: durableSecondCheckpoint,
             interaction: Run.Interaction.Response(
@@ -304,7 +304,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "optional answer remains an answered reply rather than skip"
         )
 
-        let optionalSkipResult = try await runner.resume(
+        let optionalSkipResult = try await executor.resume(
             ProgramUserInputResumeFixture(),
             from: durableSecondCheckpoint,
             interaction: Run.Interaction.Response(

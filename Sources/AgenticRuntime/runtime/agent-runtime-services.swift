@@ -140,25 +140,25 @@ public struct RuntimeServices: Sendable {
         }
     }
 
-    /// Program execution capabilities currently consumed by ProgramRunner.
+    /// Program execution capabilities currently consumed by ProgramExecutor.
     ///
     /// Inference consumes Agentic's canonical executor directly; tools
     /// retain their governed Runtime boundary for approval and resume semantics.
     public struct Program: Sendable {
         public var inference: (any InferenceExecuting)?
-        public var tools: (any ProgramToolExecuting)?
-        public var invoker: (any ProgramInvoking)?
+        public var tools: (any GovernedToolExecuting)?
+        public var programs: (any ProgramExecuting)?
         public var interruption: Run.Control?
 
         public init(
             inference: (any InferenceExecuting)? = nil,
-            tools: (any ProgramToolExecuting)? = nil,
-            invoker: (any ProgramInvoking)? = nil,
+            tools: (any GovernedToolExecuting)? = nil,
+            programs: (any ProgramExecuting)? = nil,
             interruption: Run.Control? = nil
         ) {
             self.inference = inference
             self.tools = tools
-            self.invoker = invoker
+            self.programs = programs
             self.interruption = interruption
         }
     }

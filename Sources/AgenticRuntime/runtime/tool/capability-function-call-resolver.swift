@@ -4,36 +4,36 @@ import Primitives
 
 /// Abort the current provider response after a live capability mutation.
 /// Successful invocations are journaled before crossing this boundary.
-enum RuntimeToolCallBoundary: Error, Sendable {
+enum FunctionCallBoundaryError: Error, Sendable {
     case capabilities_changed
 }
 
 /// The parent must mirror this checkpoint rather than converting it to a
 /// terminal model tool error. It contains no model-controlled authority.
 struct RuntimeDelegatedChildSuspension: Error, Sendable {
-    let call: ToolCall
-    let result: AgentRunner.Result
+    let call: FunctionCall
+    let result: AgentExecutor.Result
 }
 
-/// A provider ToolCall carries only a function name and JSON arguments.
+/// A provider FunctionCall carries only a function name and JSON arguments.
 /// Neither field may choose a semantic capability or an authorization origin.
-struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
+struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
     let dispatcher: CapabilityDispatcher
     let projection: ModelCapabilityProjection
     let journal: AgentModelToolInvocationJournal?
 
-    func resolve(_ call: ToolCall) async throws -> ToolCall.Response {
-        let function = call.tool.rawValue
+    func resolve(_ call: FunctionCall) async throws -> FunctionCall.Response {
+        let function = call.name
         guard let target = projection.target(named: function) else {
             // Reject unadvertised names with the same typed visibility error
             // used by the governed Tool resolver. Later reveals cannot add
             // authority to this already-captured request projection.
-            throw AgentToolCallResolutionError.toolNotVisible(call.tool)
+            throw FunctionCallResolutionError.toolNotVisible(ToolIdentifier(call.name))
         }
         let invocation: CapabilityInvocation
         switch target {
         case .tool(let identifier):
-            guard identifier == call.tool else {
+            guard identifier == ToolIdentifier(call.name) else {
                 throw RuntimeModelToolAuthorizationError.invalidProjection
             }
             invocation = .tool(call)
@@ -62,7 +62,7 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
         case .agent(let identifier):
             let arguments = try semanticArguments(call.input)
             let binding = try await agentBinding(identifier)
-            _ = try binding.call(from: CapabilityCall.Raw(
+            _ = try binding.verify(CapabilityCall(
                 id: call.id,
                 capability: .agent(identifier),
                 input: arguments
@@ -128,18 +128,18 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
                 origin: .model(projection: projection, function: function)
             )
         }
-        let response: ToolCall.Response
+        let response: FunctionCall.Response
         switch outcome {
         case .tool(let result):
             response = result
         case .program(let record):
-            response = ToolCall.Response(
+            response = FunctionCall.Response(
                 call: call.reference,
                 output: try JSONCoding.default.value(record),
                 isError: record.outcome != .succeeded
             )
         case .inference(let result):
-            response = ToolCall.Response(
+            response = FunctionCall.Response(
                 call: call.reference,
                 output: try JSONDecoder().decode(JSONValue.self, from: result.output),
                 isError: false
@@ -162,16 +162,16 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
         }
         let after = await dispatcher.capabilityState.snapshot()
         guard before == after else {
-            throw RuntimeToolCallBoundary.capabilities_changed
+            throw FunctionCallBoundaryError.capabilities_changed
         }
         return response
     }
 
     static func agentResponse(
-        _ result: AgentRunner.Result,
-        for call: ToolCall,
+        _ result: AgentExecutor.Result,
+        for call: FunctionCall,
         responseFormat: AgentResponseFormat
-    ) throws -> ToolCall.Response {
+    ) throws -> FunctionCall.Response {
         if result.suspension != nil {
             throw RuntimeDelegatedChildSuspension(call: call, result: result)
         }

@@ -1,11 +1,11 @@
 import Agentic
 
-public extension AgentRunner {
+public extension AgentExecutor {
     func resume(
         sessionID: String,
         approvalDecision: ApprovalDecision,
         metadata: [String: String] = [:]
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         guard let historyStore = recording.historyStore else {
             throw AgentHistoryError.historyStoreRequired
         }

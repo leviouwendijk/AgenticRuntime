@@ -38,7 +38,7 @@ private final class DomainSink:
             components: [
                 .programs(
                     [
-                        ProgramExecutionBinding(
+                        ProgramBinding(
                             program,
                             defaultRealization: realization
                         ),
@@ -212,7 +212,7 @@ public func install<DomainType: Domain>(
             references = bindings.map(\.reference)
         case .agents(let bindings):
             references = bindings.map(\.reference)
-        case .catalog, .toolProviders, .adapters, .launches, .gateways, .modelProviders, .modelSelection:
+        case .catalog, .adapters, .launches, .gateways, .modelProviders, .modelSelection:
             throw DomainInstallationOverrideError.unsupportedReplacement
         }
         for reference in references {
@@ -243,14 +243,6 @@ public func install<ToolType: Tool>(
     )
 }
 
-/// Providers remain an explicit installation path because they may register
-/// multiple Tools and cannot be represented by a single ToolBinding.
-public func install(
-    _ provider: any AgentToolProvider
-) -> Installation {
-    .init(components: [.toolProviders([provider])])
-}
-
 public func install(
     _ binding: ToolBinding
 ) -> Installation {
@@ -269,7 +261,7 @@ public func install<ProgramType: Program>(
 ) -> Installation {
     install(
         [
-            ProgramExecutionBinding(
+            ProgramBinding(
                 program,
                 defaultRealization: realization
             ),
@@ -278,7 +270,7 @@ public func install<ProgramType: Program>(
 }
 
 public func install(
-    _ registration: ProgramExecutionBinding
+    _ registration: ProgramBinding
 ) -> Installation {
     install(
         [
@@ -288,7 +280,7 @@ public func install(
 }
 
 public func install(
-    _ registrations: [ProgramExecutionBinding]
+    _ registrations: [ProgramBinding]
 ) -> Installation {
     .init(
         components: [

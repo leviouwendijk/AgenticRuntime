@@ -2,7 +2,7 @@ import Agentic
 import AgenticIO
 import Workspace
 
-public extension AgentRunner {
+public extension AgentExecutor {
     struct Result: Sendable, Codable, Hashable {
         public let sessionID: String
         public let phase: Phase

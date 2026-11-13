@@ -88,17 +88,17 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let oversizedAllocator = try Context.Allocator(policy: oversizedPolicy)
         try await oversizedAllocator.createWorkingSet(id: "large-output")
-        let readCall = ToolCall(id: "large-read", tool: "fixture.read", input: .null)
+        let readCall = FunctionCall(id: "large-read", name: "fixture.read", input: .null)
         let hugeResult = Message(
             id: "large-result", role: .tool,
-            content: .init(blocks: [.tool_result(.init(
-                call: .init(id: "large-read", tool: "fixture.read"),
+            content: .init(blocks: [.result(.init(
+                call: .init(id: "large-read", name: "fixture.read"),
                 output: .string(String(repeating: "expanded-evidence ", count: 2_000))
             ))])
         )
         let largeRequest = AgentRequest(messages: [
             system, current,
-            .init(id: "large-call", role: .assistant, content: .init(blocks: [.tool_call(readCall)])),
+            .init(id: "large-call", role: .assistant, content: .init(blocks: [.call(readCall)])),
             hugeResult
         ])
         let reduced = try await oversizedAllocator.prepareDynamic(
@@ -110,7 +110,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(reduced.history.omitted.map(\.messageID), ["large-call", "large-result"],
             "Evicted tool call and result remain referenced together")
 
-        let checkpoint = AgentRunner.Checkpoint(
+        let checkpoint = AgentExecutor.Checkpoint(
             id: "session-dynamic", originalRequest: canonical,
             state: .init(iteration: 0, messages: canonical.messages),
             runLimits: .default, contextMode: .dynamic,
@@ -119,7 +119,7 @@ extension AgenticProgramRuntimeFlowTesting {
             contextTransitions: await allocator.recordedOperations(for: "session-dynamic")
         )
         let encoded = try JSONEncoder().encode(checkpoint)
-        let restored = try JSONDecoder().decode(AgentRunner.Checkpoint.self, from: encoded)
+        let restored = try JSONDecoder().decode(AgentExecutor.Checkpoint.self, from: encoded)
         try Expect.equal(restored.contextMode, .dynamic,
             "Session mode is persisted across checkpoint decoding")
         try Expect.equal(restored.contextPolicy, policy,

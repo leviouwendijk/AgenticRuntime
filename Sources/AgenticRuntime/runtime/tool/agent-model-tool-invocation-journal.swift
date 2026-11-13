@@ -1,8 +1,8 @@
 import Agentic
 
 struct ModelSemanticInvocationResult: Sendable {
-    let call: ToolCall
-    let result: ToolCall.Response
+    let call: FunctionCall
+    let result: FunctionCall.Response
 }
 
 actor AgentModelToolInvocationJournal {
@@ -22,8 +22,8 @@ actor AgentModelToolInvocationJournal {
     }
 
     func appendSemantic(
-        call: ToolCall,
-        result: ToolCall.Response
+        call: FunctionCall,
+        result: FunctionCall.Response
     ) {
         semanticInvocations.append(.init(call: call, result: result))
     }

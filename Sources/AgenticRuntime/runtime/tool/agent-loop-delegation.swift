@@ -6,14 +6,14 @@ extension AgentLoop {
     /// concurrently. Checkpoint mutation remains serialized after they return.
     /// An admitted child is never run a second time on checkpoint replay.
     func processDelegatedBatch(
-        from initial: AgentRunner.Checkpoint
+        from initial: AgentExecutor.Checkpoint
     ) async throws -> ToolProcessingOutcome? {
         guard delegation != nil,
               let projection = initial.lastAdvertisedCapabilities,
               let current = initial.toolBatch,
               current.records.count > 1,
               current.records.allSatisfy({ record in
-                  if case .agent = projection.target(named: record.toolCall.tool.rawValue) {
+                  if case .agent = projection.target(named: record.functionCall.name) {
                       return true
                   }
                   return false
@@ -24,7 +24,7 @@ extension AgentLoop {
         let pendingReview = current.records.first { $0.isSuspended }
         if let pendingReview {
             return try await surfaceRetainedChild(
-                pendingReview.toolCall,
+                pendingReview.functionCall,
                 checkpoint: &checkpoint
             )
         }
@@ -36,11 +36,11 @@ extension AgentLoop {
         }
         for (_, record) in pending {
             try begin_tool_invocation(
-                call_id: record.toolCall.id,
-                tool_name: record.toolCall.tool.rawValue,
+                call_id: record.functionCall.id,
+                tool_name: record.functionCall.name,
                 in: &checkpoint
             )
-            try await recordToolCall(record.toolCall)
+            try await recordFunctionCall(record.functionCall)
         }
         try await saveCheckpoint(&checkpoint)
         let dispatcher = await modelDispatcher(sessionID: checkpoint.id)
@@ -50,13 +50,13 @@ extension AgentLoop {
         ) { group in
             for (index, record) in pending {
                 group.addTask {
-                    let resolver = RuntimeModelCapabilityCallResolver(
+                    let resolver = CapabilityFunctionCallResolver(
                         dispatcher: dispatcher,
                         projection: projection,
                         journal: nil
                     )
                     do {
-                        return (index, .response(try await resolver.resolve(record.toolCall)))
+                        return (index, .response(try await resolver.resolve(record.functionCall)))
                     } catch let suspension as RuntimeDelegatedChildSuspension {
                         return (index, .suspended(suspension))
                     } catch {
@@ -72,7 +72,7 @@ extension AgentLoop {
         }
         var firstSuspension: RuntimeDelegatedChildSuspension?
         for (index, outcome) in results {
-            let call = current.records[index].toolCall
+            let call = current.records[index].functionCall
             switch outcome {
             case .response(let result):
                 try await appendToolResult(
@@ -83,7 +83,7 @@ extension AgentLoop {
                     summary: "delegated Agent completed"
                 )
             case .error(let description):
-                let response = ToolCall.Response(
+                let response = FunctionCall.Response(
                     call: call.reference,
                     output: .object(["error": .string(description)]),
                     isError: true
@@ -111,24 +111,24 @@ extension AgentLoop {
     }
 
     enum DelegatedCallOutcome: Sendable {
-        case response(ToolCall.Response)
+        case response(FunctionCall.Response)
         case suspended(RuntimeDelegatedChildSuspension)
         case error(String)
     }
 
     func markDelegatedPending(
-        _ call: ToolCall,
-        on checkpoint: inout AgentRunner.Checkpoint
+        _ call: FunctionCall,
+        on checkpoint: inout AgentExecutor.Checkpoint
     ) {
         guard var batch = checkpoint.toolBatch else { return }
-        batch.mark(toolCallID: call.id, disposition: .suspended_for_delegation)
+        batch.mark(callID: call.id, disposition: .suspended_for_delegation)
         batch.suspend()
         checkpoint.toolBatch = batch
     }
 
     func mirrorDelegatedSuspension(
         _ pending: RuntimeDelegatedChildSuspension,
-        checkpoint: inout AgentRunner.Checkpoint
+        checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         guard let suspension = pending.result.suspension else {
             throw AgentHistoryError.corruptedCheckpoint(
@@ -152,8 +152,8 @@ extension AgentLoop {
     }
 
     func surfaceRetainedChild(
-        _ call: ToolCall,
-        checkpoint: inout AgentRunner.Checkpoint
+        _ call: FunctionCall,
+        checkpoint: inout AgentExecutor.Checkpoint
     ) async throws -> ToolProcessingOutcome {
         guard let delegation,
               let result = await delegation.latestResult(
@@ -189,13 +189,13 @@ extension AgentLoop {
     /// Called when the human stops a suspended child. No approval is
     /// fabricated: the parent receives the interrupted child's tool result.
     func resumeTerminatedDelegatedChild(
-        _ checkpoint: AgentRunner.Checkpoint
-    ) async throws -> AgentRunner.Result? {
+        _ checkpoint: AgentExecutor.Checkpoint
+    ) async throws -> AgentExecutor.Result? {
         guard let delegation,
               let suspension = checkpoint.resolvedSuspension,
               let childID = suspension.metadata["delegated_child_session_id"],
               let callID = suspension.metadata["delegated_child_call_id"],
-              let call = checkpoint.toolBatch?.record(for: callID)?.toolCall,
+              let call = checkpoint.toolBatch?.record(for: callID)?.functionCall,
               let child = await delegation.latestResult(childID),
               child.isCompleted || child.isFailed || child.isInterrupted else {
             return nil
@@ -212,14 +212,14 @@ extension AgentLoop {
     /// All resumed child outcomes use the format captured at admission.
     /// The saved model projection also binds the call to an advertised Agent.
     func delegatedAgentResponse(
-        _ child: AgentRunner.Result,
-        for call: ToolCall,
-        checkpoint: AgentRunner.Checkpoint
-    ) async throws -> ToolCall.Response {
+        _ child: AgentExecutor.Result,
+        for call: FunctionCall,
+        checkpoint: AgentExecutor.Checkpoint
+    ) async throws -> FunctionCall.Response {
         let expectedChildID = "child:\(checkpoint.id.utf8.count):\(checkpoint.id):\(call.id.utf8.count):\(call.id)"
         guard child.sessionID == expectedChildID,
               let projection = checkpoint.lastAdvertisedCapabilities,
-              let target = projection.target(named: call.tool.rawValue),
+              let target = projection.target(named: call.name),
               case .agent = target,
               let delegation,
               let responseFormat = await delegation.responseFormat(for: child.sessionID) else {
@@ -227,7 +227,7 @@ extension AgentLoop {
                 "delegated child result lacks its original Agent invocation contract"
             )
         }
-        return try RuntimeModelCapabilityCallResolver.agentResponse(
+        return try CapabilityFunctionCallResolver.agentResponse(
             child,
             for: call,
             responseFormat: responseFormat
@@ -235,9 +235,9 @@ extension AgentLoop {
     }
 
     func recordTerminalDelegatedChild(
-        _ child: AgentRunner.Result,
-        call: ToolCall,
-        checkpoint: inout AgentRunner.Checkpoint
+        _ child: AgentExecutor.Result,
+        call: FunctionCall,
+        checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         let response = try await delegatedAgentResponse(
             child,
@@ -257,14 +257,14 @@ extension AgentLoop {
     }
 
     func resumeDelegatedChild(
-        _ checkpoint: AgentRunner.Checkpoint,
+        _ checkpoint: AgentExecutor.Checkpoint,
         interaction response: Run.Interaction.Response
-    ) async throws -> AgentRunner.Result {
+    ) async throws -> AgentExecutor.Result {
         guard let delegation,
               let suspension = checkpoint.resolvedSuspension,
               let childID = suspension.metadata["delegated_child_session_id"],
               let callID = suspension.metadata["delegated_child_call_id"],
-              let call = checkpoint.toolBatch?.record(for: callID)?.toolCall else {
+              let call = checkpoint.toolBatch?.record(for: callID)?.functionCall else {
             throw AgentHistoryError.corruptedCheckpoint(
                 "delegated child interaction lacks a live pending call"
             )
@@ -300,7 +300,7 @@ extension AgentLoop {
         _ pending: RuntimeDelegatedChildSuspension,
         invocations: [ToolInvocation.Result],
         semanticInvocations: [ModelSemanticInvocationResult],
-        checkpoint: inout AgentRunner.Checkpoint
+        checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         checkpoint.state.iteration += 1
         try await applyNativeToolInvocations(invocations, to: &checkpoint)
@@ -308,7 +308,7 @@ extension AgentLoop {
         let response = AgentResponse(
             message: Message(
                 role: .assistant,
-                content: MessageContent(blocks: [.tool_call(pending.call)])
+                content: MessageContent(blocks: [.call(pending.call)])
             ),
             stopReason: .tool_use
         )
@@ -317,7 +317,7 @@ extension AgentLoop {
         checkpoint.partialResponse = nil
         storeToolBatch(AgentToolUseBatch(response: response), to: &checkpoint)
         try await recordMessage(response.message)
-        try await recordToolCall(pending.call)
+        try await recordFunctionCall(pending.call)
         try await mirrorDelegatedSuspension(pending, checkpoint: &checkpoint)
     }
 }

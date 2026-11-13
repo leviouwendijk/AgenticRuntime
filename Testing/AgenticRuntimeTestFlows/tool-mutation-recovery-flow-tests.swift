@@ -163,7 +163,7 @@ private struct MutationRecoveryFixtureTool: Tool {
 
     func classify(
         _ error: any Error,
-        phase: ToolCall.Phase,
+        phase: ToolExecution.Phase,
         input _: Input?
     ) -> Recovery.Incident? {
         guard
@@ -189,9 +189,9 @@ private struct MutationRecoveryFixtureTool: Tool {
 
     func reconcile(
         _ input: Input,
-        after failure: ToolCall.Failure,
+        after failure: ToolExecution.Failure,
         in context: ToolContext
-    ) async throws -> ToolCall.Reconciliation<Output>? {
+    ) async throws -> ToolExecution.Reconciliation<Output>? {
         _ = input
         _ = context
 
@@ -241,7 +241,7 @@ private actor MutationRecoveryModelState {
 
 private struct MutationRecoveryModelInvoker: AgentModelInvoking {
     let state: MutationRecoveryModelState
-    let toolCall: ToolCall
+    let functionCall: FunctionCall
 
     func buffered(
         _ invocation: AgentModelInvocation
@@ -257,7 +257,7 @@ private struct MutationRecoveryModelInvoker: AgentModelInvoking {
                     role: .assistant,
                     content: MessageContent(
                         blocks: [
-                            .tool_call(toolCall),
+                            .call(functionCall),
                         ]
                     )
                 ),
@@ -332,7 +332,7 @@ private struct MutationRecoveryModelInvoker: AgentModelInvoking {
 
 private struct MutationRecoveryCaseResult {
     let probe: MutationRecoveryProbeSnapshot
-    let result: ToolCall.Response
+    let result: FunctionCall.Response
     let recovery: Recovery.Record
 }
 
@@ -369,9 +369,9 @@ private func runMutationRecoveryCase(
 ) async throws -> MutationRecoveryCaseResult {
     let probe = MutationRecoveryProbe()
     let state = MutationRecoveryModelState()
-    let toolCall = ToolCall(
+    let functionCall = FunctionCall(
         id: "fixture-mutation-recovery-\(mode.rawValue)",
-        tool: "fixture.mutation_recovery",
+        name: "fixture.mutation_recovery",
         input: .object([
             "arguments": try JSONValue.encoding(
                 MutationRecoveryFixtureInput()
@@ -384,11 +384,11 @@ private func runMutationRecoveryCase(
             probe: probe
         )
     }
-    let runner = AgentRunner(
+    let executor = AgentExecutor(
         model: .init(
             invoker: MutationRecoveryModelInvoker(
                 state: state,
-                toolCall: toolCall
+                functionCall: functionCall
             )
         ),
         configuration: .init(
@@ -408,7 +408,7 @@ private func runMutationRecoveryCase(
         )
     )
 
-    let result = try await runner.run(
+    let result = try await executor.run(
         AgentRequest(
             messages: [
                 Message(
@@ -438,15 +438,15 @@ private func runMutationRecoveryCase(
     )
     let terminalResults = secondInvocation.request.messages
         .flatMap(\.content.blocks)
-        .compactMap { block -> ToolCall.Response? in
-            guard case .tool_result(let result) = block else {
+        .compactMap { block -> FunctionCall.Response? in
+            guard case .result(let result) = block else {
                 return nil
             }
 
             return result
         }
         .filter { result in
-            result.call.id == toolCall.id
+            result.call.id == functionCall.id
         }
 
     try Expect.equal(
