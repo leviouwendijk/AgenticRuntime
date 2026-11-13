@@ -56,6 +56,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting.runContextDynamicMode()
         },
         TestFlow(
+            "context-usage",
+            tags: ["runtime", "context", "usage", "cost"]
+        ) {
+            try AgenticProgramRuntimeFlowTesting.runContextUsage()
+        },
+        TestFlow(
             "context-compaction-projection",
             tags: ["runtime", "context", "compaction", "canonical"]
         ) {

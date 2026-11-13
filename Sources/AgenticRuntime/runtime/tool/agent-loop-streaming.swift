@@ -7,26 +7,12 @@ extension AgentLoop {
     ) async throws -> AgentExecutor.Checkpoint {
         var checkpoint = checkpoint
 
-        try await compactIfNeeded(
+        let turn = try await prepareTurn(
             &checkpoint
         )
-
-        // Snapshot the request's capabilities once. Request preparation,
-        // advertised transport, and invocation authorization share that view.
-        let projection = try await inventory.modelProjection()
-        let advertisedTools = try await modelCapabilityDefinitions(
-            for: projection
-        )
-        let preparedRequest = try await prepareModelRequest(
-            from: try await requestWithCurrentState(
-                from: checkpoint.originalRequest,
-                messages: checkpoint.state.messages,
-                definitions: advertisedTools,
-                iteration: checkpoint.state.iteration,
-                sessionID: checkpoint.id
-            ),
-            checkpoint: checkpoint
-        )
+        let projection = turn.projection
+        let advertisedTools = turn.tools
+        let preparedRequest = turn.request
 
         let turnIndex = checkpoint.state.iteration + 1
 
@@ -37,13 +23,6 @@ extension AgentLoop {
         let journal = AgentModelToolInvocationJournal()
         var completedResult: AgentModelInvocation.Result?
 
-        checkpoint.lastAdvertisedCapabilities = projection
-        checkpoint.lastAdvertisedTools = projection.entries.compactMap { entry in
-            if case .tool(let identifier) = entry.target {
-                return identifier
-            }
-            return nil
-        }
         checkpoint.phase = .receiving_model_response
         checkpoint.partialResponse = accumulator.partial
 
@@ -278,12 +257,10 @@ extension AgentLoop {
             in: response.message
         )
 
-        if response.stopReason == AgentStopReason.tool_use,
-           !functionCalls.isEmpty {
-            checkpoint.phase = .processing_tool_calls
-        } else {
-            checkpoint.phase = .completed
-        }
+        checkpoint.phase = flow.phase(
+            after: response,
+            calls: functionCalls
+        )
 
         try await saveCheckpoint(
             &checkpoint

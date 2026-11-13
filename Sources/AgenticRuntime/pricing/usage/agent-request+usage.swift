@@ -1,3 +1,4 @@
+import Foundation
 import Agentic
 import Tokens
 
@@ -29,10 +30,30 @@ public extension AgentRequest {
         )
     }
 
+    /// Everything the request sends: function schemas, then each message's
+    /// text, calls and results. Counting text alone undercounts tool-heavy turns.
     var estimatedPromptText: String {
-        messages.map { message in
-            "\(message.role.rawValue): \(message.content.text)"
-        }.joined(
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+
+        func json(_ value: some Encodable) -> String {
+            (try? encoder.encode(value)).map {
+                String(decoding: $0, as: UTF8.self)
+            } ?? ""
+        }
+
+        let schemas = tools.map(json)
+        let conversation = messages.map { message in
+            let content = message.content.blocks.map { block in
+                if case .text(let text) = block {
+                    return text
+                }
+                return json(block)
+            }
+            return "\(message.role.rawValue): " + content.joined(separator: "\n")
+        }
+
+        return (schemas + conversation).joined(
             separator: "\n\n"
         )
     }

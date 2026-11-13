@@ -22,6 +22,8 @@ public extension AgentExecutor {
         public var contextPolicy: Context.Policy
         public var contextWorkingSet: Context.WorkingSet?
         public var contextTransitions: [Context.Transition]
+        /// Estimated input composition of each model turn's request.
+        public var contextUsage: [Context.Usage]
         public var events: [Run.Event.State]
         /// Authoritative invocation spans, independently of display projections.
         public var invocations: [AgentExecutionInvocation]
@@ -55,6 +57,7 @@ public extension AgentExecutor {
             case contextPolicy
             case contextWorkingSet
             case contextTransitions
+            case contextUsage
             case events
             case invocations
             case currentModelInvocationID
@@ -110,6 +113,10 @@ public extension AgentExecutor {
             contextTransitions = try container.decodeIfPresent(
                 [Context.Transition].self,
                 forKey: .contextTransitions
+            ) ?? []
+            contextUsage = try container.decodeIfPresent(
+                [Context.Usage].self,
+                forKey: .contextUsage
             ) ?? []
             events = try container.decodeIfPresent(
                 [Run.Event.State].self,
@@ -192,6 +199,7 @@ public extension AgentExecutor {
             contextPolicy: Context.Policy = .init(),
             contextWorkingSet: Context.WorkingSet? = nil,
             contextTransitions: [Context.Transition] = [],
+            contextUsage: [Context.Usage] = [],
             events: [Run.Event.State] = [],
             invocations: [AgentExecutionInvocation] = [],
             currentModelInvocationID: String? = nil,
@@ -222,6 +230,7 @@ public extension AgentExecutor {
             self.contextPolicy = contextPolicy
             self.contextWorkingSet = contextWorkingSet
             self.contextTransitions = contextTransitions
+            self.contextUsage = contextUsage
             self.events = events
             self.invocations = invocations
             self.currentModelInvocationID = currentModelInvocationID

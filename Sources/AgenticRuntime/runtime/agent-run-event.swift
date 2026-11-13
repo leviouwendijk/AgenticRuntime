@@ -28,6 +28,7 @@ public extension Run.Event {
             case run_limit_stopped
             case run_interrupted
             case compaction
+            case context_usage
             case model_stream_started
             case assistant_delta
             case model_stream_tool_call

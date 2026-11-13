@@ -95,6 +95,7 @@ public extension AgentApprovalEvent {
              .run_limit_stopped,
              .run_interrupted,
              .compaction,
+             .context_usage,
              .model_stream_started,
              .assistant_delta,
              .model_stream_tool_call,

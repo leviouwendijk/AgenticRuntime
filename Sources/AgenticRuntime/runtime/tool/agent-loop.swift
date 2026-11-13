@@ -18,6 +18,7 @@ internal struct AgentLoop: Sendable {
     let recording: RuntimeServices.Recording
     let contextAllocator: Context.Allocator?
     let contextServices: Context.Services?
+    let flow: Flow
 
     init(
         model: RuntimeServices.Model,
@@ -29,7 +30,8 @@ internal struct AgentLoop: Sendable {
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
         contextAllocator: Context.Allocator? = nil,
-        contextServices: Context.Services? = nil
+        contextServices: Context.Services? = nil,
+        flow: Flow = .conversational
     ) {
         self.model = model
         self.configuration = configuration
@@ -41,6 +43,7 @@ internal struct AgentLoop: Sendable {
         self.recording = recording
         self.contextAllocator = contextAllocator
         self.contextServices = contextServices
+        self.flow = flow
     }
 
     func currentTools() async -> ToolRegistry {

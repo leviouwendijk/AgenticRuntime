@@ -73,6 +73,7 @@ private extension AgentTranscriptRecorder {
     ) -> Bool {
         switch event.kind {
         case .assistant_response,
+             .context_usage,
              .tool_result,
              .tool_error:
             return false
