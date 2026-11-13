@@ -98,8 +98,11 @@ extension AgentLoop {
             )
         }
 
+        let usage = projection.usage
         parts.append(
-            "tokens=\(projection.usage.totalKnownTokens)"
+            "tokens=\(usage.totalKnownTokens)"
+                + " (in \(usage.inputTokens) · cached \(usage.cachedInputReadTokens)"
+                + " · cache-write \(usage.cachedInputWriteTokens) · out \(usage.outputTokens))"
         )
 
         if let model = record.model {
