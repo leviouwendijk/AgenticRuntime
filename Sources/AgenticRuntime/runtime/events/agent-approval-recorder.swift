@@ -26,7 +26,7 @@ public actor AgentApprovalRecorder: Run.EventSink {
                 approvalEvent
             )
 
-        case .tool_observation:
+        case .tool_observation, .request:
             return
         }
     }

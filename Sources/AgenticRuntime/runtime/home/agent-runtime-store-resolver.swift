@@ -52,7 +52,10 @@ public struct AgentRuntimeStoreResolver: Sendable {
 #endif
 
         let eventSinks =
-            try transcriptEventSinks(
+            try logEventSinks(
+                sessionID: sessionID
+            )
+            + transcriptEventSinks(
                 sessionID: sessionID
             )
             + approvalEventSinks(
@@ -77,6 +80,23 @@ public struct AgentRuntimeStoreResolver: Sendable {
 }
 
 private extension AgentRuntimeStoreResolver {
+    func logEventSinks(
+        sessionID: String
+    ) throws -> [any Run.EventSink] {
+        guard let storage = environment.runtimeStorageLayout() else {
+            return []
+        }
+
+        let store = Run.Log.Store(
+            storage: storage,
+            durability: try environment.home.settings().log.durability
+        )
+
+        return [
+            try store.open(session: sessionID).recorder(run: sessionID)
+        ]
+    }
+
     func transcriptEventSinks(
         sessionID: String
     ) throws -> [any Run.EventSink] {

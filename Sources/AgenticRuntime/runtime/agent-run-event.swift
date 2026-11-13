@@ -11,6 +11,20 @@ public extension Run {
     enum Event: Sendable, Codable, Hashable {
         case state(State)
         case tool_observation(ToolResultObservation)
+        /// The exact request sent to the model for a turn.
+        case request(Request)
+    }
+}
+
+public extension Run.Event {
+    struct Request: Sendable, Codable, Hashable {
+        public let request: AgentRequest
+        public let usage: Context.Usage
+
+        public init(request: AgentRequest, usage: Context.Usage) {
+            self.request = request
+            self.usage = usage
+        }
     }
 }
 

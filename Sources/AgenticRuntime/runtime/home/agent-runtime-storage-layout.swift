@@ -65,6 +65,26 @@ public struct AgentRuntimeStorageLayout: Sendable, Codable, Hashable {
         )
     }
 
+    public func logfile(
+        sessionID: String
+    ) -> URL {
+        fileURL(
+            for: schema.logfile(
+                sessionID: sessionID
+            )
+        )
+    }
+
+    public func payloadsdir(
+        sessionID: String
+    ) -> URL {
+        directoryURL(
+            for: schema.payloadsdir(
+                sessionID: sessionID
+            )
+        )
+    }
+
     public func sessionstatefile(
         sessionID: String
     ) -> URL {

@@ -29,7 +29,7 @@ public actor AgentTranscriptRecorder: Run.EventSink {
                 )
             )
 
-        case .tool_observation:
+        case .tool_observation, .request:
             return
         }
     }

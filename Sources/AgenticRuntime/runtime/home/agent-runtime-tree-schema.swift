@@ -55,6 +55,22 @@ public struct AgentRuntimeStorageTreeSchema: Sendable, Codable, Hashable {
             .file("checkpoint.json")
     }
 
+    /// Append-only record of every step a session took (`Run.Log`).
+    public func logfile(
+        sessionID: String
+    ) -> PathTreeFileAddress {
+        sessiondir(sessionID: sessionID)
+            .file("log.jsonl")
+    }
+
+    /// Content-addressed bodies the log refers to by digest.
+    public func payloadsdir(
+        sessionID: String
+    ) -> PathTreeDirectoryAddress {
+        sessiondir(sessionID: sessionID)
+            .directory("payloads")
+    }
+
     public func sessionstatefile(
         sessionID: String
     ) -> PathTreeFileAddress {

@@ -62,6 +62,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try AgenticProgramRuntimeFlowTesting.runContextUsage()
         },
         TestFlow(
+            "run-log",
+            tags: ["runtime", "log", "persistence", "history"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runRunLog()
+        },
+        TestFlow(
             "context-compaction-projection",
             tags: ["runtime", "context", "compaction", "canonical"]
         ) {

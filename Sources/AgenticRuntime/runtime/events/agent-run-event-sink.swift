@@ -26,6 +26,9 @@ public extension Run {
         func recordSessionBranch(
             _ event: SessionBranchEvent
         ) async throws
+
+        /// Writes anything staged; called at every step boundary.
+        func flush() async throws
     }
 }
 
@@ -53,6 +56,9 @@ public extension Run.EventSink {
     func recordSessionBranch(
         _ event: SessionBranchEvent
     ) async throws {
+    }
+
+    func flush() async throws {
     }
 }
 

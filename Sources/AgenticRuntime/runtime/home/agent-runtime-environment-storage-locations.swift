@@ -129,7 +129,7 @@ public extension AgentRuntimeEnvironment {
     }
 }
 
-private extension AgentRuntimeEnvironment {
+extension AgentRuntimeEnvironment {
     func runtimeStorageLayout() -> AgentRuntimeStorageLayout? {
         switch sessionStorageMode {
         case .global_home:

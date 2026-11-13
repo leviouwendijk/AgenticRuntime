@@ -63,6 +63,9 @@ extension AgentLoop {
             ),
             to: &checkpoint
         )
+        try await record(
+            .request(.init(request: request, usage: usage))
+        )
 
         return Turn(
             projection: projection,

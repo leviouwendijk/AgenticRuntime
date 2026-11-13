@@ -398,6 +398,19 @@ public actor AgentDelegation {
         }
         entry.requestedScope = request.metadata["worker_scope_path"]
         entry.responseFormat = request.responseFormat
+        // A child records into its parent's session log under its own run,
+        // linked by a branch entry.
+        let logs = recording.eventSinks.compactMap { sink in
+            (sink as? Run.Log.Recorder)?.log.recorder(run: session.id)
+        }
+        for log in logs {
+            try await log.recordSessionBranch(
+                .init(
+                    sessionID: session.id,
+                    branch: .init(parentSessionID: parentSessionID)
+                )
+            )
+        }
         var childConfiguration = configuration
         if let childRunLimits {
             childConfiguration.runLimits = childRunLimits
@@ -411,7 +424,7 @@ public actor AgentDelegation {
             delegation: self,
             recording: .init(
                 historyStore: recording.historyStore,
-                eventSinks: [],
+                eventSinks: logs,
                 // Children keep feeding session history so their compacted
                 // context stays retrievable; presentation sinks stay parent-only.
                 stateSinks: recording.stateSinks.filter {

@@ -36,6 +36,10 @@ extension AgentLoop {
             checkpoint
         )
 
+        for sink in recording.eventSinks {
+            try await sink.flush()
+        }
+
         guard configuration.persistsHistory else {
             return
         }

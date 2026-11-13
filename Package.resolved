@@ -1,5 +1,5 @@
 {
-  "originHash" : "66dab3a713e2b760e97763a885eb597584b166be7e0f517b32ebc997cab24e9f",
+  "originHash" : "6e82e0841354375250064e57b8b5064e93ab621470ec4c2389c1fbf5a26ccc23",
   "pins" : [
     {
       "identity" : "agentic",
@@ -160,7 +160,7 @@
       "location" : "https://github.com/leviouwendijk/IO.git",
       "state" : {
         "branch" : "master",
-        "revision" : "5e88720439dc8f782034b6f9f8374c61ef1707f0"
+        "revision" : "8c462fa29ff9abfd5068cec656d4a84526f24644"
       }
     },
     {
