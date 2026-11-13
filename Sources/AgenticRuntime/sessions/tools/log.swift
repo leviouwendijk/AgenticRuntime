@@ -151,46 +151,8 @@ public extension Sessions.Tools {
             }
             return .init(
                 line: .init(entry),
-                detail: try detail(of: entry, in: log)
+                detail: try log.detail(of: entry)
             )
-        }
-
-        private func detail(
-            of entry: Run.Log.Entry,
-            in log: Run.Log
-        ) throws -> JSONValue {
-            switch entry.body {
-            case .state(let state):
-                return try JSONValue.encoding(state)
-            case .observation(let observation):
-                return try JSONValue.encoding(observation)
-            case .branch(let event):
-                return try JSONValue.encoding(event)
-            case .message(let stored):
-                return try log.payload(stored.digest, as: JSONValue.self)
-            case .response(let response):
-                return try log.payload(response.digest, as: JSONValue.self)
-            case .call(let call):
-                return .object([
-                    "call": try JSONValue.encoding(call.call),
-                    "input": try log.payload(call.input, as: JSONValue.self),
-                ])
-            case .request(let request):
-                let messages = try request.messages.map { digest in
-                    let message = try log.payload(digest, as: Message.self)
-                    return JSONValue.object([
-                        "id": .string(message.id),
-                        "role": .string(message.role.rawValue),
-                        "digest": .string(digest.rawValue),
-                    ])
-                }
-                let tools = try log.payload(request.tools, as: [ToolDescriptor].self)
-                return .object([
-                    "usage": try JSONValue.encoding(request.usage),
-                    "messages": .array(messages),
-                    "tools": .array(tools.map { .string($0.identifier.rawValue) }),
-                ])
-            }
         }
     }
 

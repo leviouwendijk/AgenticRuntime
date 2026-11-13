@@ -1,5 +1,7 @@
 import Agentic
 import Foundation
+import IO
+import Primitives
 import Readers
 
 public extension Run.Log {
@@ -69,6 +71,31 @@ public extension Run.Log.Store {
     ) throws -> AgentRequest {
         try Run.Log.request(entry, in: storage.payloadsdir(sessionID: session))
     }
+
+    func detail(
+        of entry: Run.Log.Entry,
+        session: String
+    ) throws -> JSONValue {
+        try Run.Log.detail(of: entry, in: storage.payloadsdir(sessionID: session))
+    }
+
+    /// Sessions that have a log, most recently written first.
+    func sessions() throws -> [String] {
+        guard FileSystem.default.exists(storage.sessionsdir) else {
+            return []
+        }
+        return try FileSystem.default.directory.contents(storage.sessionsdir)
+            .compactMap { dir -> (String, Date)? in
+                let session = dir.lastPathComponent
+                let metadata = try FileInspector(storage.logfile(sessionID: session)).inspect()
+                guard metadata.existed else {
+                    return nil
+                }
+                return (session, metadata.modifiedAt ?? .distantPast)
+            }
+            .sorted { $0.1 > $1.1 }
+            .map(\.0)
+    }
 }
 
 /// Reading this session's own log. Staged entries are written first, so a
@@ -90,6 +117,12 @@ public extension Run.Log {
         _ entry: Entry.Request
     ) throws -> AgentRequest {
         try Self.request(entry, in: payloads)
+    }
+
+    nonisolated func detail(
+        of entry: Entry
+    ) throws -> JSONValue {
+        try Self.detail(of: entry, in: payloads)
     }
 }
 
@@ -132,5 +165,45 @@ extension Run.Log {
         }
         request.tools = try payload(entry.tools, as: [ToolDescriptor].self, in: payloads)
         return request
+    }
+
+    /// The entry with its stored bodies filled in. A request lists its
+    /// messages by id, role and digest rather than inlining the history.
+    static func detail(
+        of entry: Entry,
+        in payloads: URL
+    ) throws -> JSONValue {
+        switch entry.body {
+        case .state(let state):
+            return try .encoding(state)
+        case .observation(let observation):
+            return try .encoding(observation)
+        case .branch(let event):
+            return try .encoding(event)
+        case .message(let stored):
+            return try payload(stored.digest, as: JSONValue.self, in: payloads)
+        case .response(let response):
+            return try payload(response.digest, as: JSONValue.self, in: payloads)
+        case .call(let call):
+            return .object([
+                "call": try .encoding(call.call),
+                "input": try payload(call.input, as: JSONValue.self, in: payloads),
+            ])
+        case .request(let request):
+            let messages = try request.messages.map { digest in
+                let message = try payload(digest, as: Message.self, in: payloads)
+                return JSONValue.object([
+                    "id": .string(message.id),
+                    "role": .string(message.role.rawValue),
+                    "digest": .string(digest.rawValue),
+                ])
+            }
+            let tools = try payload(request.tools, as: [ToolDescriptor].self, in: payloads)
+            return .object([
+                "usage": try .encoding(request.usage),
+                "messages": .array(messages),
+                "tools": .array(tools.map { .string($0.identifier.rawValue) }),
+            ])
+        }
     }
 }
