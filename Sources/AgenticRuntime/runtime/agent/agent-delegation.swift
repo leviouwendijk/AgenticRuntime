@@ -67,6 +67,7 @@ public actor AgentDelegation {
         var executing: Bool = false
         var latestResult: AgentRunner.Result? = nil
         var requestedScope: String? = nil
+        var responseFormat: AgentResponseFormat? = nil
         var mutationsWithdrawn: Bool = false
     }
 
@@ -116,6 +117,12 @@ public actor AgentDelegation {
 
     public func latestResult(_ id: String) -> AgentRunner.Result? {
         entries[id]?.latestResult
+    }
+
+    /// Retains the exact output contract from the admitted child request.
+    /// It is not recomputed from mutable capabilities during resumption.
+    func responseFormat(for sessionID: String) -> AgentResponseFormat? {
+        entries[sessionID]?.responseFormat
     }
 
     public func sessions() -> [Session] {
@@ -390,6 +397,7 @@ public actor AgentDelegation {
             throw error
         }
         entry.requestedScope = request.metadata["worker_scope_path"]
+        entry.responseFormat = request.responseFormat
         var childConfiguration = configuration
         if let childRunLimits {
             childConfiguration.runLimits = childRunLimits

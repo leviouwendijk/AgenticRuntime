@@ -487,6 +487,96 @@ private struct DelegatedExecutionModel: AgentModelInvoking {
     }
 }
 
+private actor DelegatedTextRouteRecorder {
+    private var invocations: [AgentModelInvocation] = []
+
+    func append(_ invocation: AgentModelInvocation) -> Int {
+        let index = invocations.count
+        invocations.append(invocation)
+        return index
+    }
+
+    func snapshot() -> [AgentModelInvocation] {
+        invocations
+    }
+}
+
+private struct DelegatedTextRouteInvoker: AgentModelInvoking {
+    let recorder: DelegatedTextRouteRecorder
+    let function: String
+
+    func buffered(
+        _ invocation: AgentModelInvocation
+    ) async throws -> AgentModelInvocation.Result {
+        let index = await recorder.append(invocation)
+        let response: AgentResponse
+
+        if invocation.request.metadata["parent_agent_session_id"] != nil {
+            response = AgentResponse(
+                message: Message(role: .assistant, text: "child-text-response"),
+                stopReason: .end_turn
+            )
+        } else if index == 0 {
+            response = AgentResponse(
+                message: Message(
+                    role: .assistant,
+                    content: MessageContent(blocks: [
+                        .tool_call(ToolCall(
+                            id: "delegation-text-call",
+                            tool: ToolIdentifier(rawValue: function),
+                            input: .object([
+                                "arguments": .string("Perform the bounded task")
+                            ])
+                        ))
+                    ])
+                ),
+                stopReason: .tool_use
+            )
+        } else {
+            response = AgentResponse(
+                message: Message(role: .assistant, text: "parent-completed"),
+                stopReason: .end_turn
+            )
+        }
+
+        let route = AgentModelRoute(
+            purpose: invocation.selection.purpose,
+            profile: AgentModelProfile(
+                identifier: "fixture.delegation.text_profile",
+                gatewayIdentifier: "fixture.delegation.text_gateway",
+                model: "fixture",
+                purposes: [invocation.selection.purpose],
+                capabilities: [.text, .tool_use, .streaming]
+            )
+        )
+        return AgentModelInvocation.Result(
+            response: response,
+            route: AgentModelRouteRecord(
+                route: route,
+                requestMetadata: invocation.request.metadata,
+                responseMetadata: response.metadata,
+                usage: response.usage
+            )
+        )
+    }
+
+    func stream(
+        _ invocation: AgentModelInvocation
+    ) -> AsyncThrowingStream<AgentModelInvocation.Event, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    continuation.yield(.completed(try await buffered(invocation)))
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+}
+
 private enum DelegationPreferredSelectionFixture: Agent {
     typealias Input = String
     typealias Output = String
@@ -705,6 +795,145 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(completed.sessionID, "model-child", "Child identity is preserved")
         let modelLineage = await modelDelegation.session("model-child")
         try Expect.equal(modelLineage?.parentSessionID, "model-parent", "Parent lineage is governed")
+
+        // Exercise the actual model-originated Agent Tool path. A String-returning
+        // worker must not require structured_output or JSON parsing of plain text.
+        let textState = try runtime.realizeAgent(
+            identifiedBy: DelegationRootFixture.identifier
+        ).makeCapabilityState()
+        _ = await textState.reveal(.init(agents: [DelegationLeafFixture.identifier]))
+        let textInventory = CapabilityInventory(installed: runtime.installed, state: textState)
+        let textProjection = try await textInventory.modelProjection()
+        let textFunction = try Expect.notNil(
+            textProjection.name(for: .agent(DelegationLeafFixture.identifier)),
+            "Delegated text worker is projected as a model-callable Agent"
+        )
+        let textDelegation = try AgentDelegation(
+            runtime: runtime,
+            root: DelegationRootFixture.identifier,
+            sessionID: "text-parent",
+            capabilityState: textState
+        )
+        let textRecorder = DelegatedTextRouteRecorder()
+        let textInvoker = DelegatedTextRouteInvoker(
+            recorder: textRecorder,
+            function: textFunction
+        )
+        let textRunner = AgentRunner(
+            model: .init(invoker: textInvoker, selection: model.selection),
+            inventory: textInventory,
+            delegation: textDelegation
+        )
+        let textResult = try await textRunner.run(
+            .init(messages: [Message(role: .user, text: "Delegate a text task")]),
+            sessionID: "text-parent"
+        )
+        try Expect.true(textResult.isCompleted, "Text worker completes through model delegation")
+        let textCalls = await textRecorder.snapshot()
+        try Expect.equal(textCalls.count, 3, "Parent, child, parent use three model calls")
+        let childCall = try Expect.notNil(
+            textCalls.first(where: { $0.request.metadata["parent_agent_session_id"] != nil }),
+            "One model invocation belongs to the delegated child"
+        )
+        try Expect.equal(
+            childCall.request.responseFormat,
+            .text,
+            "String-output worker must use text response format, not JSON schema"
+        )
+        try Expect.equal(
+            childCall.selection.preferences.preferredModelID?.rawValue,
+            "fixture.application.model",
+            "Actual child model call retains the inherited preferred model"
+        )
+        let forwardedResults = textCalls.last?.request.messages
+            .flatMap(\.content.blocks)
+            .compactMap { block -> ToolCall.Response? in
+                if case .tool_result(let response) = block { return response }
+                return nil
+            } ?? []
+        try Expect.equal(
+            forwardedResults.first?.output,
+            .string("child-text-response"),
+            "Plain child text is wrapped as a JSON string tool result"
+        )
+        try Expect.true(
+            forwardedResults.first?.isError == false,
+            "Successful text delegation is not recorded as a tool error"
+        )
+
+        // Regression: an interrupted child returns through the parent's
+        // suspended checkpoint using the same admitted output contract.
+        let resumeState = try runtime.realizeAgent(
+            identifiedBy: DelegationRootFixture.identifier
+        ).makeCapabilityState()
+        _ = await resumeState.reveal(.init(agents: [DelegationLeafFixture.identifier]))
+        let resumeInventory = CapabilityInventory(installed: runtime.installed, state: resumeState)
+        let resumeProjection = try await resumeInventory.modelProjection()
+        let resumeFunction = try Expect.notNil(
+            resumeProjection.name(for: .agent(DelegationLeafFixture.identifier)),
+            "Resumable Agent is projected as a model-callable capability"
+        )
+        let resumeDelegation = try AgentDelegation(
+            runtime: runtime,
+            root: DelegationRootFixture.identifier,
+            sessionID: "resume-parent",
+            capabilityState: resumeState,
+            childRunLimits: .init(iterations: 0)
+        )
+        let resumeRecorder = DelegatedTextRouteRecorder()
+        let resumeHistory = DelegatedCheckpointStore()
+        let resumeRunner = AgentRunner(
+            model: .init(
+                invoker: DelegatedTextRouteInvoker(
+                    recorder: resumeRecorder,
+                    function: resumeFunction
+                ),
+                selection: model.selection
+            ),
+            configuration: .init(historyPersistenceMode: .checkpointmutation),
+            inventory: resumeInventory,
+            delegation: resumeDelegation,
+            recording: .init(historyStore: resumeHistory)
+        )
+        let firstParent = try await resumeRunner.run(
+            .init(messages: [Message(role: .user, text: "Delegate and suspend")]),
+            sessionID: "resume-parent"
+        )
+        try Expect.true(
+            firstParent.suspension != nil,
+            "Child run limit suspension is mirrored into the parent checkpoint"
+        )
+        let pendingChild = try Expect.notNil(
+            await resumeDelegation.sessions().first(where: { $0.parentSessionID == "resume-parent" }),
+            "Resumable child session is registered"
+        )
+        let interruptedChild = try await resumeDelegation.interruptWorker(
+            pendingChild.id,
+            mode: .urgent,
+            reason: "delegation conversion regression"
+        )
+        try Expect.true(interruptedChild?.isInterrupted == true,
+            "Suspended child becomes terminal without rerunning")
+        let resumedParent = try await resumeRunner.resume(sessionID: "resume-parent")
+        try Expect.true(resumedParent.isCompleted,
+            "Parent resumes after stopped child using the original output contract")
+        let resumeInvocations = await resumeRecorder.snapshot()
+        try Expect.equal(resumeInvocations.count, 2,
+            "Parent resumes once without invoking the stopped child model")
+        let resumedResults = resumeInvocations.last?.request.messages
+            .flatMap(\.content.blocks)
+            .compactMap { block -> ToolCall.Response? in
+                if case .tool_result(let response) = block { return response }
+                return nil
+            } ?? []
+        try Expect.true(resumedResults.first?.isError == true,
+            "Interrupted child remains an error-valued tool result")
+        if case .object(let output)? = resumedResults.first?.output {
+            try Expect.equal(output["phase"], .string("interrupted"),
+                "Resumed parent receives interrupted child phase")
+        } else {
+            try Expect.true(false, "Interrupted child result retains its structured error envelope")
+        }
 
         let noAuthority = CapabilityDispatcher(
             inventory: inventory,

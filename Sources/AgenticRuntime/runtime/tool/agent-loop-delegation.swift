@@ -209,13 +209,40 @@ extension AgentLoop {
         return try await runLoop(from: current)
     }
 
+    /// All resumed child outcomes use the format captured at admission.
+    /// The saved model projection also binds the call to an advertised Agent.
+    func delegatedAgentResponse(
+        _ child: AgentRunner.Result,
+        for call: ToolCall,
+        checkpoint: AgentRunner.Checkpoint
+    ) async throws -> ToolCall.Response {
+        let expectedChildID = "child:\(checkpoint.id.utf8.count):\(checkpoint.id):\(call.id.utf8.count):\(call.id)"
+        guard child.sessionID == expectedChildID,
+              let projection = checkpoint.lastAdvertisedCapabilities,
+              let target = projection.target(named: call.tool.rawValue),
+              case .agent = target,
+              let delegation,
+              let responseFormat = await delegation.responseFormat(for: child.sessionID) else {
+            throw AgentHistoryError.corruptedCheckpoint(
+                "delegated child result lacks its original Agent invocation contract"
+            )
+        }
+        return try RuntimeModelCapabilityCallResolver.agentResponse(
+            child,
+            for: call,
+            responseFormat: responseFormat
+        )
+    }
+
     func recordTerminalDelegatedChild(
         _ child: AgentRunner.Result,
         call: ToolCall,
         checkpoint: inout AgentRunner.Checkpoint
     ) async throws {
-        let response = try RuntimeModelCapabilityCallResolver.agentResponse(
-            child, for: call
+        let response = try await delegatedAgentResponse(
+            child,
+            for: call,
+            checkpoint: checkpoint
         )
         checkpoint.clearSuspension()
         checkpoint.phase = .processing_tool_calls
@@ -258,17 +285,11 @@ extension AgentLoop {
             )
             return try suspendedResult(from: current)
         }
-        let result = try RuntimeModelCapabilityCallResolver.agentResponse(child, for: call)
-        current.clearSuspension()
-        current.phase = .processing_tool_calls
-        try await appendToolResult(
-            result,
-            for: call,
-            disposition: result.isError ? .failed_execution : .executed,
-            to: &current,
-            summary: "delegated Agent resumed"
+        try await recordTerminalDelegatedChild(
+            child,
+            call: call,
+            checkpoint: &current
         )
-        try await saveCheckpoint(&current)
         return try await runLoop(from: current)
     }
 

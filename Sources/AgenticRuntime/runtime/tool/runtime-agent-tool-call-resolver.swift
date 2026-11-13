@@ -108,7 +108,9 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
                 identifier: identifier,
                 request: AgentRequest(
                     messages: messages,
-                    responseFormat: .jsonschema(binding.contract.output),
+                    responseFormat: binding.contract.output == .string()
+                        ? .text
+                        : .jsonschema(binding.contract.output),
                     metadata: metadata
                 ),
                 sessionID: childID
@@ -143,7 +145,14 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
                 isError: false
             )
         case .agent(let result):
-            response = try Self.agentResponse(result, for: call)
+            guard case .agent(_, let request, _) = invocation else {
+                throw RuntimeModelToolAuthorizationError.invalidProjection
+            }
+            response = try Self.agentResponse(
+                result,
+                for: call,
+                responseFormat: request.responseFormat
+            )
         }
         if case .tool = target {
             // Governed Tool results are retained through the dispatcher's
@@ -160,7 +169,8 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
 
     static func agentResponse(
         _ result: AgentRunner.Result,
-        for call: ToolCall
+        for call: ToolCall,
+        responseFormat: AgentResponseFormat
     ) throws -> ToolCall.Response {
         if result.suspension != nil {
             throw RuntimeDelegatedChildSuspension(call: call, result: result)
@@ -177,12 +187,19 @@ struct RuntimeModelCapabilityCallResolver: ToolCallResolver, Sendable {
                 isError: true
             )
         }
-        return .init(
-            call: call.reference,
-            output: try JSONDecoder().decode(
+        let output: JSONValue
+        switch responseFormat {
+        case .text:
+            output = .string(message.content.text)
+        case .jsonschema:
+            output = try JSONDecoder().decode(
                 JSONValue.self,
                 from: Data(message.content.text.utf8)
-            ),
+            )
+        }
+        return .init(
+            call: call.reference,
+            output: output,
             isError: false
         )
     }
