@@ -173,6 +173,22 @@ extension AgentLoop {
         )
     }
 
+    /// Why a sibling call was skipped, as told to the model.
+    func siblingReason(
+        for disposition: AgentToolUseDisposition
+    ) -> String {
+        switch disposition {
+        case .skipped_after_mutation:
+            staleMutationSiblingReason
+        case .skipped_after_user_input:
+            userInputSiblingReason
+        case .skipped_after_workspace_access:
+            workspaceAccessSiblingReason
+        default:
+            deniedSiblingReason
+        }
+    }
+
     var staleMutationSiblingReason: String {
         "Skipped because a prior approved file mutation may have changed workspace state. Re-read the file and submit a fresh mutation if another change is still needed."
     }

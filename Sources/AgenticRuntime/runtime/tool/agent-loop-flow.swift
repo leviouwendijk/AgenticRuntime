@@ -49,6 +49,20 @@ extension AgentLoop {
             }
         }
 
+        /// How the rest of a batch is handled after a call runs: nil lets the
+        /// remaining calls run; a disposition skips them. A mutation may have
+        /// changed what those calls were based on.
+        func remainder(
+            afterExecuting preflight: ToolPreflight
+        ) -> AgentToolUseDisposition? {
+            preflight.mayInvalidateSourceState ? .skipped_after_mutation : nil
+        }
+
+        /// A denied call ends its batch; the model re-plans with the denial.
+        var remainderAfterDenial: AgentToolUseDisposition {
+            .skipped_after_denial
+        }
+
         /// Where a model response leaves the run.
         func phase(
             after response: AgentResponse,
