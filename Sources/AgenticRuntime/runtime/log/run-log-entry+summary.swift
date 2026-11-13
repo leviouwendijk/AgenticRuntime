@@ -20,6 +20,17 @@ public extension Run.Log.Entry {
         }
     }
 
+    /// The function call this entry is about, if any.
+    var callID: String? {
+        switch body {
+        case .state(let state): state.callID
+        case .observation(let observation): observation.origin?.call.id
+        case .call(let call): call.call.id
+        case .response(let response): response.call.id
+        case .request, .message, .branch: nil
+        }
+    }
+
     /// One line describing the step, without loading any payload.
     var summary: String {
         switch body {

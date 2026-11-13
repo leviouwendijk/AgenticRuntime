@@ -16,6 +16,9 @@ public extension Sessions.Tools {
             public let kinds: [Run.Log.Entry.Kind]?
             /// Only entries of this run.
             public let run: String?
+            /// Only entries about this function call, e.g. one whose result
+            /// was elided from context.
+            public let call: String?
             /// Start after this sequence number.
             public let after: Int?
             /// Defaults to 50 entries.
@@ -26,12 +29,14 @@ public extension Sessions.Tools {
             public init(
                 kinds: [Run.Log.Entry.Kind]? = nil,
                 run: String? = nil,
+                call: String? = nil,
                 after: Int? = nil,
                 limit: Int? = nil,
                 latestFirst: Bool = false
             ) {
                 self.kinds = kinds
                 self.run = run
+                self.call = call
                 self.after = after
                 self.limit = limit
                 self.latestFirst = latestFirst
@@ -89,6 +94,7 @@ public extension Sessions.Tools {
             var entries = contents.entries.filter { entry in
                 (input.kinds.map { $0.contains(entry.kind) } ?? true)
                     && (input.run.map { $0 == entry.run } ?? true)
+                    && (input.call.map { $0 == entry.callID } ?? true)
                     && (input.after.map { entry.seq > $0 } ?? true)
             }
             if input.latestFirst {

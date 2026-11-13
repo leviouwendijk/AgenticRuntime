@@ -44,10 +44,10 @@ extension AgenticProgramRuntimeFlowTesting {
             using: DynamicFixtureResolver(),
             modelContextLimit: 6_000
         )
-        try Expect.equal(first.request.messages.map(\.id), ["sys", "middle", "current"],
-            "Dynamic mode retains protected system messages and two complete recent turns")
-        try Expect.equal(first.history.omitted.map(\.messageID), ["old"],
-            "Evicted history is identified by stable checkpoint position and message ID")
+        try Expect.equal(first.request.messages.map(\.id), ["sys", "old", "middle", "current"],
+            "Older turns stay while they fit the history budget")
+        try Expect.equal(first.history.omitted.map(\.messageID), [],
+            "Nothing is evicted within budget")
         try Expect.equal(canonical.messages.count, 4,
             "Dynamic preparation never rewrites canonical history")
 
@@ -63,7 +63,7 @@ extension AgenticProgramRuntimeFlowTesting {
             modelContextLimit: 6_000
         )
         try Expect.equal(second.request.messages.map(\.id),
-            ["sys", "dynamic.evidence", "middle", "current"],
+            ["sys", "dynamic.evidence", "old", "middle", "current"],
             "Explicitly referenced historical evidence can be rehydrated on demand")
         try Expect.equal(second.frame.items.count, 1,
             "Evidence allocation and history tail share the allocator's bounded frame")
@@ -84,7 +84,7 @@ extension AgenticProgramRuntimeFlowTesting {
             preferredInputTokens: 1_000,
             maximumInputTokens: 5_000,
             reservedOutputTokens: 200,
-            history: .init(maximumTurns: 1, maximumTokens: 350)
+            history: .init(maximumTurns: 1, maximumTokens: 600)
         )
         let oversizedAllocator = try Context.Allocator(policy: oversizedPolicy)
         try await oversizedAllocator.createWorkingSet(id: "large-output")
@@ -105,10 +105,11 @@ extension AgenticProgramRuntimeFlowTesting {
             request: largeRequest, for: "large-output",
             using: DynamicFixtureResolver(), modelContextLimit: 6_000
         )
-        try Expect.equal(reduced.request.messages.map(\.id), ["sys", "current"],
-            "Large completed tool exchanges can leave the active frame intact")
-        try Expect.equal(reduced.history.omitted.map(\.messageID), ["large-call", "large-result"],
-            "Evicted tool call and result remain referenced together")
+        try Expect.equal(reduced.request.messages.map(\.id),
+            ["sys", "current", "large-call", "large-result"],
+            "An oversized result stays paired with its call")
+        try Expect.equal(reduced.history.elided.map(\.messageID), ["large-result"],
+            "Only the oversized output is elided, to a stub naming the call")
 
         let checkpoint = AgentExecutor.Checkpoint(
             id: "session-dynamic", originalRequest: canonical,
