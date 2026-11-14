@@ -177,6 +177,21 @@ public extension Run.Log {
     ) throws -> JSONValue {
         try Self.detail(of: entry, in: payloads)
     }
+
+    /// The full response recorded for a call, the latest if it was
+    /// answered more than once.
+    func response(
+        call: String
+    ) throws -> FunctionCall.Response? {
+        for entry in try read().entries.reversed() {
+            guard case .response(let response) = entry.body,
+                  response.call.id == call else {
+                continue
+            }
+            return try payload(response.digest, as: FunctionCall.Response.self)
+        }
+        return nil
+    }
 }
 
 extension Run.Log {

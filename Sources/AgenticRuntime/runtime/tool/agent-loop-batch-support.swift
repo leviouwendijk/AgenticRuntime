@@ -58,13 +58,15 @@ extension AgentLoop {
             checkpoint.toolBatch = batch
         }
 
-        appendToolResultBlock(
-            .result(result),
-            to: &checkpoint.state
-        )
-
+        // The log keeps the full result; the conversation gets what the
+        // model reads.
         try await recordToolResult(
             result
+        )
+
+        appendToolResultBlock(
+            .result(await budgeted(result)),
+            to: &checkpoint.state
         )
 
         try await appendRunEvent(

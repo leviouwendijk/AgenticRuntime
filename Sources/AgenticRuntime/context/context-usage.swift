@@ -58,7 +58,7 @@ public extension Context {
                     case .call(let call):
                         calls += estimate(call)
                     case .result(let response):
-                        results += estimate(response)
+                        results += estimate(response.modelText)
                     case .resource(let resource):
                         resources += estimate(resource)
                     }

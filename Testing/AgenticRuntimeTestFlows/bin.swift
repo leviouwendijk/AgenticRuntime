@@ -86,6 +86,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting.runRunLog()
         },
         TestFlow(
+            "result-budget",
+            tags: ["runtime", "context", "log", "results"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runResultBudget()
+        },
+        TestFlow(
             "context-compaction-projection",
             tags: ["runtime", "context", "compaction", "canonical"]
         ) {

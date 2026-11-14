@@ -247,6 +247,13 @@ extension ToolServices {
     func revealing(
         _ state: AgentCapabilityState
     ) -> ToolServices {
-        (try? inserting(CapabilityReveal(state))) ?? self
+        let revealing = (try? inserting(CapabilityReveal(state))) ?? self
+        guard let log = try? require(Run.Log.self) else {
+            return revealing
+        }
+        // Full results are read back from the session log.
+        return (try? revealing.inserting(ResultArchive { call in
+            try await log.response(call: call)
+        })) ?? revealing
     }
 }
