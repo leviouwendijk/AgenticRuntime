@@ -25,12 +25,17 @@ extension AgentLoop {
             &checkpoint
         )
 
+        // Core schemas need the inspector in view; without it, full ones.
+        let schemas = await schemaDetail()
+
         // Snapshot the request's capabilities once. Request preparation,
         // advertised transport, and invocation authorization share that view.
         let projection = try await inventory.modelProjection()
         let tools = try await modelCapabilityDefinitions(
             for: projection
-        )
+        ).map { tool in
+            schemas == .core && tool.identifier != Self.inspector ? tool.core : tool
+        }
         let request = try await prepareModelRequest(
             from: try await requestWithCurrentState(
                 from: checkpoint.request,
@@ -119,6 +124,22 @@ extension AgentLoop {
         return .init(
             inputTokenLimit: routed.route.profile.limits.inputTokens
         )
+    }
+
+    static let inspector = Standard.Tools.InspectCapability.identifier
+
+    /// The schema detail to advertise. Core schemas are only safe while the
+    /// inspector can return the rest, so it is revealed (within the
+    /// available set) or core falls back to full.
+    func schemaDetail() async -> Context.SchemaDetail {
+        guard configuration.contextPolicy.schemas == .core else {
+            return .full
+        }
+        let inspector = AgentCapabilitySet(tools: [Self.inspector])
+        await capabilityState.reveal(inspector)
+        return await capabilityState.snapshot().visible.tools.contains(Self.inspector)
+            ? .core
+            : .full
     }
 
     /// Existing providers accept ToolDescriptor as their function transport.

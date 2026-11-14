@@ -148,7 +148,7 @@ extension AgentLoop {
             catalog: await inventory.catalog(),
             capabilities: capabilityState,
             inspections: await inventory.capabilityInspections(),
-            services: tooling.services
+            services: tooling.services.revealing(capabilityState)
         )
     }
 
@@ -239,5 +239,14 @@ private struct RuntimeResolvedToolApprovalHandler:
         requirement _: ApprovalRequirement
     ) async throws -> ApprovalDecision {
         decision
+    }
+}
+
+extension ToolServices {
+    /// These services plus the owner's reveal grant over `state`.
+    func revealing(
+        _ state: AgentCapabilityState
+    ) -> ToolServices {
+        (try? inserting(CapabilityReveal(state))) ?? self
     }
 }
