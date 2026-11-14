@@ -14,4 +14,15 @@ public extension AgentTaskManager {
             )
         )
     }
+
+    /// The task graph stored beside a home's sessions and logs.
+    static func home(
+        _ home: AgentHome
+    ) -> Self {
+        .init(
+            store: FileAgentTaskStore(
+                tasksdir: home.layout.runtimeStorage.tasksdir
+            )
+        )
+    }
 }

@@ -68,27 +68,9 @@ public struct AgenticRuntime:
             gatewayFactories: application.gatewayFactories
         )
 
-        let preferred = application.modelSelection.preferences
-        let routable = modelCatalogs.profiles.routable(using: modelCatalogs.gateways)
-        if let profile = preferred.preferredProfileIdentifier,
-           routable.profilesByIdentifier[profile] == nil
-        {
-            throw ApplicationModelSelectionError.unavailable_profile(profile)
-        }
-        if let model = preferred.preferredModelID,
-           !routable.profiles(for: model).contains(where: {
-               preferred.gateway == nil || $0.gatewayIdentifier == preferred.gateway
-           })
-        {
-            throw ApplicationModelSelectionError.unavailable_model(model, preferred.gateway)
-        }
-        if let gateway = preferred.gateway,
-           !routable.profilesByIdentifier.values.contains(where: {
-               $0.gatewayIdentifier == gateway
-           })
-        {
-            throw ApplicationModelSelectionError.unavailable_gateway(gateway)
-        }
+        try application.modelSelection.validate(
+            against: modelCatalogs.profiles.routable(using: modelCatalogs.gateways)
+        )
 
         self.application = application
         self.installed = installed

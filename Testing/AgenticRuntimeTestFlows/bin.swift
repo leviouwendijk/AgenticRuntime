@@ -229,6 +229,18 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runAgentInvocation()
         },
         TestFlow(
+            "application-purpose-model-selection",
+            tags: [
+                "agentic-runtime",
+                "agent",
+                "delegation",
+                "model-selection",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runApplicationPurposeModelSelection()
+        },
+        TestFlow(
             "agent-authored-visible-capabilities-survive-runtime-launch",
             tags: [
                 "agentic-runtime",

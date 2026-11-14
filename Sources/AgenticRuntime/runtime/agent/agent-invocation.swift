@@ -42,8 +42,16 @@ public extension AgenticRuntime {
         var selection = realization.modelSelection
         // A delegated runner receives the caller's resolved model posture.
         // Preserve that target unless this Agent or an explicit invocation
-        // preference supplies a more specific one.
-        selection.preferences = model.selection.preferences.overriding(
+        // preference supplies a more specific one. A child serving another
+        // purpose starts from the application's binding for that purpose
+        // instead, when the application declares one.
+        let applicationSelection = application.modelSelection
+        let inherited =
+            selection.purpose != model.selection.purpose
+                && applicationSelection.purposes[selection.purpose] != nil
+            ? applicationSelection.preferences(for: selection.purpose)
+            : model.selection.preferences
+        selection.preferences = inherited.overriding(
             with: selection.preferences
         ).overriding(
             with: modelPreferences

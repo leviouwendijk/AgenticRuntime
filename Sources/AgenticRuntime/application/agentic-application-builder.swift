@@ -314,10 +314,15 @@ public func program<ProgramType: Program>(
 
 public func modelSelection(
     default preferences: AgentModelPreferences,
+    purposes: [AgentModelRoutePurpose: AgentModelPreferences] = [:],
     precedence: ModelSelectionPrecedence = .default
 ) -> AgenticApplicationComponent {
     .modelSelection(
-        .init(preferences: preferences, precedence: precedence)
+        .init(
+            preferences: preferences,
+            purposes: purposes,
+            precedence: precedence
+        )
     )
 }
 
