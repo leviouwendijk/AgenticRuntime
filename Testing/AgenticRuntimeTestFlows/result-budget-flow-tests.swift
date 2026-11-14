@@ -101,6 +101,45 @@ extension AgenticProgramRuntimeFlowTesting {
     }
 }
 
+extension AgenticProgramRuntimeFlowTesting {
+    /// Arguments a provider could not parse are answered as a tool error the
+    /// model can correct; the run goes on instead of failing.
+    static func runMalformedArguments() async throws -> [TestDiagnostic] {
+        let name = BudgetListingTool.definition.identifier.rawValue
+        let broken = FunctionCall(id: "c-broken", name: name, malformedArguments: #"{"arguments": {"#)
+        let retry = FunctionCall(id: "c-retry", name: name, input: .object(["arguments": .object([:])]))
+        let state = BudgetModelState()
+        let tools = [BudgetListingTool.definition.identifier]
+        let executor = AgentExecutor(
+            model: .init(invoker: BudgetModelInvoker(state: state, calls: [broken, retry])),
+            configuration: .init(runLimits: .init(iterations: 4)),
+            tooling: .init(registry: try ToolRegistry { BudgetListingTool() }),
+            capabilityState: AgentCapabilityState(
+                installed: .init(tools: tools),
+                available: .init(tools: tools),
+                visible: .init(tools: tools)
+            )
+        )
+        let result = try await executor.run(
+            AgentRequest(messages: [Message(role: .user, text: "List everything.")]),
+            sessionID: "malformed"
+        )
+        try Expect.true(result.isCompleted, "The run completes")
+        let invocations = await state.snapshot()
+        try Expect.equal(invocations.count, 3, "Broken call, retry, answer")
+        let answered = try Expect.notNil(
+            invocations[1].request.messages.flatMap(\.content.blocks).lazy.compactMap { block -> FunctionCall.Response? in
+                guard case .result(let response) = block, response.call.id == broken.id else { return nil }
+                return response
+            }.first,
+            "The broken call is answered"
+        )
+        try Expect.true(answered.isError, "as an error")
+        try Expect.true(answered.modelText.contains("not valid JSON"), "that says why")
+        return []
+    }
+}
+
 private struct BudgetListingInput: Sendable, Codable, JSONSchemaProviding {
     static var jsonschema: JSONSchema { .object {} }
 }

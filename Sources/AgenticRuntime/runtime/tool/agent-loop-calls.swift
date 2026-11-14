@@ -92,6 +92,15 @@ extension AgentLoop {
             functionCall
         )
 
+        if let raw = functionCall.malformedArguments {
+            try await answer(
+                functionCall,
+                failingWith: FunctionCall.MalformedArguments(raw: raw),
+                checkpoint: &checkpoint
+            )
+            return .next
+        }
+
         // Semantic model functions are not installed Tools. A saved,
         // request-bound projection is required to invoke them.
         if let projection = checkpoint.lastAdvertisedCapabilities,

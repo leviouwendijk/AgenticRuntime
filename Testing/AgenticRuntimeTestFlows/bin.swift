@@ -92,6 +92,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting.runResultBudget()
         },
         TestFlow(
+            "malformed-arguments",
+            tags: ["runtime", "tools"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runMalformedArguments()
+        },
+        TestFlow(
             "delegated-staged-note",
             tags: ["runtime", "delegation", "mutations"]
         ) {

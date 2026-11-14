@@ -33,19 +33,33 @@ public actor AgentDelegation {
         public let requestedScope: String?
         public let executing: Bool
         public let settled: Bool
+        /// The worker's latest published state, while it runs and after:
+        /// its iteration, model turns, cost and tool uses.
+        public let state: AgentRunStateSnapshot?
 
         public init(
             session: Session,
             phase: AgentExecutor.Phase?,
             requestedScope: String?,
             executing: Bool,
-            settled: Bool
+            settled: Bool,
+            state: AgentRunStateSnapshot? = nil
         ) {
             self.session = session
             self.phase = phase
             self.requestedScope = requestedScope
             self.executing = executing
             self.settled = settled
+            self.state = state
+        }
+    }
+
+    /// Feeds a worker's published states back into its entry.
+    private struct LiveState: AgentRunStateSink {
+        let delegation: AgentDelegation
+
+        func publish(_ snapshot: AgentRunStateSnapshot) async {
+            await delegation.record(snapshot)
         }
     }
 
@@ -83,6 +97,7 @@ public actor AgentDelegation {
         var requestedScope: String? = nil
         var responseFormat: AgentResponseFormat? = nil
         var mutationsWithdrawn: Bool = false
+        var liveState: AgentRunStateSnapshot? = nil
     }
 
     private let runtime: AgenticRuntime
@@ -125,6 +140,10 @@ public actor AgentDelegation {
         ]
     }
 
+    func record(_ state: AgentRunStateSnapshot) {
+        entries[state.sessionID]?.liveState = state
+    }
+
     public func session(_ id: String) -> Session? {
         entries[id]?.session
     }
@@ -150,7 +169,8 @@ public actor AgentDelegation {
                 phase: entry.latestResult?.phase,
                 requestedScope: entry.requestedScope,
                 executing: entry.executing,
-                settled: entry.settled
+                settled: entry.settled,
+                state: entry.liveState
             )
         }.sorted { $0.session.id < $1.session.id }
     }
@@ -443,7 +463,7 @@ public actor AgentDelegation {
                 // context stays retrievable; presentation sinks stay parent-only.
                 stateSinks: recording.stateSinks.filter {
                     $0 is AgentSessionHistory
-                },
+                } + [LiveState(delegation: self)],
                 costTracker: recording.costTracker
             )
         )

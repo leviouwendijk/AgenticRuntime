@@ -343,8 +343,10 @@ public extension FunctionCall.Response {
         return rendered(
             modelText
                 + "\n[Staged by the worker, not yet on disk: \(changes.joined(separator: ", ")). "
-                + "They await the operator's review and publication. Do not retry them or check the "
-                + "disk for them; report them as staged.]"
+                + "This is the expected outcome: the operator publishes staged changes after the run, "
+                + "so the files on disk still show the old content until then. Reading them now cannot "
+                + "confirm or refute the change; the staged diff is the record. Do not re-read the "
+                + "files, retry, or redo these changes; report them as staged and continue.]"
         )
     }
 }
