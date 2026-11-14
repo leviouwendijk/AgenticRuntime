@@ -111,9 +111,10 @@ public struct InstalledCapabilities: Sendable {
             let reference = binding.reference
             result.append(.init(
                 reference: reference, namespace: namespaces[reference],
-                purpose: definition.purpose,
+                purpose: binding.modelFacingDescription,
                 input: binding.contract.input.jsonvalue,
-                output: binding.contract.output.jsonvalue
+                output: binding.contract.output.jsonvalue,
+                modelInputSchema: binding.modelFacingInputSchema.jsonvalue
             ))
         }
         return result.sorted {

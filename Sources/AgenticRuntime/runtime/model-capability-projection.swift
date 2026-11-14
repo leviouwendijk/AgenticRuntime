@@ -163,17 +163,8 @@ extension InstalledCapabilities {
                     name: ModelCapabilityProjection.providerName(
                         kind: "agent", identifier: identifier.rawValue
                     ),
-                    description: binding.definition.purpose,
-                    input: CapabilityModelInputSchema.envelope(
-                        semanticInput: binding.contract.input,
-                        execution: .object {
-                            JSONSchema.property(
-                                "workspace_scope",
-                                schema: .string(),
-                                required: false
-                            )
-                        }
-                    ).jsonvalue
+                    description: binding.modelFacingDescription,
+                    input: binding.modelFacingInputSchema.jsonvalue
                 ),
                 target: .agent(identifier)
             ))

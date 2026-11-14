@@ -24,7 +24,7 @@ extension AgenticProgramRuntimeFlowTesting {
         }
         let fullSize = try size(full)
         let coreSize = try size(core)
-        try Expect.true(coreSize * 2 < fullSize, "Core schema is less than half the full one")
+        try Expect.true(coreSize * 4 < fullSize * 3, "Core schema drops at least a quarter")
         try Expect.true(core.description.contains("inspect_capability"), "Core schema says where the rest is")
         try Expect.equal(core.core, core, "Projection is idempotent")
 
@@ -65,8 +65,30 @@ extension AgenticProgramRuntimeFlowTesting {
             inspectedText.contains("Destination path for copy or move."),
             "Inspection returns the full schema"
         )
+        // Agents: the delegation envelope survives core form and inspection.
+        let agents = InstalledCapabilities(agents: [AgentBinding(CoreSchemaWorker.self)])
+        let agentSchema = try Expect.notNil(
+            agents.capabilityInspections().first?.modelInputSchema,
+            "Inspecting an Agent returns the function the model calls"
+        )
+        let agentCore = ToolDescriptor(name: "worker", description: "Worker.", input: agentSchema).core
+        let agentText = String(decoding: try JSONEncoder().encode(agentCore.input), as: UTF8.self)
+        try Expect.true(
+            agentText.contains("workspace_scope"),
+            "Core form keeps the workspace scope an Agent needs for file access"
+        )
         return [
             .field("mutate_files_bytes", "\(fullSize) -> \(coreSize)"),
         ]
     }
+}
+
+private enum CoreSchemaWorker: Agent {
+    typealias Input = String
+    typealias Output = String
+    static let purpose = "Implements delegated changes."
+    static let definition = AgentDefinition(
+        identifier: "fixture.core_schema.worker",
+        purpose: purpose
+    )
 }

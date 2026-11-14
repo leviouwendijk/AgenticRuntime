@@ -183,7 +183,8 @@ extension AgenticProgramRuntimeFlowTesting {
                 from: "root-session",
                 sessionID: "rejected-unlisted"
             )
-        } catch AgentDelegation.Failure.notAllowed {
+        } catch AgentDelegation.Failure.notAvailable, AgentDelegation.Failure.notAllowed {
+            // Unlisted Agents are no longer available at all.
             denied_unlisted = true
         }
         try Expect.true(denied_unlisted, "Policy selection must bind delegated identities")

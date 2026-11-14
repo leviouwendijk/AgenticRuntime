@@ -74,7 +74,20 @@ extension AgentRealization {
         let requestedVisible = installed.catalog.resolve(
             definition.capabilities.visible
         )
-        let available = requestedAvailable.intersecting(installed.capabilities)
+        // Agents are only invoked through delegation, so an Agent the policy
+        // does not allow is not available: discovery never offers it.
+        let delegable = definition.delegation.enabled
+            ? installed.catalog.resolve(
+                AgentCapabilityScope(agents: definition.delegation.allowedAgents)
+            ).agents
+            : []
+        let bounded = requestedAvailable.intersecting(installed.capabilities)
+        let available = AgentCapabilitySet(
+            tools: bounded.tools,
+            programs: bounded.programs,
+            inferences: bounded.inferences,
+            agents: bounded.agents.filter(delegable.contains)
+        )
         let visible = requestedVisible.intersecting(available)
         return .init(
             definition: definition,

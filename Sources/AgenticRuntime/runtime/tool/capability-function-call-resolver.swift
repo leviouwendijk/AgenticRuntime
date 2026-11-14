@@ -103,6 +103,13 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
                     role: .system,
                     text: "Assigned workspace scope: \(scope). Only operate on that path or its descendants; approval is required for any expansion."
                 ))
+            } else {
+                // Without a scope the child has no workspace at all; saying so
+                // up front saves it failing tool by tool.
+                messages.append(Message(
+                    role: .system,
+                    text: "No workspace scope was assigned, so file tools are unavailable. If the task needs files, report that the delegator must pass execution.workspace_scope."
+                ))
             }
             invocation = .agent(
                 identifier: identifier,

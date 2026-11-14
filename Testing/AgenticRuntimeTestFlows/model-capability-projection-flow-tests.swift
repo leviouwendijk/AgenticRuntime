@@ -85,7 +85,11 @@ private enum ProjectionCallerAgent: Agent {
     static let definition = AgentDefinition(
         identifier: "fixture.projection.caller",
         purpose: purpose,
-        capabilities: capabilities
+        capabilities: capabilities,
+        // An Agent is only available to call when delegation allows it.
+        delegation: .bounded(
+            allowedAgents: .init(members: [ProjectionChildAgent.definition.identifier])
+        )
     )
 }
 

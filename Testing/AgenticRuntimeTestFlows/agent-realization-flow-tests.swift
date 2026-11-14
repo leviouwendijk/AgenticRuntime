@@ -161,7 +161,11 @@ private enum AgentRealizationRootFixture:
         purpose: purpose,
         instructions: instructions,
         capabilities: capabilities,
-        modelSelection: modelSelection
+        modelSelection: modelSelection,
+        // An Agent is only available to call when delegation allows it.
+        delegation: .bounded(
+            allowedAgents: .init(members: [AgentRealizationChildFixture.definition.identifier])
+        )
     )
 }
 
