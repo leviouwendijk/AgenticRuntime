@@ -14,7 +14,7 @@ public actor AgentDelegation {
         public let parentSessionID: String?
         public let depth: Int
 
-        init(
+        public init(
             id: String,
             agent: AgentIdentifier,
             parentSessionID: String?,
@@ -33,6 +33,20 @@ public actor AgentDelegation {
         public let requestedScope: String?
         public let executing: Bool
         public let settled: Bool
+
+        public init(
+            session: Session,
+            phase: AgentExecutor.Phase?,
+            requestedScope: String?,
+            executing: Bool,
+            settled: Bool
+        ) {
+            self.session = session
+            self.phase = phase
+            self.requestedScope = requestedScope
+            self.executing = executing
+            self.settled = settled
+        }
     }
 
     public enum Failure: Error, Sendable {
