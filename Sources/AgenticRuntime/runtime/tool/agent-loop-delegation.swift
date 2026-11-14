@@ -231,7 +231,7 @@ extension AgentLoop {
             child,
             for: call,
             responseFormat: responseFormat
-        )
+        ).notingStaged(by: child)
     }
 
     func recordTerminalDelegatedChild(
@@ -319,5 +319,32 @@ extension AgentLoop {
         try await recordMessage(response.message)
         try await recordFunctionCall(pending.call)
         try await mirrorDelegatedSuspension(pending, checkpoint: &checkpoint)
+    }
+}
+
+public extension FunctionCall.Response {
+    /// A worker's changes that are staged but not yet published read as
+    /// such to the delegator, so it neither retries them nor looks for them
+    /// on disk. Tools report staging through their projection's status.
+    func notingStaged(
+        by child: AgentExecutor.Result
+    ) -> FunctionCall.Response {
+        let staged = child.toolUses
+            .compactMap { $0.result?.projection }
+            .filter { $0.status == "staged" }
+        guard !staged.isEmpty else {
+            return self
+        }
+        let changes = staged.flatMap { projection in
+            projection.facts.isEmpty
+                ? [projection.summary ?? "changes"]
+                : projection.facts.map { "\($0.label) (\($0.value))" }
+        }
+        return rendered(
+            modelText
+                + "\n[Staged by the worker, not yet on disk: \(changes.joined(separator: ", ")). "
+                + "They await the operator's review and publication. Do not retry them or check the "
+                + "disk for them; report them as staged.]"
+        )
     }
 }

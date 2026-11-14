@@ -92,6 +92,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting.runResultBudget()
         },
         TestFlow(
+            "delegated-staged-note",
+            tags: ["runtime", "delegation", "mutations"]
+        ) {
+            try AgenticProgramRuntimeFlowTesting.runDelegatedStagedNote()
+        },
+        TestFlow(
             "context-compaction-projection",
             tags: ["runtime", "context", "compaction", "canonical"]
         ) {
