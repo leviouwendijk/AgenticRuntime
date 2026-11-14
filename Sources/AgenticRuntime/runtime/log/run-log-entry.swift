@@ -12,15 +12,29 @@ public extension Run.Log {
         public let version: Int
         public let session: String
         public let created: Date
+        /// What the session ran in: workspace, agent, title, …
+        public let metadata: [String: String]
 
         public init(
             version: Int = Run.Log.version,
             session: String,
-            created: Date = Date()
+            created: Date = Date(),
+            metadata: [String: String] = [:]
         ) {
             self.version = version
             self.session = session
             self.created = created
+            self.metadata = metadata
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.version = try container.decode(Int.self, forKey: .version)
+            self.session = try container.decode(String.self, forKey: .session)
+            self.created = try container.decode(Date.self, forKey: .created)
+            self.metadata = try container.decodeIfPresent(
+                [String: String].self, forKey: .metadata
+            ) ?? [:]
         }
     }
 

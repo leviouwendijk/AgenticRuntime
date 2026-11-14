@@ -109,6 +109,27 @@ extension AgenticProgramRuntimeFlowTesting {
             "A request's message is readable by digest"
         )
 
+        // Sessions are told apart by metadata, prompt and recency.
+        let other = try store.open(
+            session: "s2-session",
+            metadata: ["workspace": "/tmp/project", "agent": "organizer"]
+        )
+        try await other.recorder(run: "r1").recordMessage(
+            Message(id: "q", role: .user, content: .init(text: "Tidy the folder."))
+        )
+        let summaries = try store.summaries()
+        try Expect.equal(summaries.map(\.session), ["s2-session", "s1"], "Most recent session first")
+        try Expect.equal(summaries[0].header.metadata["agent"], "organizer", "Header keeps session metadata")
+        try Expect.equal(summaries[0].firstPrompt, "Tidy the folder.", "Summary shows the first prompt")
+        try Expect.equal(summaries[1].firstPrompt, "Read the readme.", "Older logs summarize too")
+        try Expect.equal(try store.resolve("latest"), "s2-session", "latest resolves")
+        try Expect.equal(try store.resolve("s2"), "s2-session", "A unique prefix resolves")
+        var ambiguous = false
+        do { _ = try store.resolve("s") } catch Run.Log.Failure.unknownSession(_, let candidates) {
+            ambiguous = candidates == 2
+        }
+        try Expect.true(ambiguous, "An ambiguous prefix is refused")
+
         return [.field("entries", String(contents.entries.count))]
     }
 }

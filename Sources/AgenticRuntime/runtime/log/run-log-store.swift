@@ -31,13 +31,15 @@ public extension Run.Log {
         }
 
         public func open(
-            session: String
+            session: String,
+            metadata: [String: String] = [:]
         ) throws -> Run.Log {
             try .init(
                 session: session,
                 file: storage.logfile(sessionID: session),
                 payloads: storage.payloadsdir(sessionID: session),
-                durability: durability
+                durability: durability,
+                metadata: metadata
             )
         }
     }
@@ -46,6 +48,15 @@ public extension Run.Log {
     struct Contents: Sendable, Hashable {
         public let header: Header
         public let entries: [Entry]
+    }
+
+    struct Summary: Sendable, Hashable {
+        public let session: String
+        public let header: Header
+        public let lastActivity: Date
+        public let steps: Int
+        /// The first user message, if any.
+        public let firstPrompt: String?
     }
 }
 
@@ -77,6 +88,48 @@ public extension Run.Log.Store {
         session: String
     ) throws -> JSONValue {
         try Run.Log.detail(of: entry, in: storage.payloadsdir(sessionID: session))
+    }
+
+    /// One line per session for choosing among them, most recent first.
+    func summaries() throws -> [Run.Log.Summary] {
+        try sessions().compactMap { session in
+            guard let contents = try? read(session: session) else { return nil }
+            let firstPrompt = contents.entries.lazy.compactMap { entry -> String? in
+                guard case .message(let stored) = entry.body,
+                      let message = try? payload(stored.digest, as: Message.self, session: session),
+                      message.role == .user
+                else { return nil }
+                return message.content.blocks.lazy.compactMap { block -> String? in
+                    if case .text(let text) = block { return text }
+                    return nil
+                }.first
+            }.first
+            return .init(
+                session: session,
+                header: contents.header,
+                lastActivity: contents.entries.last?.time ?? contents.header.created,
+                steps: contents.entries.count,
+                firstPrompt: firstPrompt
+            )
+        }
+    }
+
+    /// A session by ID, unique ID prefix, or `latest`.
+    func resolve(
+        _ reference: String
+    ) throws -> String {
+        let sessions = try sessions()
+        if reference == "latest", let latest = sessions.first {
+            return latest
+        }
+        if sessions.contains(reference) {
+            return reference
+        }
+        let matches = sessions.filter { $0.lowercased().hasPrefix(reference.lowercased()) }
+        guard matches.count == 1, let match = matches.first else {
+            throw Run.Log.Failure.unknownSession(reference, candidates: matches.count)
+        }
+        return match
     }
 
     /// Sessions that have a log, most recently written first.

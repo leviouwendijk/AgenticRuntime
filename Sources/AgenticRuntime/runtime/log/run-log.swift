@@ -22,11 +22,13 @@ public extension Run {
 
         /// Opens `file` for appending, continuing its sequence when it
         /// already holds entries.
+        /// `metadata` is recorded in the header of a new log only.
         public init(
             session: String,
             file: URL,
             payloads: URL,
-            durability: Durability = .entry
+            durability: Durability = .entry,
+            metadata: [String: String] = [:]
         ) throws {
             try FileSystem.default.directory.create(file.deletingLastPathComponent())
             try FileSystem.default.directory.create(payloads)
@@ -40,7 +42,7 @@ public extension Run {
 
             if existing.isEmpty {
                 try Self.write(
-                    Self.line(Header(session: session)),
+                    Self.line(Header(session: session, metadata: metadata)),
                     to: &destination
                 )
                 self.seq = 0
@@ -268,5 +270,7 @@ public extension Run.Log {
         case unwritable
         case missingHeader(URL)
         case unsupportedVersion(Int)
+        /// No session, or `candidates` sessions, match the reference.
+        case unknownSession(String, candidates: Int)
     }
 }
