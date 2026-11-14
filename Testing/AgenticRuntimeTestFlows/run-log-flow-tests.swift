@@ -81,6 +81,35 @@ extension AgenticProgramRuntimeFlowTesting {
         try await store.open(session: "s1").append(.branch(.init(sessionID: "s1", branch: .init(parentSessionID: "s0"))), run: "r3")
         try Expect.equal(try store.read(session: "s1").entries.last?.seq, 8, "Torn tail is skipped")
 
+        // Replay: what was said, called and returned, with notices.
+        let replay = try store.replay(session: "s1")
+        try Expect.equal(replay.items.map(\.seq), [2, 3, 4, 5, 7, 8], "Replay keeps conversation steps and notices")
+        try Expect.equal(
+            replay.items.first?.event,
+            .message(role: .user, text: "Read the readme."),
+            "Replay carries message text"
+        )
+        try Expect.equal(
+            replay.items[1].event,
+            .call(call.reference, input: call.input),
+            "Replay carries call input"
+        )
+        try Expect.equal(
+            replay.items[3].event,
+            .response(call.reference, output: .string("denied"), isError: true),
+            "Replay carries the response"
+        )
+        try Expect.equal(
+            try store.replay(session: "s1", run: "r2").items.map(\.seq),
+            [7],
+            "Replay filters by run"
+        )
+        try Expect.equal(
+            store.summary(of: contents.entries[1], session: "s1"),
+            "user · Read the readme.",
+            "Message lines say who spoke and how it starts"
+        )
+
         // Self-review through the Sessions tools.
         let context = ToolContext(services: try ToolServices().inserting(log))
         let denials = try await Sessions.Tools.Log().call(
