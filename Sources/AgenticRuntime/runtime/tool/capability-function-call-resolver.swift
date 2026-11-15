@@ -156,10 +156,11 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
             guard case .agent(_, let request, _) = invocation else {
                 throw RuntimeModelToolAuthorizationError.invalidProjection
             }
-            response = try Self.agentResponse(
+            response = try await Self.agentResponse(
                 result,
                 for: call,
-                responseFormat: request.responseFormat
+                responseFormat: request.responseFormat,
+                delegation: dispatcher.delegation
             )
         }
         if case .tool = target {
@@ -178,8 +179,9 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
     static func agentResponse(
         _ result: AgentExecutor.Result,
         for call: FunctionCall,
-        responseFormat: AgentResponseFormat
-    ) throws -> FunctionCall.Response {
+        responseFormat: AgentResponseFormat,
+        delegation: AgentDelegation?
+    ) async throws -> FunctionCall.Response {
         if result.suspension != nil {
             throw RuntimeDelegatedChildSuspension(call: call, result: result)
         }
@@ -200,19 +202,27 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
         case .text:
             output = .string(message.content.text)
         case .jsonschema(let schema):
+            let contract = AgentOutputContract(schema: schema)
             do {
-                output = try DelegatedReport.value(from: message.content.text, contract: schema)
+                output = try contract.parse(message.content.text).value
             } catch {
-                return .init(
-                    call: call.reference,
-                    output: .object([
-                        "child_session_id": .string(result.sessionID),
-                        "phase": .string(result.phase.rawValue),
-                        "failure": .string(String(describing: error)),
-                        "answer": .string(message.content.text),
-                    ]),
-                    isError: true
-                )
+                // One report-only repair, then the parent sees the failure.
+                do {
+                    guard let delegation else { throw error }
+                    output = try await delegation.repairReport(result, contract: contract, failure: error).value
+                } catch let repairFailure {
+                    return .init(
+                        call: call.reference,
+                        output: .object([
+                            "child_session_id": .string(result.sessionID),
+                            "phase": .string(result.phase.rawValue),
+                            "failure": .string("The child's report does not satisfy its output contract: \(error)"),
+                            "repair": .string(String(describing: repairFailure)),
+                            "answer": .string(message.content.text),
+                        ]),
+                        isError: true
+                    )
+                }
             }
         }
         return .init(
@@ -240,55 +250,5 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
             throw RuntimeModelToolAuthorizationError.invalidArguments
         }
         return arguments
-    }
-}
-
-/// A delegated Agent's final answer read as its typed report: JSON, possibly
-/// in a code fence, that satisfies the output contract. Valid JSON alone is
-/// not a valid report.
-package enum DelegatedReport {
-    package enum Failure: Error, Sendable, Hashable, CustomStringConvertible {
-        case not_json
-        case contract(String)
-
-        package var description: String {
-            switch self {
-            case .not_json:
-                return "The child's final answer is not the JSON its output contract requires."
-            case .contract(let reason):
-                return "The child's report does not satisfy its output contract: \(reason)"
-            }
-        }
-    }
-
-    package static func value(
-        from text: String,
-        contract: JSONSchema
-    ) throws -> JSONValue {
-        guard let value = try? JSONDecoder().decode(
-            JSONValue.self,
-            from: Data(unfenced(text).utf8)
-        ) else {
-            throw Failure.not_json
-        }
-        do {
-            try contract.validate(value)
-        } catch {
-            throw Failure.contract(String(describing: error))
-        }
-        return value
-    }
-
-    /// The text inside a single ``` fence, else the text itself.
-    package static func unfenced(
-        _ text: String
-    ) -> String {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.hasPrefix("```"), trimmed.hasSuffix("```"), trimmed.count > 6 else {
-            return trimmed
-        }
-        let inner = trimmed.dropFirst(3).dropLast(3)
-        let body = inner.firstIndex(of: "\n").map { inner[inner.index(after: $0)...] } ?? inner
-        return body.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

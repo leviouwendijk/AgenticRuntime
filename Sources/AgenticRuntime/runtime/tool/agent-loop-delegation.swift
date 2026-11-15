@@ -227,10 +227,11 @@ extension AgentLoop {
                 "delegated child result lacks its original Agent invocation contract"
             )
         }
-        return try CapabilityFunctionCallResolver.agentResponse(
+        return try await CapabilityFunctionCallResolver.agentResponse(
             child,
             for: call,
-            responseFormat: responseFormat
+            responseFormat: responseFormat,
+            delegation: delegation
         ).notingStaged(by: child)
     }
 

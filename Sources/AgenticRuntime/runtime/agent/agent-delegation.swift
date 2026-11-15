@@ -158,6 +158,31 @@ public actor AgentDelegation {
         entries[sessionID]?.responseFormat
     }
 
+    /// One report-only repair for a completed child whose final answer did
+    /// not satisfy its output contract: the child's own model, its
+    /// transcript and the failure, with no tools, so no work is repeated.
+    package func repairReport(
+        _ child: AgentExecutor.Result,
+        contract: AgentOutputContract,
+        failure: AgentOutputFailure
+    ) async throws -> AgentStructuredAnswer {
+        guard let executor = entries[child.sessionID]?.executor else {
+            throw Failure.unknownSession(child.sessionID)
+        }
+        let model = executor.model
+        var messages = child.state.messages
+        messages.append(Message(role: .user, text: contract.repairInstruction(for: failure)))
+        let repaired = try await model.invoker.buffered(AgentModelInvocation(
+            request: AgentRequest(
+                messages: messages,
+                responseFormat: .jsonschema(contract.schema),
+                metadata: ["delegation.repair": "report"]
+            ),
+            selection: model.selection
+        ))
+        return try contract.parse(repaired.response.message.content.text)
+    }
+
     public func sessions() -> [Session] {
         entries.values.map(\.session).sorted { $0.id < $1.id }
     }

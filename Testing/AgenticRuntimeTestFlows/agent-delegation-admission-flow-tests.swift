@@ -1,5 +1,6 @@
 import Agentic
 import AgenticRuntime
+import Schema
 import TestFlows
 
 private enum DelegationRootFixture: Agent {
@@ -461,8 +462,12 @@ private struct DelegatedExecutionModel: AgentModelInvoking {
     private func result(
         for invocation: AgentModelInvocation
     ) -> AgentModelInvocation.Result {
+        // A report repair is answered with a conforming report.
+        let text = invocation.request.metadata["delegation.repair"] == "report"
+            ? #"{"summary":"repaired"}"#
+            : "delegated child completed"
         let response = AgentResponse(
-            message: Message(role: .assistant, text: "delegated child completed"),
+            message: Message(role: .assistant, text: text),
             stopReason: .end_turn
         )
         let profile = AgentModelProfile(
@@ -670,6 +675,25 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let lineage = await admission.session("real-child")
         try Expect.equal(lineage?.parentSessionID, "real-parent", "Executed child keeps parent lineage")
+
+        // The child answered prose where a report was required: one
+        // report-only repair on the child's own model, without tools.
+        let contract = AgentOutputContract(schema: JSONSchema.object {
+            JSONSchema.property("summary", schema: .string(), required: true)
+        })
+        let repaired = try await admission.repairReport(child, contract: contract, failure: .not_json)
+        try Expect.equal(repaired.value, .object(["summary": .string("repaired")]), "Repair yields a conforming report")
+        let repairCall = try Expect.notNil(await recorder.snapshot().last, "Repair invoked the model")
+        try Expect.equal(repairCall.request.tools.count, 0, "Repair offers no tools")
+        try Expect.true(
+            repairCall.request.messages.last?.content.text.contains("Do not redo the work") == true,
+            "Repair asks only for the report"
+        )
+        try Expect.equal(
+            repairCall.selection.preferences.preferredModelID?.rawValue,
+            "fixture.application.model",
+            "Repair uses the child's own model selection"
+        )
 
         let preferredRunner = try runtime.makeAgentExecutor(
             identifiedBy: DelegationPreferredSelectionFixture.identifier,
