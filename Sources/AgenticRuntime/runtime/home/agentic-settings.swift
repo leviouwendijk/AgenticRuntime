@@ -5,7 +5,7 @@ import Readers
 /// User settings of an Agentic home, the `settings` binding of the home's
 /// `settings.frame`:
 ///
-///     import agentic;
+///     import Agentic;
 ///     let notes: PathScope = .{ .path = "~/notes/**" };
 ///     let settings: AgenticSettings = .{
 ///         .paths = .{ .ask = [notes] },
@@ -105,9 +105,9 @@ public struct PathScope: Sendable, Codable, Hashable {
     }
 }
 
-/// The `agentic` Frame module: what `import agentic;` makes nameable.
+/// The `agentic` Frame module: what `import Agentic;` makes nameable.
 public enum AgenticFrame {
-    public static let module = Frame.Module("agentic", types: [
+    public static let module = Frame.Module("Agentic", types: [
         .decodable(AgenticSettings.self, named: "AgenticSettings"),
         .decodable(PathScope.self, named: "PathScope"),
     ])

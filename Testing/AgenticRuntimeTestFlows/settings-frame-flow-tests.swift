@@ -15,7 +15,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(try home.settings(), AgenticSettings(), "no file: defaults")
 
         try """
-            import agentic;
+            import Agentic;
 
             let notes: PathScope = .{
                 .path = "~/notes/**",
@@ -44,7 +44,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(scopes["manual"]?.readOnly, true, "read-only scope")
 
         try """
-            import agentic;
+            import Agentic;
             let settings: AgenticSettings = .{
                 .mutations = .{ .publicaton = .review },
             };
