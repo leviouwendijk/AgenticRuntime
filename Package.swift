@@ -71,6 +71,10 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/leviouwendijk/Frame.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/leviouwendijk/Concatenation.git",
             branch: "master"
         ),
@@ -126,6 +130,10 @@ let package = Package(
                 .product(
                     name: "Readers",
                     package: "Readers"
+                ),
+                .product(
+                    name: "Frame",
+                    package: "Frame"
                 ),
                 .product(
                     name: "Primitives",

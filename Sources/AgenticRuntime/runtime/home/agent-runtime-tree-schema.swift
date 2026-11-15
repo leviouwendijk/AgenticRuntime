@@ -149,8 +149,8 @@ public struct AgentHomeTreeSchema: Sendable, Codable, Hashable {
         )
     }
 
-    public var configfile: PathTreeFileAddress {
-        root.file("config.json")
+    public var settingsfile: PathTreeFileAddress {
+        root.file("settings.frame")
     }
 
     public var profilesdir: PathTreeDirectoryAddress {
@@ -159,7 +159,7 @@ public struct AgentHomeTreeSchema: Sendable, Codable, Hashable {
 
     public var tree: PathTree {
         PathTree(root: root.path) {
-            PathTreeNode.file("config.json")
+            PathTreeNode.file("settings.frame")
             PathTreeNode.directory("profiles")
             storage.treeNodes
         }

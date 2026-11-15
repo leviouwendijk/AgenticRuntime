@@ -17,8 +17,8 @@ public struct AgentHomeLayout: Sendable, Codable, Hashable {
         schema.tree
     }
 
-    public var configfile: URL {
-        fileURL(for: schema.configfile)
+    public var settingsfile: URL {
+        fileURL(for: schema.settingsfile)
     }
 
     public var profilesdir: URL {

@@ -1,5 +1,5 @@
 {
-  "originHash" : "6e82e0841354375250064e57b8b5064e93ab621470ec4c2389c1fbf5a26ccc23",
+  "originHash" : "37a7df482bbca9ec1df57cfc2379f900691b15bb5a87bead52f479f965f9d35f",
   "pins" : [
     {
       "identity" : "agentic",
@@ -107,6 +107,15 @@
       "state" : {
         "branch" : "master",
         "revision" : "f0c1d8bf5beda0de51c9e95b687fbdec9e4ce7b0"
+      }
+    },
+    {
+      "identity" : "frame",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Frame.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "e1d9a70ff503306d696ced40c1284c74088e6008"
       }
     },
     {
