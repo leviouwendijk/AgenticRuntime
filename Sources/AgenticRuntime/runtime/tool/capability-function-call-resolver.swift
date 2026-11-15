@@ -199,16 +199,43 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
         case .text:
             output = .string(message.content.text)
         case .jsonschema:
-            output = try JSONDecoder().decode(
+            // A model without native structured output was asked for JSON;
+            // it may still wrap it in a code fence.
+            guard let decoded = try? JSONDecoder().decode(
                 JSONValue.self,
-                from: Data(message.content.text.utf8)
-            )
+                from: Data(Self.unfenced(message.content.text).utf8)
+            ) else {
+                return .init(
+                    call: call.reference,
+                    output: .object([
+                        "child_session_id": .string(result.sessionID),
+                        "phase": .string(result.phase.rawValue),
+                        "failure": .string("The child's final answer is not the JSON its output contract requires."),
+                        "answer": .string(message.content.text),
+                    ]),
+                    isError: true
+                )
+            }
+            output = decoded
         }
         return .init(
             call: call.reference,
             output: output,
             isError: false
         )
+    }
+
+    /// The text inside a single ``` fence, else the text itself.
+    static func unfenced(
+        _ text: String
+    ) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("```"), trimmed.hasSuffix("```"), trimmed.count > 6 else {
+            return trimmed
+        }
+        let inner = trimmed.dropFirst(3).dropLast(3)
+        let body = inner.firstIndex(of: "\n").map { inner[inner.index(after: $0)...] } ?? inner
+        return body.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func agentBinding(_ identifier: AgentIdentifier) async throws -> AgentBinding {
