@@ -83,6 +83,7 @@ extension AgentLoop {
             var interruption: Run.Interruption?
             var exhaustion: AgentRunLimitExhaustion?
             if checkpoint.phase == .ready_for_model {
+                try await applySteering(to: &checkpoint)
                 interruption = await requestedInterruption()
                 exhaustion = runLimitExhaustion(in: checkpoint)
             }
@@ -119,10 +120,38 @@ extension AgentLoop {
                 )
 
             case .finish:
+                // Steering that arrived with the final answer is not
+                // stranded: the run takes one more turn for it.
+                if checkpoint.phase == .completed, await runControl.hasSteering {
+                    checkpoint.phase = .ready_for_model
+                    continue
+                }
                 return try result(
                     for: checkpoint
                 )
             }
+        }
+    }
+
+    /// Operator messages join the conversation before the next model
+    /// request, after the previous turn's tool outcomes are recorded.
+    func applySteering(
+        to checkpoint: inout AgentExecutor.Checkpoint
+    ) async throws {
+        let messages = await runControl.takeSteering()
+        guard !messages.isEmpty else { return }
+        for message in messages {
+            checkpoint.state.messages.append(message)
+            try await recordMessage(message)
+            try await appendRunEvent(
+                .init(
+                    kind: .input_applied,
+                    iteration: checkpoint.state.iteration,
+                    messageID: message.id,
+                    summary: "operator input joined the run"
+                ),
+                to: &checkpoint
+            )
         }
     }
 

@@ -1,4 +1,13 @@
+import Agentic
 public extension AgentExecutor {
+    /// Delivers `message` at the run's next model request; a run that is
+    /// about to complete takes one more turn for it.
+    func steer(
+        _ message: Message
+    ) async {
+        await runControl.steer(message)
+    }
+
     func requestInterruption(
         _ mode: Run.Interruption.Mode,
         reason: String? = nil

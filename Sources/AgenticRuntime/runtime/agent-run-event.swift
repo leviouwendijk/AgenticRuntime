@@ -73,6 +73,8 @@ public extension Run.Event {
             /// A delegated child's report failed its output contract and was
             /// asked for once more, without tools; the summary says how it went.
             case output_repaired
+            /// Operator input joined the run at a model boundary (steering).
+            case input_applied
         }
 
         public let id: String

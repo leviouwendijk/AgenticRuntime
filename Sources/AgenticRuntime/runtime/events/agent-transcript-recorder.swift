@@ -104,7 +104,8 @@ private extension AgentTranscriptRecorder {
              .mutation_withdrawn,
              .operator_command,
              .workspace_changed,
-             .output_repaired:
+             .output_repaired,
+             .input_applied:
             return true
         }
     }

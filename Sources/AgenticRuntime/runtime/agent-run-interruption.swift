@@ -1,3 +1,4 @@
+import Agentic
 import Foundation
 
 public enum Run {}
@@ -40,8 +41,28 @@ public extension Run {
 public extension Run {
     actor Control {
         private var interruption: Interruption?
+        // Operator messages for the run's next model request, in order.
+        private var steering: [Message] = []
 
         public init() {}
+
+        /// Adds `message` to the run's next model request.
+        public func steer(
+            _ message: Message
+        ) {
+            steering.append(message)
+        }
+
+        /// The steering not yet applied, emptied. The loop takes it at its
+        /// next model boundary; a host takes what is left once a run ends.
+        public func takeSteering() -> [Message] {
+            defer { steering = [] }
+            return steering
+        }
+
+        public var hasSteering: Bool {
+            !steering.isEmpty
+        }
 
         public func request(
             _ mode: Interruption.Mode,
