@@ -16,6 +16,9 @@ public struct WorkspaceAccessLease:
     public let expiresAt: Date?
     public let sourceTurnID: String?
     public let origin: WorkspaceAccessOrigin
+    /// `.ask`: the root exists but grants nothing; a call that needs it
+    /// asks the operator, who grants it for a turn or the session.
+    public let access: WorkspaceAccessMode
 
     public init(
         id: String = UUID().uuidString,
@@ -24,7 +27,8 @@ public struct WorkspaceAccessLease:
         durationSeconds: TimeInterval? = nil,
         activatedAt: Date = Date(),
         sourceTurnID: String? = nil,
-        origin: WorkspaceAccessOrigin = .request
+        origin: WorkspaceAccessOrigin = .request,
+        access: WorkspaceAccessMode = .grant
     ) throws {
         let durationSeconds = durationSeconds
             ?? request.durationSeconds
@@ -54,7 +58,8 @@ public struct WorkspaceAccessLease:
             activatedAt: activatedAt,
             expiresAt: expiresAt,
             sourceTurnID: sourceTurnID,
-            origin: origin
+            origin: origin,
+            access: access
         )
     }
 
@@ -65,7 +70,8 @@ public struct WorkspaceAccessLease:
         activatedAt: Date,
         expiresAt: Date?,
         sourceTurnID: String?,
-        origin: WorkspaceAccessOrigin
+        origin: WorkspaceAccessOrigin,
+        access: WorkspaceAccessMode
     ) throws {
         let id = id.trimmingCharacters(
             in: .whitespacesAndNewlines
@@ -111,6 +117,7 @@ public struct WorkspaceAccessLease:
         self.expiresAt = expiresAt
         self.sourceTurnID = sourceTurnID
         self.origin = origin
+        self.access = access
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -121,6 +128,7 @@ public struct WorkspaceAccessLease:
         case expiresAt
         case sourceTurnID
         case origin
+        case access
     }
 
     public init(
@@ -158,7 +166,11 @@ public struct WorkspaceAccessLease:
             origin: container.decodeIfPresent(
                 WorkspaceAccessOrigin.self,
                 forKey: .origin
-            ) ?? .request
+            ) ?? .request,
+            access: container.decodeIfPresent(
+                WorkspaceAccessMode.self,
+                forKey: .access
+            ) ?? .grant
         )
     }
 
@@ -221,6 +233,15 @@ public struct WorkspaceAccessLease:
             )
         }
 
+        // An ask root grants nothing until the operator answers a call.
+        if access == .ask {
+            guard workspace.root(identifier: rootIdentifier) == nil else { return }
+            _ = try workspace.install { installation in
+                installation.install(root)
+            }
+            return
+        }
+
         if let existing = workspace.root(
             identifier: rootIdentifier
         ) {
@@ -256,6 +277,17 @@ public struct WorkspaceAccessLease:
     }
 }
 
+/// Whether a lease grants its capabilities or asks for them call by call.
+public enum WorkspaceAccessMode:
+    String,
+    Sendable,
+    Codable,
+    Hashable
+{
+    case grant
+    case ask
+}
+
 /// Who installed a lease. Either way the change is a traced event.
 public enum WorkspaceAccessOrigin:
     String,
@@ -282,7 +314,8 @@ public extension WorkspaceAccessLease {
         let path = request.files.map { files in
             files.map { (request.rootPath as NSString).appendingPathComponent($0) }.joined(separator: ", ")
         } ?? request.rootPath
-        return "\(request.label)  \(path) · \(capabilities) · \(lifetime.rawValue)"
+        let mode = access == .ask ? "ask · " : ""
+        return "\(request.label)  \(path) · \(mode)\(capabilities) · \(lifetime.rawValue)"
     }
 }
 

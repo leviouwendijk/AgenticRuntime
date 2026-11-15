@@ -1,6 +1,7 @@
 import Agentic
 import AgenticIO
 import AgenticStandard
+import Path
 import Primitives
 import Workspace
 
@@ -117,9 +118,29 @@ extension AgentLoop {
             }
         }
 
-        guard let invocation = try await resolve(functionCall, checkpoint: &checkpoint),
-              let review = try await review(invocation, for: functionCall, checkpoint: &checkpoint)
-        else {
+        guard let invocation = try await resolve(functionCall, checkpoint: &checkpoint) else {
+            return .next
+        }
+        let reviewed: ToolInvocation.Review?
+        do {
+            reviewed = try await review(invocation, for: functionCall, checkpoint: &checkpoint)
+        } catch let asked as AccessAsked {
+            // A root added with ask access: the operator decides, as for a
+            // requested path grant; the model retries once granted.
+            suspendToolBatch(
+                for: functionCall,
+                disposition: .suspended_for_workspace_access,
+                on: &checkpoint
+            )
+            return .stop(
+                try await suspendForWorkspaceAccess(
+                    asked.request,
+                    functionCall: functionCall,
+                    checkpoint: &checkpoint
+                )
+            )
+        }
+        guard let review = reviewed else {
             return .next
         }
 
@@ -325,6 +346,9 @@ extension AgentLoop {
                 context: await makeToolContext()
             )
         } catch {
+            if let request = accessRequest(for: error) {
+                throw AccessAsked(request: request)
+            }
             try await answer(functionCall, failingWith: error, checkpoint: &checkpoint)
             return nil
         }
@@ -502,5 +526,33 @@ extension AgentLoop {
             reason: siblingReason(for: skipped)
         )
         return .endBatch
+    }
+}
+
+/// A call refused on a root added with ask access, to be asked instead.
+struct AccessAsked: Error {
+    let request: WorkspaceAccessRequest
+}
+
+extension AgentLoop {
+    /// The grant to ask for when `error` refuses a capability on an ask root.
+    func accessRequest(
+        for error: Error
+    ) -> WorkspaceAccessRequest? {
+        guard case .authorization_denied(let root, let path, let capability)? = error as? WorkspaceError,
+              tooling.askRoots.contains(root),
+              let entry = tooling.workspace?.roots.first(where: { $0.id == root })
+        else {
+            return nil
+        }
+        return WorkspaceAccessRequest(
+            rootID: root.rawValue,
+            rootPath: entry.rootPath,
+            label: entry.label,
+            capabilities: Array(Set([capability, .list])).sorted { $0.rawValue < $1.rawValue },
+            reason: "\(path) needs \(capability.rawValue); the operator asked to be asked",
+            policyProfile: "workspace",
+            durationSeconds: nil
+        )
     }
 }

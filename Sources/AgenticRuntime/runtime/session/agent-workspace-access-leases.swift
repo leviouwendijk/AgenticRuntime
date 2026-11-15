@@ -92,6 +92,21 @@ public struct WorkspaceAccessLeases:
         }
     }
 
+    /// Roots of active ask leases that no active grant lease covers: a
+    /// call refused there asks the operator.
+    public func askRoots(
+        for turnID: String?,
+        at date: Date = Date()
+    ) -> Set<PathAccessRootIdentifier> {
+        let active = active(for: turnID, at: date)
+        let granted = Set(active.filter { $0.access == .grant }.map(\.request.rootID))
+        return Set(
+            active
+                .filter { $0.access == .ask && !granted.contains($0.request.rootID) }
+                .map { PathAccessRootIdentifier(rawValue: $0.request.rootID) }
+        )
+    }
+
     /// The base with active leases installed, then restrictions on roots
     /// still present, then the working directory's root as the default.
     public func effectiveWorkspace(

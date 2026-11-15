@@ -1,4 +1,5 @@
 import Agentic
+import Path
 import Workspace
 
 /// Shared execution capabilities available to Runtime consumers.
@@ -44,14 +45,19 @@ public struct RuntimeServices: Sendable {
         public var catalog: Catalog
         public var approvalHandler: (any ToolApprovalHandler)?
         public var services: ToolServices
+        /// Roots added with ask access: a call refused there asks the
+        /// operator for a grant instead of failing.
+        public var askRoots: Set<PathAccessRootIdentifier>
 
         public init(
             registry: ToolRegistry = .init(),
             workspace: WorkspaceContext? = nil,
             catalog: Catalog = .none,
             approvalHandler: (any ToolApprovalHandler)? = nil,
-            services: ToolServices = .init()
+            services: ToolServices = .init(),
+            askRoots: Set<PathAccessRootIdentifier> = []
         ) {
+            self.askRoots = askRoots
             self.registry = registry
             self.workspace = workspace
             self.catalog = catalog
@@ -67,7 +73,8 @@ public struct RuntimeServices: Sendable {
                 workspace: workspace,
                 catalog: catalog,
                 approvalHandler: approvalHandler,
-                services: services
+                services: services,
+                askRoots: askRoots
             )
         }
 
@@ -79,7 +86,8 @@ public struct RuntimeServices: Sendable {
                 workspace: workspace,
                 catalog: catalog,
                 approvalHandler: approvalHandler,
-                services: services
+                services: services,
+                askRoots: askRoots
             )
         }
 
@@ -91,7 +99,8 @@ public struct RuntimeServices: Sendable {
                 workspace: workspace,
                 catalog: catalog,
                 approvalHandler: approvalHandler,
-                services: services
+                services: services,
+                askRoots: askRoots
             )
         }
 
@@ -101,7 +110,8 @@ public struct RuntimeServices: Sendable {
                 workspace: workspace,
                 catalog: catalog,
                 approvalHandler: approvalHandler,
-                services: services
+                services: services,
+                askRoots: askRoots
             )
         }
     }
