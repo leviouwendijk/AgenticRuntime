@@ -539,7 +539,8 @@ extension AgentLoop {
     func accessRequest(
         for error: Error
     ) -> WorkspaceAccessRequest? {
-        guard case .authorization_denied(let root, let path, let capability)? = error as? WorkspaceError,
+        let refusal = (error as? ToolExecution.Error)?.underlying ?? error
+        guard case .authorization_denied(let root, let path, let capability)? = refusal as? WorkspaceError,
               tooling.askRoots.contains(root),
               let entry = tooling.workspace?.roots.first(where: { $0.id == root })
         else {
