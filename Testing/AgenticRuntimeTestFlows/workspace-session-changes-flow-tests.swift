@@ -217,6 +217,50 @@ extension AgenticProgramRuntimeFlowTesting {
             "revoking an unknown id is an error"
         )
 
+        // A file lease grants that file alone, not its directory.
+        let elsewhere = URL(fileURLWithPath: "/agentic-session-elsewhere", isDirectory: true)
+        let file = try WorkspaceAccessLease(
+            id: "file-lease",
+            request: WorkspaceAccessRequest(
+                rootID: "elsewhere",
+                rootPath: elsewhere.path,
+                label: "notes.md",
+                capabilities: [.read],
+                reason: "operator :path add",
+                policyProfile: "workspace",
+                durationSeconds: nil,
+                files: ["notes.md"]
+            ),
+            lifetime: .session,
+            origin: .operator_command
+        )
+        leases = try leases.activating(file, baseWorkspace: base, turnID: nil)
+        let withFile = try effective()
+        try Expect.true(
+            (try? withFile.authorize(
+                "notes.md",
+                rootIdentifier: .init(rawValue: "elsewhere"),
+                capability: .read
+            )) != nil,
+            "the leased file is readable"
+        )
+        try Expect.true(
+            (try? withFile.authorize(
+                "other.md",
+                rootIdentifier: .init(rawValue: "elsewhere"),
+                capability: .read
+            )) == nil,
+            "its siblings are not"
+        )
+        try Expect.true(
+            (try? withFile.authorize(
+                ".",
+                rootIdentifier: .init(rawValue: "elsewhere"),
+                capability: .list
+            )) == nil,
+            "nor is its directory listable"
+        )
+
         return []
     }
 }

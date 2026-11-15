@@ -203,16 +203,23 @@ public struct WorkspaceAccessLease:
             ),
             isDefault: false
         )
-        let grant = try WorkspaceGrant(
-            id: WorkspaceGrantIdentifier(
-                "workspace-access-\(id)"
-            ),
-            rootIdentifier: rootIdentifier,
-            capabilities: Set(
-                request.capabilities
-            ),
-            expiresAt: expiresAt
-        )
+        // A file lease grants each named file alone, never its directory.
+        let scopes: [WorkspaceScope] = try request.files.map { files in
+            try files.map { try .file($0) }
+        } ?? [.root]
+        let grants = try scopes.enumerated().map { index, scope in
+            try WorkspaceGrant(
+                id: WorkspaceGrantIdentifier(
+                    index == 0 ? "workspace-access-\(id)" : "workspace-access-\(id)-\(index)"
+                ),
+                rootIdentifier: rootIdentifier,
+                scope: scope,
+                capabilities: Set(
+                    request.capabilities
+                ),
+                expiresAt: expiresAt
+            )
+        }
 
         if let existing = workspace.root(
             identifier: rootIdentifier
@@ -228,9 +235,11 @@ public struct WorkspaceAccessLease:
                     )
             }
 
-            _ = try workspace.install(
-                grant
-            )
+            for grant in grants {
+                _ = try workspace.install(
+                    grant
+                )
+            }
             return
         }
 
@@ -238,9 +247,11 @@ public struct WorkspaceAccessLease:
             installation.install(
                 root
             )
-            installation.install(
-                grant
-            )
+            for grant in grants {
+                installation.install(
+                    grant
+                )
+            }
         }
     }
 }
@@ -266,7 +277,10 @@ public extension WorkspaceAccessLease {
             .map(\.rawValue)
             .sorted()
             .joined(separator: ", ")
-        return "\(request.label)  \(request.rootPath) · \(capabilities) · \(lifetime.rawValue)"
+        let path = request.files.map { files in
+            files.map { (request.rootPath as NSString).appendingPathComponent($0) }.joined(separator: ", ")
+        } ?? request.rootPath
+        return "\(request.label)  \(path) · \(capabilities) · \(lifetime.rawValue)"
     }
 }
 
