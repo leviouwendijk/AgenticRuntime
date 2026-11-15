@@ -1,6 +1,7 @@
 import Agentic
 import Foundation
 import Primitives
+import Schema
 
 /// Abort the current provider response after a live capability mutation.
 /// Successful invocations are journaled before crossing this boundary.
@@ -198,44 +199,27 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
         switch responseFormat {
         case .text:
             output = .string(message.content.text)
-        case .jsonschema:
-            // A model without native structured output was asked for JSON;
-            // it may still wrap it in a code fence.
-            guard let decoded = try? JSONDecoder().decode(
-                JSONValue.self,
-                from: Data(Self.unfenced(message.content.text).utf8)
-            ) else {
+        case .jsonschema(let schema):
+            do {
+                output = try DelegatedReport.value(from: message.content.text, contract: schema)
+            } catch {
                 return .init(
                     call: call.reference,
                     output: .object([
                         "child_session_id": .string(result.sessionID),
                         "phase": .string(result.phase.rawValue),
-                        "failure": .string("The child's final answer is not the JSON its output contract requires."),
+                        "failure": .string(String(describing: error)),
                         "answer": .string(message.content.text),
                     ]),
                     isError: true
                 )
             }
-            output = decoded
         }
         return .init(
             call: call.reference,
             output: output,
             isError: false
         )
-    }
-
-    /// The text inside a single ``` fence, else the text itself.
-    static func unfenced(
-        _ text: String
-    ) -> String {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.hasPrefix("```"), trimmed.hasSuffix("```"), trimmed.count > 6 else {
-            return trimmed
-        }
-        let inner = trimmed.dropFirst(3).dropLast(3)
-        let body = inner.firstIndex(of: "\n").map { inner[inner.index(after: $0)...] } ?? inner
-        return body.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func agentBinding(_ identifier: AgentIdentifier) async throws -> AgentBinding {
@@ -256,5 +240,55 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
             throw RuntimeModelToolAuthorizationError.invalidArguments
         }
         return arguments
+    }
+}
+
+/// A delegated Agent's final answer read as its typed report: JSON, possibly
+/// in a code fence, that satisfies the output contract. Valid JSON alone is
+/// not a valid report.
+package enum DelegatedReport {
+    package enum Failure: Error, Sendable, Hashable, CustomStringConvertible {
+        case not_json
+        case contract(String)
+
+        package var description: String {
+            switch self {
+            case .not_json:
+                return "The child's final answer is not the JSON its output contract requires."
+            case .contract(let reason):
+                return "The child's report does not satisfy its output contract: \(reason)"
+            }
+        }
+    }
+
+    package static func value(
+        from text: String,
+        contract: JSONSchema
+    ) throws -> JSONValue {
+        guard let value = try? JSONDecoder().decode(
+            JSONValue.self,
+            from: Data(unfenced(text).utf8)
+        ) else {
+            throw Failure.not_json
+        }
+        do {
+            try contract.validate(value)
+        } catch {
+            throw Failure.contract(String(describing: error))
+        }
+        return value
+    }
+
+    /// The text inside a single ``` fence, else the text itself.
+    package static func unfenced(
+        _ text: String
+    ) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("```"), trimmed.hasSuffix("```"), trimmed.count > 6 else {
+            return trimmed
+        }
+        let inner = trimmed.dropFirst(3).dropLast(3)
+        let body = inner.firstIndex(of: "\n").map { inner[inner.index(after: $0)...] } ?? inner
+        return body.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

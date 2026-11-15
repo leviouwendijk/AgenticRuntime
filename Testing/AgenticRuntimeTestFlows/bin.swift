@@ -209,6 +209,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting.runAgentDelegationAdmission()
         },
         TestFlow(
+            "delegated-report",
+            tags: ["agentic-runtime", "delegation", "contract"]
+        ) {
+            try AgenticProgramRuntimeFlowTesting.runDelegatedReport()
+        },
+        TestFlow(
             "agent-delegation-execution",
             tags: ["agentic-runtime", "delegation", "execution", "lineage"]
         ) {
