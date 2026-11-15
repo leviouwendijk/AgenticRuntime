@@ -39,7 +39,7 @@ public extension Run.Log {
             .tool_denied, .tool_skipped,
             .pending_approval, .pending_user_input, .pending_workspace_access,
             .mutation_staged, .mutation_published, .mutation_withdrawn,
-            .operator_command, .workspace_changed,
+            .operator_command, .workspace_changed, .output_repaired,
         ]
     }
 }

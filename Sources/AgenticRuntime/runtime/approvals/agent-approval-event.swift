@@ -112,7 +112,8 @@ public extension AgentApprovalEvent {
              .mutation_published,
              .mutation_withdrawn,
              .operator_command,
-             .workspace_changed:
+             .workspace_changed,
+             .output_repaired:
             return nil
         }
 

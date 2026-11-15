@@ -47,6 +47,13 @@ public struct InstalledCapabilities: Sendable {
         for adapter in application.adapterRegistrations {
             try install(adapter)
         }
+        // Structured output works in every application: `.json` and the
+        // strict native adapter, unless the application installs its own
+        // under the same identifier.
+        let builtIn: [any InferenceAdapter] = [JSONAdapter(), NativeStructuredAdapter()]
+        for adapter in builtIn where adapters.adapter(for: adapter.identifier) == nil {
+            try install(adapter)
+        }
         for binding in application.agentBindings {
             try install(binding)
         }

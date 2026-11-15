@@ -70,6 +70,9 @@ public extension Run.Event {
             /// Workspace access changed: a root added, revoked, expired or
             /// restricted, or the default root moved.
             case workspace_changed
+            /// A delegated child's report failed its output contract and was
+            /// asked for once more, without tools; the summary says how it went.
+            case output_repaired
         }
 
         public let id: String

@@ -226,8 +226,12 @@ extension AgenticProgramRuntimeFlowTesting {
         let runtime = try await AgenticRuntime(
             application: application
         )
-        try Expect.equal(runtime.adapters.count, 2,
+        // The explicit NativeStructuredAdapter and the domain's echo adapter,
+        // plus the built-in `.json`; the explicit native one is not doubled.
+        try Expect.equal(runtime.adapters.count, 3,
             "Explicit and @Adapter domain-derived adapters both install")
+        try Expect.true(runtime.adapters.adapter(for: .json) != nil,
+            "The built-in JSON adapter is available without installation")
         try Expect.true(
             application.catalog.adapters.contains(where: {
                 $0.identifier == AdapterInstallationDomain.Adapters.DomainEcho.definition.identifier

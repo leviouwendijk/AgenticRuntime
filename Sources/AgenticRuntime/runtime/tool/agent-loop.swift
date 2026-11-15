@@ -58,7 +58,10 @@ internal struct AgentLoop: Sendable {
     ) async -> CapabilityDispatcher {
         let inferenceExecutor = InferenceExecutor(
             modelInvoker: model.invoker,
-            adapters: await inventory.adapters()
+            adapters: await inventory.adapters(),
+            // A realization that names no adapter gets structured output
+            // that runs on any model.
+            defaultAdapterIdentifier: .json
         )
         let programTools = GovernedProgramToolExecutor(
             registry: await inventory.tools(),

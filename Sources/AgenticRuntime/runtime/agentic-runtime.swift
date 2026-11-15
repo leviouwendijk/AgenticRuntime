@@ -23,7 +23,7 @@ public struct AgenticRuntime:
     /// Model routing remains independent of adapter installation.
     public func makeInferenceExecutor(
         modelInvoker: any AgentModelInvoking,
-        defaultAdapterIdentifier: InferenceAdapterIdentifier? = nil
+        defaultAdapterIdentifier: InferenceAdapterIdentifier? = .json
     ) -> InferenceExecutor {
         InferenceExecutor(
             modelInvoker: modelInvoker,

@@ -1,4 +1,5 @@
 import Agentic
+import Foundation
 import AgenticRuntime
 import Schema
 import TestFlows
@@ -693,6 +694,37 @@ extension AgenticProgramRuntimeFlowTesting {
             repairCall.selection.preferences.preferredModelID?.rawValue,
             "fixture.application.model",
             "Repair uses the child's own model selection"
+        )
+
+        // A logged child: the repair's message and outcome land in its run.
+        let logRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("delegation-repair-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: logRoot) }
+        let logs = Run.Log.Store(storage: .init(root: logRoot))
+        let log = try logs.open(session: "real-parent")
+        let loggedTree = try AgentDelegation(
+            runtime: runtime,
+            root: DelegationRootFixture.identifier,
+            sessionID: "real-parent",
+            capabilityState: root_state
+        )
+        let loggedChild = try await loggedTree.run(
+            DelegationLeafFixture.identifier,
+            request: .init(messages: [Message(role: .user, text: "execute as logged child")]),
+            from: "real-parent",
+            sessionID: "logged-child",
+            model: model,
+            recording: .init(eventSinks: [log.recorder(run: "real-parent")])
+        )
+        _ = try await loggedTree.repairReport(loggedChild, contract: contract, failure: .not_json)
+        try await log.flush()
+        let repairEvents = try logs.read(session: "real-parent").entries.compactMap { entry -> Run.Event.State? in
+            guard entry.run == "logged-child", case .state(let state) = entry.body else { return nil }
+            return state
+        }
+        try Expect.true(
+            repairEvents.contains { $0.kind == .output_repaired && $0.summary.hasPrefix("report repaired") },
+            "The repair is recorded in the child's run"
         )
 
         let preferredRunner = try runtime.makeAgentExecutor(

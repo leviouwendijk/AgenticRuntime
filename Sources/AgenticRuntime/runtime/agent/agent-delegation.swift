@@ -180,7 +180,60 @@ public actor AgentDelegation {
             ),
             selection: model.selection
         ))
-        return try contract.parse(repaired.response.message.content.text)
+        let answer = Result { () throws(AgentOutputFailure) -> AgentStructuredAnswer in
+            try contract.parse(repaired.response.message.content.text)
+        }
+        try await recordRepair(
+            of: child,
+            failure: failure,
+            repaired: repaired,
+            outcome: answer,
+            recording: executor.recording
+        )
+        return try answer.get()
+    }
+
+    /// The repair belongs to the child's run: its message, outcome and cost
+    /// go to the child's sinks like any other model call of that run.
+    private func recordRepair(
+        of child: AgentExecutor.Result,
+        failure: AgentOutputFailure,
+        repaired: AgentModelInvocation.Result,
+        outcome: Result<AgentStructuredAnswer, AgentOutputFailure>,
+        recording: RuntimeServices.Recording
+    ) async throws {
+        let iteration = child.state.iteration
+        var events: [Run.Event.State] = []
+        switch outcome {
+        case .success:
+            events.append(.init(kind: .output_repaired, iteration: iteration,
+                                summary: "report repaired after: \(failure)"))
+        case .failure(let again):
+            events.append(.init(kind: .output_repaired, iteration: iteration,
+                                summary: "report repair failed: \(again) (first: \(failure))"))
+        }
+        if let record = recording.costTracker?.actualRecord(
+            existing: nil,
+            response: repaired.response,
+            route: repaired.route,
+            sessionID: child.sessionID,
+            turnIndex: iteration + 1
+        ), let actual = record.actual {
+            var summary = "actual cost (report repair) status=\(actual.status.rawValue)"
+            if let amount = actual.amount {
+                summary += " amount=\(amount.currencyCode) \(amount.majorUnitsApproximation)"
+            }
+            summary += " tokens=\(actual.usage.totalKnownTokens)"
+            if let model = record.model { summary += " model=\(model)" }
+            events.append(.init(kind: .cost_actual, iteration: iteration,
+                                messageID: repaired.response.message.id, summary: summary))
+        }
+        for sink in recording.eventSinks {
+            try await sink.recordMessage(repaired.response.message)
+            for event in events {
+                try await sink.record(.state(event))
+            }
+        }
     }
 
     public func sessions() -> [Session] {
