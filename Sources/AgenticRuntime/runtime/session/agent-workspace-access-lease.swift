@@ -15,6 +15,7 @@ public struct WorkspaceAccessLease:
     public let activatedAt: Date
     public let expiresAt: Date?
     public let sourceTurnID: String?
+    public let origin: WorkspaceAccessOrigin
 
     public init(
         id: String = UUID().uuidString,
@@ -22,7 +23,8 @@ public struct WorkspaceAccessLease:
         lifetime: WorkspaceAccessLifetime,
         durationSeconds: TimeInterval? = nil,
         activatedAt: Date = Date(),
-        sourceTurnID: String? = nil
+        sourceTurnID: String? = nil,
+        origin: WorkspaceAccessOrigin = .request
     ) throws {
         let durationSeconds = durationSeconds
             ?? request.durationSeconds
@@ -51,7 +53,8 @@ public struct WorkspaceAccessLease:
             lifetime: lifetime,
             activatedAt: activatedAt,
             expiresAt: expiresAt,
-            sourceTurnID: sourceTurnID
+            sourceTurnID: sourceTurnID,
+            origin: origin
         )
     }
 
@@ -61,7 +64,8 @@ public struct WorkspaceAccessLease:
         lifetime: WorkspaceAccessLifetime,
         activatedAt: Date,
         expiresAt: Date?,
-        sourceTurnID: String?
+        sourceTurnID: String?,
+        origin: WorkspaceAccessOrigin
     ) throws {
         let id = id.trimmingCharacters(
             in: .whitespacesAndNewlines
@@ -106,6 +110,7 @@ public struct WorkspaceAccessLease:
         self.activatedAt = activatedAt
         self.expiresAt = expiresAt
         self.sourceTurnID = sourceTurnID
+        self.origin = origin
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -115,6 +120,7 @@ public struct WorkspaceAccessLease:
         case activatedAt
         case expiresAt
         case sourceTurnID
+        case origin
     }
 
     public init(
@@ -148,7 +154,11 @@ public struct WorkspaceAccessLease:
             sourceTurnID: container.decodeIfPresent(
                 String.self,
                 forKey: .sourceTurnID
-            )
+            ),
+            origin: container.decodeIfPresent(
+                WorkspaceAccessOrigin.self,
+                forKey: .origin
+            ) ?? .request
         )
     }
 
@@ -232,6 +242,31 @@ public struct WorkspaceAccessLease:
                 grant
             )
         }
+    }
+}
+
+/// Who installed a lease. Either way the change is a traced event.
+public enum WorkspaceAccessOrigin:
+    String,
+    Sendable,
+    Codable,
+    Hashable
+{
+    /// The model asked through `request_path_grant` and the operator
+    /// approved it.
+    case request
+    /// The operator added it directly, e.g. `:path add`.
+    case operator_command
+}
+
+public extension WorkspaceAccessLease {
+    /// `label  /path · read, write · session`
+    var summary: String {
+        let capabilities = request.capabilities
+            .map(\.rawValue)
+            .sorted()
+            .joined(separator: ", ")
+        return "\(request.label)  \(request.rootPath) · \(capabilities) · \(lifetime.rawValue)"
     }
 }
 

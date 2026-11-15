@@ -65,6 +65,11 @@ public extension Run.Event {
             case mutation_staged
             case mutation_published
             case mutation_withdrawn
+            /// An operator's command, as typed, with its outcome.
+            case operator_command
+            /// Workspace access changed: a root added, revoked, expired or
+            /// restricted, or the default root moved.
+            case workspace_changed
         }
 
         public let id: String

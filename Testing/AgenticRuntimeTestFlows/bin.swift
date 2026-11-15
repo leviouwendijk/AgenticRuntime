@@ -540,6 +540,18 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runWorkspaceAccessLeaseActivation()
         },
         TestFlow(
+            "workspace-session-changes",
+            tags: [
+                "agentic-runtime",
+                "workspace",
+                "lease",
+                "session",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runWorkspaceSessionChanges()
+        },
+        TestFlow(
             "program-caught-tool-failure-resume",
             tags: [
                 "agentic-runtime",

@@ -101,7 +101,9 @@ private extension AgentTranscriptRecorder {
              .cost_actual,
              .mutation_staged,
              .mutation_published,
-             .mutation_withdrawn:
+             .mutation_withdrawn,
+             .operator_command,
+             .workspace_changed:
             return true
         }
     }
