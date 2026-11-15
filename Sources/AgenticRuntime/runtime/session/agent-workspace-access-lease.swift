@@ -268,6 +268,8 @@ public enum WorkspaceAccessOrigin:
     case request
     /// The operator added it directly, e.g. `:path add`.
     case operator_command
+    /// `settings.paths.allow` in the home's `settings.frame`, at session start.
+    case settings
 }
 
 public extension WorkspaceAccessLease {
