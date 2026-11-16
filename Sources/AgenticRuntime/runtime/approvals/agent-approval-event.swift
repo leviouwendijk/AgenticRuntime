@@ -114,7 +114,8 @@ public extension AgentApprovalEvent {
              .operator_command,
              .workspace_changed,
              .output_repaired,
-             .input_applied:
+             .input_applied,
+             .context_changed:
             return nil
         }
 

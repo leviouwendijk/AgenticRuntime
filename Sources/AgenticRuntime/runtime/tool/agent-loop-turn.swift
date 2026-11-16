@@ -1,4 +1,5 @@
 import Agentic
+import AgenticContext
 import AgenticIO
 import AgenticStandard
 import Foundation
@@ -36,7 +37,7 @@ extension AgentLoop {
         ).map { tool in
             schemas == .core && tool.identifier != Self.inspector ? tool.core : tool
         }
-        let request = try await prepareModelRequest(
+        let (request, history) = try await prepareModelRequest(
             from: try await requestWithCurrentState(
                 from: checkpoint.request,
                 messages: checkpoint.state.messages,
@@ -50,6 +51,7 @@ extension AgentLoop {
             turn: checkpoint.state.iteration + 1,
             request: request
         )
+        try await recordContextChanges(history, to: &checkpoint)
 
         checkpoint.lastAdvertisedCapabilities = projection
         checkpoint.lastAdvertisedTools = projection.entries.compactMap { entry in
@@ -213,6 +215,35 @@ extension AgentLoop {
 
         try await saveCheckpoint(
             &checkpoint
+        )
+    }
+}
+
+extension AgentLoop {
+    /// Reports what this request's history selection decided that the run
+    /// has not reported yet, so nothing leaves the model's view unseen by
+    /// the operator, and a decision held across requests is reported once.
+    func recordContextChanges(
+        _ history: Context.HistorySelection?,
+        to checkpoint: inout AgentExecutor.Checkpoint
+    ) async throws {
+        guard let changes = history?.changes, !changes.isEmpty else { return }
+        let reported = Set(checkpoint.events.flatMap { state -> [Context.HistorySelection.Change] in
+            state.kind == .context_changed ? state.contextChanges ?? [] : []
+        })
+        let new = changes.filter { !reported.contains($0) }
+        guard !new.isEmpty else { return }
+        let counts = Dictionary(grouping: new, by: { $0.reason }).map { reason, items in
+            "\(items.count) \(reason.rawValue)"
+        }.sorted()
+        try await appendRunEvent(
+            .init(
+                kind: .context_changed,
+                iteration: checkpoint.state.iteration,
+                summary: counts.joined(separator: ", "),
+                contextChanges: new
+            ),
+            to: &checkpoint
         )
     }
 }

@@ -1,4 +1,5 @@
 import Agentic
+import AgenticContext
 import Foundation
 
 public extension Run {
@@ -75,6 +76,10 @@ public extension Run.Event {
             case output_repaired
             /// Operator input joined the run at a model boundary (steering).
             case input_applied
+            /// A request carries less of the history than the transcript
+            /// holds: results shortened or pointed at, exchanges or turns
+            /// left out. `contextChanges` names each, with its reason.
+            case context_changed
         }
 
         public let id: String
@@ -84,6 +89,8 @@ public extension Run.Event {
         public let callID: String?
         public let toolName: String?
         public let summary: String
+        /// For `context_changed`: the decisions this request newly made.
+        public let contextChanges: [Context.HistorySelection.Change]?
 
         public init(
             id: String = UUID().uuidString,
@@ -92,8 +99,10 @@ public extension Run.Event {
             messageID: String? = nil,
             callID: String? = nil,
             toolName: String? = nil,
-            summary: String
+            summary: String,
+            contextChanges: [Context.HistorySelection.Change]? = nil
         ) {
+            self.contextChanges = contextChanges
             self.id = id
             self.kind = kind
             self.iteration = iteration

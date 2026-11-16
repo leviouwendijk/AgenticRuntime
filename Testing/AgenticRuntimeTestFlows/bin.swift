@@ -221,6 +221,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting.runSteering()
         },
         TestFlow(
+            "context-change-event",
+            tags: ["agentic-runtime", "context", "history"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runContextChangeEvent()
+        },
+        TestFlow(
             "agent-delegation-execution",
             tags: ["agentic-runtime", "delegation", "execution", "lineage"]
         ) {

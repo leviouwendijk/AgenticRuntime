@@ -5,8 +5,9 @@ extension AgentLoop {
     func prepareModelRequest(
         from request: AgentRequest,
         checkpoint: AgentExecutor.Checkpoint
-    ) async throws -> AgentRequest {
+    ) async throws -> (request: AgentRequest, history: Context.HistorySelection?) {
         var prepared = request
+        var history: Context.HistorySelection?
         if configuration.contextMode == .dynamic {
             guard let allocator = contextAllocator else {
                 throw ContextExecutionError.requiresDynamicMode
@@ -25,6 +26,7 @@ extension AgentLoop {
                 )
             }
             prepared = preparation.request
+            history = preparation.history
         }
         for harnessExtension in extensions {
             prepared = try await harnessExtension.prepare(
@@ -32,6 +34,6 @@ extension AgentLoop {
                 state: checkpoint.state
             )
         }
-        return prepared
+        return (prepared, history)
     }
 }
