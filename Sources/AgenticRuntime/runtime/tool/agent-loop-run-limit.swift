@@ -64,7 +64,11 @@ extension AgentLoop {
 
         switch resolution {
         case .continue_with(let limits):
-            checkpoint.runLimits = limits
+            // A context pause is not about iterations: continuing re-prepares
+            // the request (after a compaction) under the same limits.
+            if case .iterations = exhaustion {
+                checkpoint.runLimits = limits
+            }
             checkpoint.clearSuspension()
 
             try await appendRunEvent(
