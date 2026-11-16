@@ -11,7 +11,9 @@ public extension Sessions.Tools {
     struct History: Tool {
         @JSONSchema
         public struct Input: HashableSource {
-            public let sessionID: String
+            /// Omit to find `fromMessageID` in any recorded session, as a
+            /// compaction pointer names only the message.
+            public let sessionID: String?
             /// Start at this message; takes precedence over startIndex.
             public let fromMessageID: String?
             /// Stop after this message, inclusive.
@@ -23,7 +25,7 @@ public extension Sessions.Tools {
             public let maxCharacters: Int?
 
             public init(
-                sessionID: String,
+                sessionID: String? = nil,
                 fromMessageID: String? = nil,
                 throughMessageID: String? = nil,
                 startIndex: Int? = nil,
@@ -66,7 +68,7 @@ public extension Sessions.Tools {
         }
 
         public static let purpose =
-            "Read a session's complete message history, including messages compacted out of your context. Use the session and message IDs named in a compaction summary; page with nextIndex."
+            "Read a session's complete message history, including results compacted out of your context. Use the message ID a compaction pointer names (the session ID is optional); page with nextIndex."
         public static let risk: ActionRisk = .observe
 
         public init() {}
@@ -78,7 +80,8 @@ public extension Sessions.Tools {
             .init(
                 tool: Self.definition.identifier,
                 risk: Self.definition.risk,
-                summary: "Read message history for session \(input.sessionID).",
+                summary: "Read message history for "
+                    + (input.sessionID.map { "session \($0)" } ?? "message \(input.fromMessageID ?? "?")") + ".",
                 sideEffects: []
             )
         }
@@ -88,12 +91,13 @@ public extension Sessions.Tools {
             in context: ToolContext
         ) async throws -> Output {
             let history = try context.require(AgentSessionHistory.self)
+            let sessionID = try await resolveSession(input, in: history)
 
             guard let messages = await history.messages(
-                sessionID: input.sessionID
+                sessionID: sessionID
             ) else {
                 throw SessionHistoryToolError.sessionNotFound(
-                    input.sessionID
+                    sessionID
                 )
             }
 
@@ -108,7 +112,7 @@ public extension Sessions.Tools {
 
             guard lower <= upper, lower < messages.count else {
                 return Output(
-                    sessionID: input.sessionID,
+                    sessionID: sessionID,
                     totalMessageCount: messages.count,
                     startIndex: lower,
                     nextIndex: nil,
@@ -137,7 +141,7 @@ public extension Sessions.Tools {
             let next = lower + selected.count
 
             return Output(
-                sessionID: input.sessionID,
+                sessionID: sessionID,
                 totalMessageCount: messages.count,
                 startIndex: lower,
                 nextIndex: next <= upper ? next : nil,
@@ -148,6 +152,29 @@ public extension Sessions.Tools {
 }
 
 private extension Sessions.Tools.History {
+    /// The named session, or the fullest recorded one holding the message.
+    func resolveSession(
+        _ input: Input,
+        in history: AgentSessionHistory
+    ) async throws -> String {
+        if let sessionID = input.sessionID { return sessionID }
+        guard let messageID = input.fromMessageID else {
+            throw SessionHistoryToolError.sessionRequired
+        }
+        var best: (id: String, count: Int)?
+        for id in await history.sessionIDs() {
+            guard let messages = await history.messages(sessionID: id),
+                  messages.contains(where: { $0.id == messageID }),
+                  messages.count > (best?.count ?? -1)
+            else { continue }
+            best = (id, messages.count)
+        }
+        guard let best else {
+            throw SessionHistoryToolError.messageNotFound(messageID)
+        }
+        return best.id
+    }
+
     func index(
         of messageID: String?,
         in messages: [Message]
@@ -173,9 +200,13 @@ public enum SessionHistoryToolError:
 {
     case sessionNotFound(String)
     case messageNotFound(String)
+    case sessionRequired
 
     public var errorDescription: String? {
         switch self {
+        case .sessionRequired:
+            return "Name a sessionID, or a fromMessageID to find its session."
+
         case .sessionNotFound(let sessionID):
             return "No recorded history for session \(sessionID)."
 

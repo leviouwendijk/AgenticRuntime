@@ -85,6 +85,7 @@ extension AgenticProgramRuntimeFlowTesting {
         ).measurement.estimatedInputTokens
         try Expect.true(plan != nil && compacted < full * 2 / 3, "the fixture compacts substantially")
 
+        let history = AgentSessionHistory()
         func executor(limit: Int, ledger: Context.CompactionLedger, store: ContextPauseStore) -> AgentExecutor {
             AgentExecutor(
                 model: .init(invoker: ContextChangeModel()),
@@ -94,7 +95,7 @@ extension AgenticProgramRuntimeFlowTesting {
                     historyPersistenceMode: .checkpointmutation
                 ),
                 capabilityState: AgentCapabilityState(installed: .none),
-                recording: .init(historyStore: store),
+                recording: .init(historyStore: store, stateSinks: [history]),
                 contextServices: .init(
                     resolver: Context.UnmountedResolver(),
                     modelContextLimit: 10_000_000,
@@ -125,6 +126,18 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.true(
             resumed.events.contains { $0.kind == .context_changed && ($0.contextChanges ?? []).contains { $0.reason == .compacted } },
             "the compaction is reported as a context change"
+        )
+
+        // The pointer resolves: the message it names, without a session ID.
+        let pointer = await ledger.compactions.first?.pointers.first
+        let read = try await Sessions.Tools.History().call(
+            .init(fromMessageID: pointer?.messageID, throughMessageID: pointer?.messageID),
+            in: ToolContext(services: try ToolServices().inserting(history))
+        )
+        try Expect.equal(read.sessionID, "context-pause", "the session is found from the message")
+        try Expect.true(
+            read.messages.first?.content == request.messages.first { $0.id == pointer?.messageID }?.content,
+            "the full result is read back"
         )
 
         // Soft: past 60% of the limit, advised once; nothing is changed.
