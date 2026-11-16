@@ -1,4 +1,5 @@
 import Agentic
+import AgenticSessions
 import AgenticRuntime
 import Foundation
 import IO
@@ -111,7 +112,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
 
         // Self-review through the Sessions tools.
-        let context = ToolContext(services: try ToolServices().inserting(log))
+        let context = ToolContext(services: try ToolServices().inserting(log as any Sessions.LogReading))
         let denials = try await Sessions.Tools.Log().call(
             .init(kinds: [.state]),
             in: context

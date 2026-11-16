@@ -1,4 +1,5 @@
 import Agentic
+import AgenticSessions
 import AgenticContext
 import AgenticRuntime
 import TestFlows
@@ -85,7 +86,7 @@ extension AgenticProgramRuntimeFlowTesting {
         ).measurement.estimatedInputTokens
         try Expect.true(plan != nil && compacted < full * 2 / 3, "the fixture compacts substantially")
 
-        let history = AgentSessionHistory()
+        let history = Sessions.HistoryStore()
         func executor(limit: Int, ledger: Context.CompactionLedger, store: ContextPauseStore) -> AgentExecutor {
             AgentExecutor(
                 model: .init(invoker: ContextChangeModel()),

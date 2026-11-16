@@ -1,17 +1,18 @@
 import Agentic
+import AgenticSessions
 import Foundation
 
 public struct AgentSessionRuntime: Sendable {
     public let sessionID: String
     public let environment: AgentRuntimeEnvironment
     public let stores: AgentRuntimeStores
-    public let metadata: AgentSessionMetadata
+    public let metadata: Sessions.Metadata
 
     public init(
         sessionID: String = UUID().uuidString,
         environment: AgentRuntimeEnvironment,
         stores: AgentRuntimeStores,
-        metadata: AgentSessionMetadata? = nil
+        metadata: Sessions.Metadata? = nil
     ) {
         self.sessionID = sessionID
         self.environment = environment
@@ -25,7 +26,7 @@ public struct AgentSessionRuntime: Sendable {
     public static func resolve(
         sessionID: String = UUID().uuidString,
         environment: AgentRuntimeEnvironment,
-        metadata: AgentSessionMetadata? = nil
+        metadata: Sessions.Metadata? = nil
     ) throws -> Self {
         let stores = try AgentRuntimeStoreResolver(
             environment: environment
@@ -63,7 +64,7 @@ public struct AgentSessionRuntime: Sendable {
             note: note
         )
 
-        let branchMetadata = AgentSessionMetadata(
+        let branchMetadata = Sessions.Metadata(
             sessionID: sessionID,
             title: title,
             status: .active,
@@ -301,8 +302,8 @@ private extension AgentSessionRuntime {
         sessionID: String,
         environment: AgentRuntimeEnvironment,
         stores: AgentRuntimeStores,
-        metadata: AgentSessionMetadata?
-    ) throws -> AgentSessionMetadata {
+        metadata: Sessions.Metadata?
+    ) throws -> Sessions.Metadata {
         if let metadata {
             let resolved = metadata
                 .withSessionID(sessionID)
@@ -327,7 +328,7 @@ private extension AgentSessionRuntime {
             return resolved
         }
 
-        let created = AgentSessionMetadata(
+        let created = Sessions.Metadata(
             sessionID: sessionID,
             workspaceAttached: environment.workspace != nil
         )
@@ -340,7 +341,7 @@ private extension AgentSessionRuntime {
     }
 
     func saveMetadata(
-        _ metadata: AgentSessionMetadata
+        _ metadata: Sessions.Metadata
     ) throws {
         try stores.sessionMetadataStore?.save(
             metadata.withSessionID(
@@ -366,7 +367,7 @@ private extension AgentSessionRuntime {
 
     func status(
         for result: AgentExecutor.Result
-    ) -> AgentSessionStatus {
+    ) -> Sessions.Status {
         if result.isAwaitingApproval {
             return .awaiting_approval
         }

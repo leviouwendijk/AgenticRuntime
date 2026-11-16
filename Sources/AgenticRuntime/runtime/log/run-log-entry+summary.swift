@@ -1,14 +1,10 @@
 import Agentic
+import AgenticSessions
 import Macros
 import Schema
 
 public extension Run.Log.Entry {
-    @JSONSchema
-    enum Kind: String, Sendable, Codable, Hashable, CaseIterable {
-        case state, observation, request, message, call, response, branch
-    }
-
-    var kind: Kind {
+    var kind: Sessions.LogKind {
         switch body {
         case .state: .state
         case .observation: .observation

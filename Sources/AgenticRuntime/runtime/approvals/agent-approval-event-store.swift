@@ -1,7 +1,8 @@
+import AgenticSessions
 public protocol AgentApprovalEventStore: Sendable {
-    func loadEvents() async throws -> [AgentApprovalEvent]
+    func loadEvents() async throws -> [Sessions.ApprovalEvent]
 
     func append(
-        _ event: AgentApprovalEvent
+        _ event: Sessions.ApprovalEvent
     ) async throws
 }

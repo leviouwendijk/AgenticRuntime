@@ -1,73 +1,9 @@
 import Agentic
+import AgenticSessions
 import IO
 import Foundation
 import Macros
 import Schema
-
-@JSONSchema
-public struct AgentSessionSummary:
-    Sendable,
-    Codable,
-    Hashable,
-    Identifiable
-{
-    public let metadata: AgentSessionMetadata
-    public let hasCheckpoint: Bool
-    public let hasTranscript: Bool
-    public let hasApprovals: Bool
-    public let artifactCount: Int
-    public let preparedIntentCount: Int
-
-    public init(
-        metadata: AgentSessionMetadata,
-        hasCheckpoint: Bool,
-        hasTranscript: Bool,
-        hasApprovals: Bool,
-        artifactCount: Int,
-        preparedIntentCount: Int = 0
-    ) {
-        self.metadata = metadata
-        self.hasCheckpoint = hasCheckpoint
-        self.hasTranscript = hasTranscript
-        self.hasApprovals = hasApprovals
-        self.artifactCount = artifactCount
-        self.preparedIntentCount = preparedIntentCount
-    }
-
-    public var id: String {
-        metadata.sessionID
-    }
-}
-
-@JSONSchema
-public struct AgentSessionInspection:
-    Sendable,
-    Codable,
-    Hashable
-{
-    public let summary: AgentSessionSummary
-    public let transcriptEventCount: Int
-    public let approvalEventCount: Int
-    public let artifactCount: Int
-    public let preparedIntentCount: Int
-    public let childBranchCount: Int
-
-    public init(
-        summary: AgentSessionSummary,
-        transcriptEventCount: Int,
-        approvalEventCount: Int,
-        artifactCount: Int? = nil,
-        preparedIntentCount: Int? = nil,
-        childBranchCount: Int
-    ) {
-        self.summary = summary
-        self.transcriptEventCount = transcriptEventCount
-        self.approvalEventCount = approvalEventCount
-        self.artifactCount = artifactCount ?? summary.artifactCount
-        self.preparedIntentCount = preparedIntentCount ?? summary.preparedIntentCount
-        self.childBranchCount = childBranchCount
-    }
-}
 
 public enum AgentSessionCatalogError: Error, Sendable, LocalizedError {
     case durableStorageRequired
@@ -94,9 +30,9 @@ public struct AgentSessionCatalog: Sendable {
     }
 
     public func listSessions(
-        statuses: [AgentSessionStatus] = [],
+        statuses: [Sessions.Status] = [],
         includeArchived: Bool = false
-    ) throws -> [AgentSessionSummary] {
+    ) throws -> [Sessions.Summary] {
         guard let sessionsdir = environment.sessionsdir() else {
             throw AgentSessionCatalogError.durableStorageRequired
         }
@@ -111,7 +47,7 @@ public struct AgentSessionCatalog: Sendable {
             options: [.skipsHiddenFiles]
         )
 
-        let summaries = try urls.compactMap { url -> AgentSessionSummary? in
+        let summaries = try urls.compactMap { url -> Sessions.Summary? in
             guard try isDirectory(url) else {
                 return nil
             }
@@ -119,7 +55,7 @@ public struct AgentSessionCatalog: Sendable {
             let sessionID = url.lastPathComponent
             let metadata = try loadMetadata(
                 sessionID: sessionID
-            ) ?? AgentSessionMetadata(
+            ) ?? Sessions.Metadata(
                 sessionID: sessionID,
                 workspaceAttached: environment.workspace != nil
             )
@@ -149,7 +85,7 @@ public struct AgentSessionCatalog: Sendable {
 
     public func loadSession(
         sessionID: String
-    ) throws -> AgentSessionSummary {
+    ) throws -> Sessions.Summary {
         if let metadata = try loadMetadata(
             sessionID: sessionID
         ) {
@@ -178,7 +114,7 @@ public struct AgentSessionCatalog: Sendable {
 
     public func inspectSession(
         sessionID: String
-    ) async throws -> AgentSessionInspection {
+    ) async throws -> Sessions.Inspection {
         let session = try loadSession(
             sessionID: sessionID
         )
@@ -218,7 +154,7 @@ public struct AgentSessionCatalog: Sendable {
 
     public func listBranches(
         parentSessionID: String
-    ) throws -> [AgentSessionSummary] {
+    ) throws -> [Sessions.Summary] {
         try listSessions(
             includeArchived: true
         ).filter { summary in
@@ -229,12 +165,12 @@ public struct AgentSessionCatalog: Sendable {
     public func updateSession(
         sessionID: String,
         title: String? = nil,
-        status: AgentSessionStatus? = nil,
+        status: Sessions.Status? = nil,
         metadata extraMetadata: [String: String] = [:]
-    ) throws -> AgentSessionMetadata {
+    ) throws -> Sessions.Metadata {
         var metadata = try loadMetadata(
             sessionID: sessionID
-        ) ?? AgentSessionMetadata(
+        ) ?? Sessions.Metadata(
             sessionID: sessionID,
             workspaceAttached: environment.workspace != nil
         )
@@ -283,7 +219,7 @@ public struct AgentSessionCatalog: Sendable {
 
     public func loadApprovals(
         sessionID: String
-    ) async throws -> [AgentApprovalEvent] {
+    ) async throws -> [Sessions.ApprovalEvent] {
         guard let approvalsfile = environment.approvalsfile(
             sessionID: sessionID
         ) else {
@@ -425,15 +361,15 @@ private extension AgentSessionCatalog {
 
     func loadMetadata(
         sessionID: String
-    ) throws -> AgentSessionMetadata? {
+    ) throws -> Sessions.Metadata? {
         try metadataStore()?.load(
             sessionID: sessionID
         )
     }
 
     func summary(
-        metadata: AgentSessionMetadata
-    ) -> AgentSessionSummary {
+        metadata: Sessions.Metadata
+    ) -> Sessions.Summary {
         let sessionID = metadata.sessionID
 #if AGENTIC_ENABLE_DEFERRED_INTENTS
         let sessionIntentCount = preparedIntentCount(sessionID: sessionID)

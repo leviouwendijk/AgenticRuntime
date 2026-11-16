@@ -1,3 +1,4 @@
+import AgenticSessions
 import Foundation
 import IO
 
@@ -10,7 +11,7 @@ public actor FileApprovalEventStore: AgentApprovalEventStore {
         self.fileURL = fileURL.standardizedFileURL
     }
 
-    public func loadEvents() async throws -> [AgentApprovalEvent] {
+    public func loadEvents() async throws -> [Sessions.ApprovalEvent] {
         guard FileSystem.default.exists(fileURL) else {
             return []
         }
@@ -24,7 +25,7 @@ public actor FileApprovalEventStore: AgentApprovalEventStore {
         }
 
         if let events = try? JSONDecoder().decode(
-            [AgentApprovalEvent].self,
+            [Sessions.ApprovalEvent].self,
             from: data
         ) {
             return events
@@ -44,14 +45,14 @@ public actor FileApprovalEventStore: AgentApprovalEventStore {
             )
             .map { line in
                 try JSONDecoder().decode(
-                    AgentApprovalEvent.self,
+                    Sessions.ApprovalEvent.self,
                     from: Data(line.utf8)
                 )
             }
     }
 
     public func append(
-        _ event: AgentApprovalEvent
+        _ event: Sessions.ApprovalEvent
     ) async throws {
         try ensureParentDirectoryExists()
 

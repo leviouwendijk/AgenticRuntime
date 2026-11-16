@@ -1,65 +1,10 @@
 import Agentic
+import AgenticSessions
 import Foundation
 import Macros
 import Schema
 
-@JSONSchema
-public struct AgentApprovalEvent:
-    Sendable,
-    Codable,
-    Hashable,
-    Identifiable
-{
-    @JSONSchema
-    public enum Kind:
-        String,
-        Sendable,
-        Codable,
-        Hashable,
-        CaseIterable
-    {
-        case tool_preflight
-        case pending_approval
-        case approval_decision
-    }
-
-    public let id: String
-    public let sessionID: String
-    public let runEventID: String?
-    public let kind: Kind
-    public let createdAt: Date
-    public let iteration: Int
-    public let callID: String?
-    public let toolName: String?
-    public let decision: ApprovalDecision?
-    public let summary: String
-
-    public init(
-        id: String = UUID().uuidString,
-        sessionID: String,
-        runEventID: String? = nil,
-        kind: Kind,
-        createdAt: Date = Date(),
-        iteration: Int,
-        callID: String? = nil,
-        toolName: String? = nil,
-        decision: ApprovalDecision? = nil,
-        summary: String
-    ) {
-        self.id = id
-        self.sessionID = sessionID
-        self.runEventID = runEventID
-        self.kind = kind
-        self.createdAt = createdAt
-        self.iteration = iteration
-        self.callID = callID
-        self.toolName = toolName
-        self.decision = decision
-        self.summary = summary
-    }
-}
-
-public extension AgentApprovalEvent {
+public extension Sessions.ApprovalEvent {
     init?(
         sessionID: String,
         runEvent: Run.Event.State

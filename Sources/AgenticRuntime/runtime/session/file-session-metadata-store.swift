@@ -1,3 +1,4 @@
+import AgenticSessions
 import Foundation
 import IO
 
@@ -12,7 +13,7 @@ public struct FileSessionMetadataStore: AgentSessionMetadataStore {
 
     public func load(
         sessionID: String
-    ) throws -> AgentSessionMetadata? {
+    ) throws -> Sessions.Metadata? {
         let url = metadataURL(
             for: sessionID
         )
@@ -30,13 +31,13 @@ public struct FileSessionMetadataStore: AgentSessionMetadataStore {
         }
 
         return try JSONDecoder().decode(
-            AgentSessionMetadata.self,
+            Sessions.Metadata.self,
             from: data
         )
     }
 
     public func save(
-        _ metadata: AgentSessionMetadata
+        _ metadata: Sessions.Metadata
     ) throws {
         let url = metadataURL(
             for: metadata.sessionID

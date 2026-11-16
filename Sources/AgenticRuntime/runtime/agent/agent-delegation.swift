@@ -1,4 +1,5 @@
 import Agentic
+import AgenticSessions
 import Workspace
 
 /// Parent-owned admission state for a tree of Agent invocations.
@@ -540,7 +541,7 @@ public actor AgentDelegation {
                 // Children keep feeding session history so their compacted
                 // context stays retrievable; presentation sinks stay parent-only.
                 stateSinks: recording.stateSinks.filter {
-                    $0 is AgentSessionHistory
+                    $0 is Sessions.HistoryStore
                 } + [LiveState(delegation: self)],
                 costTracker: recording.costTracker
             )

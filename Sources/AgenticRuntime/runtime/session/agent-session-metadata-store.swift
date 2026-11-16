@@ -1,10 +1,11 @@
+import AgenticSessions
 public protocol AgentSessionMetadataStore: Sendable {
     func load(
         sessionID: String
-    ) throws -> AgentSessionMetadata?
+    ) throws -> Sessions.Metadata?
 
     func save(
-        _ metadata: AgentSessionMetadata
+        _ metadata: Sessions.Metadata
     ) throws
 
     func delete(

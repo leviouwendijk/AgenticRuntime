@@ -1,3 +1,4 @@
+import AgenticSessions
 public actor AgentApprovalRecorder: Run.EventSink {
     public let sessionID: String
     public let store: any AgentApprovalEventStore
@@ -15,7 +16,7 @@ public actor AgentApprovalRecorder: Run.EventSink {
     ) async throws {
         switch event {
         case .state(let state):
-            guard let approvalEvent = AgentApprovalEvent(
+            guard let approvalEvent = Sessions.ApprovalEvent(
                 sessionID: sessionID,
                 runEvent: state
             ) else {
