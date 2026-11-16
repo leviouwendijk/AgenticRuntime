@@ -1,4 +1,5 @@
 import Agentic
+import AgenticContext
 
 public extension Context {
     /// Explicitly provided source authority for a Runner's allocated sessions.
@@ -7,15 +8,19 @@ public extension Context {
         public let resolver: any RecordResolving
         public let modelContextLimit: Int
         public let audit: (any InferenceAuditRecording)?
+        /// The session's compactions, applied to every request.
+        public let compactions: CompactionLedger?
 
         public init(
             resolver: any RecordResolving,
             modelContextLimit: Int,
-            audit: (any InferenceAuditRecording)? = nil
+            audit: (any InferenceAuditRecording)? = nil,
+            compactions: CompactionLedger? = nil
         ) {
             self.resolver = resolver
             self.modelContextLimit = modelContextLimit
             self.audit = audit
+            self.compactions = compactions
         }
     }
 

@@ -80,6 +80,9 @@ public extension Run.Event {
             /// holds: results shortened or pointed at, exchanges or turns
             /// left out. `contextChanges` names each, with its reason.
             case context_changed
+            /// A request passed its soft input limit: advice to compact,
+            /// with what it would save. Nothing changes on its own.
+            case context_pressure
         }
 
         public let id: String

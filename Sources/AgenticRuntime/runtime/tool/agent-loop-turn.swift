@@ -37,7 +37,7 @@ extension AgentLoop {
         ).map { tool in
             schemas == .core && tool.identifier != Self.inspector ? tool.core : tool
         }
-        let (request, history) = try await prepareModelRequest(
+        let (request, preparation) = try await prepareModelRequest(
             from: try await requestWithCurrentState(
                 from: checkpoint.request,
                 messages: checkpoint.state.messages,
@@ -51,7 +51,8 @@ extension AgentLoop {
             turn: checkpoint.state.iteration + 1,
             request: request
         )
-        try await recordContextChanges(history, to: &checkpoint)
+        try await recordContextChanges(preparation?.history, to: &checkpoint)
+        try await recordContextPressure(preparation?.pressure, to: &checkpoint)
 
         checkpoint.lastAdvertisedCapabilities = projection
         checkpoint.lastAdvertisedTools = projection.entries.compactMap { entry in
@@ -245,5 +246,40 @@ extension AgentLoop {
             ),
             to: &checkpoint
         )
+    }
+}
+
+extension AgentLoop {
+    /// Past the soft limit, once per run: how full the request is and what
+    /// an explicit compaction would save. Advice only; nothing changes.
+    func recordContextPressure(
+        _ pressure: Context.Pressure?,
+        to checkpoint: inout AgentExecutor.Checkpoint
+    ) async throws {
+        guard let pressure, pressure.level == .soft,
+              !checkpoint.events.contains(where: { $0.kind == .context_pressure })
+        else { return }
+        let saving = await compactableTokens(in: checkpoint)
+        try await appendRunEvent(
+            .init(
+                kind: .context_pressure,
+                iteration: checkpoint.state.iteration,
+                summary: "≈\(pressure.estimatedInputTokens) of \(pressure.hardLimit) input tokens "
+                    + "(soft limit \(pressure.softLimit))"
+                    + (saving > 0 ? "; :compact would save ≈\(saving), at the cost of one cache miss" : "")
+            ),
+            to: &checkpoint
+        )
+    }
+
+    /// What compacting now would take out of later requests.
+    func compactableTokens(
+        in checkpoint: AgentExecutor.Checkpoint
+    ) async -> Int {
+        let done = await contextServices?.compactions?.compactions ?? []
+        return Context.Compactor.plan(
+            messages: checkpoint.state.messages,
+            excluding: done
+        )?.estimatedTokensSaved ?? 0
     }
 }

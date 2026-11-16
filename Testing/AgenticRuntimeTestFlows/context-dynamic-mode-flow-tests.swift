@@ -28,7 +28,7 @@ extension AgenticProgramRuntimeFlowTesting {
             preferredInputTokens: 1_000,
             maximumInputTokens: 5_000,
             reservedOutputTokens: 200,
-            history: .init(maximumTurns: 2, maximumTokens: 2_000)
+            history: .init(maximumTurns: 2, maximumTokens: 2_000, mode: .fitted)
         )
         let allocator = try Context.Allocator(policy: policy)
         try await allocator.createWorkingSet(id: "session-dynamic")
@@ -84,7 +84,7 @@ extension AgenticProgramRuntimeFlowTesting {
             preferredInputTokens: 1_000,
             maximumInputTokens: 5_000,
             reservedOutputTokens: 200,
-            history: .init(maximumTurns: 1, maximumTokens: 600)
+            history: .init(maximumTurns: 1, maximumTokens: 600, mode: .fitted)
         )
         let oversizedAllocator = try Context.Allocator(policy: oversizedPolicy)
         try await oversizedAllocator.createWorkingSet(id: "large-output")

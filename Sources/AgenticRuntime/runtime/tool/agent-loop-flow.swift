@@ -1,4 +1,5 @@
 import Agentic
+import AgenticContext
 
 extension AgentLoop {
     /// Decides what an Agent run does next. It never performs work: the loop
@@ -94,9 +95,22 @@ extension AgentLoop {
                 exhaustion: exhaustion
             ) {
             case .model:
-                checkpoint = try await performModelTurn(
-                    from: checkpoint
-                )
+                do {
+                    checkpoint = try await performModelTurn(
+                        from: checkpoint
+                    )
+                } catch ContextInferenceError.inputBudgetExceeded(let estimated, let maximum) {
+                    // Nothing was sent: pause where the run is, resumable
+                    // once the operator compacts, instead of failing it.
+                    return try await suspendForRunLimit(
+                        .context(
+                            estimatedInputTokens: estimated,
+                            limit: maximum,
+                            compactable: await compactableTokens(in: checkpoint)
+                        ),
+                        checkpoint: &checkpoint
+                    )
+                }
 
             case .calls:
                 switch try await processToolCalls(from: checkpoint) {

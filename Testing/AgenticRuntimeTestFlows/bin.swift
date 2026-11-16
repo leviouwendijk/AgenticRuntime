@@ -227,6 +227,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting.runContextChangeEvent()
         },
         TestFlow(
+            "context-pause-and-compaction",
+            tags: ["agentic-runtime", "context", "compaction"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runContextPauseAndCompaction()
+        },
+        TestFlow(
             "agent-delegation-execution",
             tags: ["agentic-runtime", "delegation", "execution", "lineage"]
         ) {

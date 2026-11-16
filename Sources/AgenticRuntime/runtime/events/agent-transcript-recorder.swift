@@ -106,7 +106,8 @@ private extension AgentTranscriptRecorder {
              .workspace_changed,
              .output_repaired,
              .input_applied,
-             .context_changed:
+             .context_changed,
+             .context_pressure:
             return true
         }
     }
