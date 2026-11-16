@@ -20,6 +20,12 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try AgenticProgramRuntimeFlowTesting.runUsageAbsorptionCostTracker()
         },
         TestFlow(
+            "request-input-estimation",
+            tags: ["runtime", "context", "pricing", "input-estimation"]
+        ) {
+            try AgenticProgramRuntimeFlowTesting.runRequestInputEstimation()
+        },
+        TestFlow(
             "instruction-selection",
             tags: ["runtime", "instructions", "catalog", "selection"]
         ) {

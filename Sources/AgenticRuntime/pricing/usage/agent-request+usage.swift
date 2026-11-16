@@ -30,8 +30,8 @@ public extension AgentRequest {
         )
     }
 
-    /// Everything the request sends: function schemas, then each message's
-    /// text, calls and results. Counting text alone undercounts tool-heavy turns.
+    /// Provider-neutral estimate of visible schemas, dialogue and rendered results.
+    /// Native replay and provider-specific framing require separate accounting.
     var estimatedPromptText: String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -43,8 +43,15 @@ public extension AgentRequest {
         }
 
         let schemas = tools.map(json)
+        let format: [String]
+        switch responseFormat {
+        case .text:
+            format = []
+        case .jsonschema(let schema):
+            format = [json(schema)]
+        }
         let conversation = messages.map { message in
-            let content = message.content.blocks.map { block in
+            let content = message.modelFacing.content.blocks.map { block in
                 if case .text(let text) = block {
                     return text
                 }
@@ -53,7 +60,7 @@ public extension AgentRequest {
             return "\(message.role.rawValue): " + content.joined(separator: "\n")
         }
 
-        return (schemas + conversation).joined(
+        return (schemas + format + conversation).joined(
             separator: "\n\n"
         )
     }
