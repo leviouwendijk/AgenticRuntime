@@ -152,6 +152,26 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(summaries[0].header.metadata["agent"], "organizer", "Header keeps session metadata")
         try Expect.equal(summaries[0].firstPrompt, "Tidy the folder.", "Summary shows the first prompt")
         try Expect.equal(summaries[1].firstPrompt, "Read the readme.", "Older logs summarize too")
+        // The logs are the host's session catalog: what it actually recorded.
+        let catalogContext = ToolContext(services: try ToolServices().inserting(store as any Sessions.CatalogReading))
+        let listed = try await Sessions.Tools.List().call(.init(), in: catalogContext)
+        try Expect.equal(listed.sessions.map(\.id), ["s2-session", "s1"], "The catalog lists logged sessions")
+        try Expect.equal(listed.sessions[0].metadata.title, "Tidy the folder.", "A session is titled by its first prompt")
+        try Expect.true(listed.sessions[0].metadata.workspaceAttached, "Header metadata carries through")
+        let transcript = try await Sessions.Tools.Transcript().call(.init(sessionID: "s1"), in: catalogContext)
+        try Expect.equal(
+            transcript.events.compactMap { event -> String? in
+                if case .message(let message) = event { return message.id }
+                return nil
+            },
+            ["u0", "a0"],
+            "The transcript is the logged conversation"
+        )
+        let approvals = try await Sessions.Tools.Approvals().call(.init(sessionID: "s1"), in: catalogContext)
+        try Expect.equal(approvals.events.map(\.decision), [.denied], "Approval decisions come from the log")
+        let read = try await Sessions.Tools.Read().call(.init(sessionID: "s1"), in: catalogContext)
+        try Expect.equal(read.inspection?.approvalEventCount, 1, "Inspection counts what the log holds")
+
         try Expect.equal(try store.resolve("latest"), "s2-session", "latest resolves")
         try Expect.equal(try store.resolve("s2"), "s2-session", "A unique prefix resolves")
         var ambiguous = false
