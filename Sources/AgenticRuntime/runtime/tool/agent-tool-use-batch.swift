@@ -1,6 +1,5 @@
 import Agentic
 import Foundation
-import Reporting
 
 public enum AgentToolUseStatus: String, Sendable, Codable, Hashable, CaseIterable {
     case open
@@ -34,7 +33,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
     public var recovery: Recovery.Record?
     public var observations: [ToolResultObservation]
     /// What the user sees for the result; never sent to the model.
-    public var presentation: ReportDocument?
+    public var presentation: ToolPresentation?
     public var updatedAt: Date
 
     public init(
@@ -44,7 +43,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
         result: FunctionCall.Response? = nil,
         recovery: Recovery.Record? = nil,
         observations: [ToolResultObservation] = [],
-        presentation: ReportDocument? = nil,
+        presentation: ToolPresentation? = nil,
         updatedAt: Date = Date()
     ) {
         self.functionCall = functionCall
@@ -70,7 +69,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
             result: try values.decodeIfPresent(FunctionCall.Response.self, forKey: .result),
             recovery: try values.decodeIfPresent(Recovery.Record.self, forKey: .recovery),
             observations: try values.decodeIfPresent([ToolResultObservation].self, forKey: .observations) ?? [],
-            presentation: try values.decodeIfPresent(ReportDocument.self, forKey: .presentation),
+            presentation: try values.decodeIfPresent(ToolPresentation.self, forKey: .presentation),
             updatedAt: try values.decode(Date.self, forKey: .updatedAt)
         )
     }
@@ -212,7 +211,7 @@ public struct AgentToolUseBatch: Sendable, Codable, Hashable, Identifiable {
         result: FunctionCall.Response? = nil,
         recovery: Recovery.Record? = nil,
         observations: [ToolResultObservation] = [],
-        presentation: ReportDocument? = nil,
+        presentation: ToolPresentation? = nil,
         now: Date = Date()
     ) {
         guard let index = records.firstIndex(where: { record in

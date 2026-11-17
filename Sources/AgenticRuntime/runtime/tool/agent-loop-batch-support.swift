@@ -1,5 +1,4 @@
 import Agentic
-import Reporting
 import Primitives
 
 extension AgentLoop {
@@ -43,7 +42,7 @@ extension AgentLoop {
         disposition: AgentToolUseDisposition,
         recovery: Recovery.Record? = nil,
         observations: [ToolResultObservation] = [],
-        presentation: ReportDocument? = nil,
+        presentation: ToolPresentation? = nil,
         to checkpoint: inout AgentExecutor.Checkpoint,
         summary: String,
         eventKind: Run.Event.State.Kind? = nil

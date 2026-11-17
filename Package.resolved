@@ -1,5 +1,5 @@
 {
-  "originHash" : "ba4e704f7e8e13f95f6e2aea79c4cdc2d866b08c04ab1710a2e3de82e9dca96a",
+  "originHash" : "0299e941807f9b0acf5d8ae75e08aec3bc8e14a03e6ee569eeb71df042aab6be",
   "pins" : [
     {
       "identity" : "agentic",
@@ -7,7 +7,7 @@
       "location" : "https://github.com/leviouwendijk/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "b58e997957b1a748dca805f68396e7cb80122c17"
+        "revision" : "c2607fba8266e94a8feaad2ef2fc274953307237"
       }
     },
     {
@@ -224,6 +224,15 @@
       "state" : {
         "branch" : "master",
         "revision" : "5b6211d7b2207c8b999012584c48a33f25f15668"
+      }
+    },
+    {
+      "identity" : "parsers",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/leviouwendijk/Parsers.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "dc788020b89657e36896adbab3168bad10767ccc"
       }
     },
     {
