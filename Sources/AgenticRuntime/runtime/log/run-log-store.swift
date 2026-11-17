@@ -192,6 +192,20 @@ public extension Run.Log {
         }
         return nil
     }
+
+    /// The latest successful response of a tool.
+    func response(
+        tool: String
+    ) throws -> FunctionCall.Response? {
+        for entry in try read().entries.reversed() {
+            guard case .response(let response) = entry.body,
+                  response.call.name == tool, !response.isError else {
+                continue
+            }
+            return try payload(response.digest, as: FunctionCall.Response.self)
+        }
+        return nil
+    }
 }
 
 extension Run.Log {

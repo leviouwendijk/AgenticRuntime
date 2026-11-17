@@ -252,8 +252,9 @@ extension ToolServices {
             return revealing
         }
         // Full results are read back from the session log.
-        return (try? revealing.inserting(ResultArchive { call in
-            try await log.response(call: call)
-        })) ?? revealing
+        return (try? revealing.inserting(ResultArchive(
+            { call in try await log.response(call: call) },
+            latest: { tool in try await log.response(tool: tool) }
+        ))) ?? revealing
     }
 }
