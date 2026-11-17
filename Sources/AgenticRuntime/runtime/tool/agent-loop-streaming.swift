@@ -233,6 +233,7 @@ extension AgentLoop {
             to: &checkpoint
         )
 
+        try await recordRoute(result.route, to: &checkpoint)
         try await applyProjectedCost(
             for: preparedRequest,
             route: result.route.route,

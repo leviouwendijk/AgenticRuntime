@@ -61,7 +61,8 @@ public extension Sessions.ApprovalEvent {
              .output_repaired,
              .input_applied,
              .context_changed,
-             .context_pressure:
+             .context_pressure,
+             .model_routed:
             return nil
         }
 

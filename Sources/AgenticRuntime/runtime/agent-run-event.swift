@@ -83,6 +83,9 @@ public extension Run.Event {
             /// A request passed its soft input limit: advice to compact,
             /// with what it would save. Nothing changes on its own.
             case context_pressure
+            /// Which model served a request; `route` says whether it is
+            /// the one selected, and if not, why.
+            case model_routed
         }
 
         public let id: String
@@ -94,6 +97,8 @@ public extension Run.Event {
         public let summary: String
         /// For `context_changed`: the decisions this request newly made.
         public let contextChanges: [Context.HistorySelection.Change]?
+        /// For `model_routed`: the model that served the request.
+        public let route: Run.Event.Route?
 
         public init(
             id: String = UUID().uuidString,
@@ -103,9 +108,11 @@ public extension Run.Event {
             callID: String? = nil,
             toolName: String? = nil,
             summary: String,
-            contextChanges: [Context.HistorySelection.Change]? = nil
+            contextChanges: [Context.HistorySelection.Change]? = nil,
+            route: Run.Event.Route? = nil
         ) {
             self.contextChanges = contextChanges
+            self.route = route
             self.id = id
             self.kind = kind
             self.iteration = iteration

@@ -49,6 +49,29 @@ extension AgenticProgramRuntimeFlowTesting {
             sent.contains("answer") && sent.contains("followup"),
             "the answer the follow-up refers to is sent: \(sent)"
         )
+        let routed = result.events.first { $0.kind == .model_routed }?.route
+        try Expect.true(
+            routed?.profileID == "fixture.context" && routed?.isRerouted == false,
+            "each request records the model that served it"
+        )
+
+        // A selection naming another profile, served elsewhere (fallback
+        // allowed), is recorded as rerouted.
+        let elsewhere = try await AgentExecutor(
+            model: .init(
+                invoker: ContextChangeModel(),
+                selection: .init(
+                    purpose: .executor,
+                    preferences: .init(preferredProfileIdentifier: "fixture.selected", allowsFallback: true)
+                )
+            ),
+            capabilityState: AgentCapabilityState(installed: .none)
+        ).run(AgentRequest(messages: [Message(role: .user, text: "hello")]), sessionID: "rerouted-run")
+        let rerouted = elsewhere.events.first { $0.kind == .model_routed }?.route
+        try Expect.true(
+            rerouted?.isRerouted == true && rerouted?.preferredProfileID == "fixture.selected",
+            "a request served by another model than selected is marked rerouted"
+        )
         return [.field("context_changed", changed.first?.summary ?? "")]
     }
 }
