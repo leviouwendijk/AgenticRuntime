@@ -24,7 +24,9 @@ public struct AgentRunStateSnapshot:
     public let pendingUserInput: UserInputRequest?
     public let pendingRunLimit: AgentRunLimitExhaustion?
     public let failure: AgentRunFailure?
-    public let costRecord: AgentCostRecord?
+    /// Also carries calls made for the run outside its loop (a report
+    /// repair), so the run's usage is complete.
+    public internal(set) var costRecord: AgentCostRecord?
     public let capabilities: AgentCapabilityState.Snapshot
 
     init(

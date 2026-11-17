@@ -14,6 +14,8 @@ extension AgentLoop {
         let tools: [ToolDescriptor]
         let request: AgentRequest
         let usage: Context.Usage
+        /// The lexical estimate of the prepared request, in dynamic mode.
+        let estimatedInputTokens: Int?
     }
 
     /// Builds the request for the next model turn. Compaction, dynamic context
@@ -78,7 +80,8 @@ extension AgentLoop {
             projection: projection,
             tools: tools,
             request: request,
-            usage: usage
+            usage: usage,
+            estimatedInputTokens: preparation?.measurement.estimatedInputTokens
         )
     }
 }

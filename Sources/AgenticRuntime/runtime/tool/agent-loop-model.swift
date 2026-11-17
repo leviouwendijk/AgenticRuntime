@@ -186,6 +186,11 @@ extension AgentLoop {
         )
 
         try await recordRoute(invocationResult.route, to: &checkpoint)
+        await recordInputCalibration(
+            estimated: turn.estimatedInputTokens,
+            response: response,
+            route: invocationResult.route
+        )
         try await applyProjectedCost(
             for: preparedRequest,
             route: invocationResult.route.route,

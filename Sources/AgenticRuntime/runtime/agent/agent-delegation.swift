@@ -214,12 +214,14 @@ public actor AgentDelegation {
                                 summary: "report repair failed: \(again) (first: \(failure))"))
         }
         if let record = recording.costTracker?.actualRecord(
-            existing: nil,
+            existing: entries[child.sessionID]?.liveState?.costRecord ?? child.costRecord,
             response: repaired.response,
             route: repaired.route,
             sessionID: child.sessionID,
             turnIndex: iteration + 1
         ), let actual = record.actual {
+            // The run's usage includes the repair, as the provider bills it.
+            entries[child.sessionID]?.liveState?.costRecord = record
             var summary = "actual cost (report repair) status=\(actual.status.rawValue)"
             if let amount = actual.amount {
                 summary += " amount=\(amount.currencyCode) \(amount.majorUnitsApproximation)"

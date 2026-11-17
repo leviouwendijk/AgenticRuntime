@@ -222,6 +222,10 @@ let package = Package(
                     package: "Path"
                 ),
                 .product(
+                    name: "Frame",
+                    package: "Frame"
+                ),
+                .product(
                     name: "Primitives",
                     package: "Primitives"
                 ),

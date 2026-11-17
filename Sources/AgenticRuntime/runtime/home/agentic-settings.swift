@@ -1,5 +1,6 @@
 import Foundation
 import Frame
+import Path
 import Readers
 
 /// User settings of an Agentic home, the `settings` binding of the home's
@@ -8,7 +9,7 @@ import Readers
 ///     import Agentic;
 ///     let notes: PathScope = .{ .path = "~/notes/**" };
 ///     let settings: AgenticSettings = .{
-///         .paths = .{ .ask = [notes] },
+///         .paths = .{ .ask = [notes], .symlinks = .roots },
 ///         .mutations = .{ .publication = .review },
 ///     };
 ///
@@ -38,21 +39,27 @@ public struct AgenticSettings: Sendable, Codable, Hashable {
 }
 
 public extension AgenticSettings {
-    /// Paths outside the workspace, by how they are treated. Parsed and
-    /// checked; not yet applied at session start.
+    /// Paths outside the workspace, by how they are treated, and which
+    /// symlinks a path may pass through. Applied at session start.
     struct Paths: Sendable, Codable, Hashable {
         public var allow: [PathScope]
         public var ask: [PathScope]
         public var deny: [PathScope]
+        /// `.never`: no path through a symlink. `.roots` (default): a
+        /// symlink is followed when it leads into one of the session's
+        /// roots, and checked there. `.anywhere`: not checked.
+        public var symlinks: PathSymlinkPolicy
 
         public init(
             allow: [PathScope] = [],
             ask: [PathScope] = [],
-            deny: [PathScope] = []
+            deny: [PathScope] = [],
+            symlinks: PathSymlinkPolicy = .roots
         ) {
             self.allow = allow
             self.ask = ask
             self.deny = deny
+            self.symlinks = symlinks
         }
 
         public init(from decoder: any Decoder) throws {
@@ -60,6 +67,7 @@ public extension AgenticSettings {
             self.allow = try container.decodeIfPresent([PathScope].self, forKey: .allow) ?? []
             self.ask = try container.decodeIfPresent([PathScope].self, forKey: .ask) ?? []
             self.deny = try container.decodeIfPresent([PathScope].self, forKey: .deny) ?? []
+            self.symlinks = try container.decodeIfPresent(PathSymlinkPolicy.self, forKey: .symlinks) ?? .roots
         }
     }
 }
@@ -67,7 +75,7 @@ public extension AgenticSettings {
 /// A path, a directory with everything below it (`dir/**`) or a single
 /// file, and which sessions it is for.
 public struct PathScope: Sendable, Codable, Hashable {
-    public enum Sessions: String, Sendable, Codable, Hashable {
+    public enum Sessions: String, Sendable, Codable, Hashable, CaseIterable {
         case all
     }
 

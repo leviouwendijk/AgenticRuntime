@@ -22,6 +22,10 @@ extension AgentLoop {
         var checkpointState = AgentStreamCheckpointState()
         let journal = AgentModelToolInvocationJournal()
         var completedResult: AgentModelInvocation.Result?
+        // Set once the provider streams: from then on it bills the input,
+        // even when the stream never reaches its usage.
+        var respondingRoute: AgentModelRoute?
+        var routed: AgentModelRoute?
 
         checkpoint.phase = .receiving_model_response
         checkpoint.partialResponse = accumulator.partial
@@ -61,10 +65,12 @@ extension AgentLoop {
                 let event: AgentStreamEvent
 
                 switch invocationEvent {
-                case .routed:
+                case .routed(let result):
+                    routed = result.route
                     continue
 
                 case .model(let modelEvent):
+                    respondingRoute = routed
                     event = modelEvent
 
                 case .completed(let result):
@@ -93,6 +99,12 @@ extension AgentLoop {
                 )
 
                 if let interruption = await requestedUrgentInterruption() {
+                    try await chargeUnfinishedStream(
+                        preparedRequest,
+                        route: respondingRoute,
+                        to: &checkpoint,
+                        turnIndex: turnIndex
+                    )
                     try await interruptStreamingTurn(
                         checkpoint: &checkpoint,
                         accumulator: accumulator,
@@ -136,6 +148,7 @@ extension AgentLoop {
                 result: completedResult,
                 checkpoint: checkpoint,
                 turnIndex: turnIndex,
+                estimatedInput: turn.estimatedInputTokens,
                 nativeInvocations: await journal.snapshot(),
                 nativeSemanticInvocations: await journal.semanticSnapshot()
             )
@@ -172,6 +185,12 @@ extension AgentLoop {
                     reason: "Execution task was cancelled."
                 )
 
+            try await chargeUnfinishedStream(
+                preparedRequest,
+                route: respondingRoute,
+                to: &checkpoint,
+                turnIndex: turnIndex
+            )
             try await interruptStreamingTurn(
                 checkpoint: &checkpoint,
                 accumulator: accumulator,
@@ -180,6 +199,12 @@ extension AgentLoop {
 
             return checkpoint
         } catch {
+            try await chargeUnfinishedStream(
+                preparedRequest,
+                route: respondingRoute,
+                to: &checkpoint,
+                turnIndex: turnIndex
+            )
             try await failStreamingTurn(
                 checkpoint: &checkpoint,
                 accumulator: accumulator,
@@ -195,6 +220,7 @@ extension AgentLoop {
         result: AgentModelInvocation.Result,
         checkpoint: AgentExecutor.Checkpoint,
         turnIndex: Int,
+        estimatedInput: Int?,
         nativeInvocations: [ToolInvocation.Result],
         nativeSemanticInvocations: [ModelSemanticInvocationResult]
     ) async throws -> AgentExecutor.Checkpoint {
@@ -234,6 +260,11 @@ extension AgentLoop {
         )
 
         try await recordRoute(result.route, to: &checkpoint)
+        await recordInputCalibration(
+            estimated: estimatedInput,
+            response: response,
+            route: result.route
+        )
         try await applyProjectedCost(
             for: preparedRequest,
             route: result.route.route,
@@ -268,6 +299,42 @@ extension AgentLoop {
         )
 
         return checkpoint
+    }
+
+    /// A stream that ended before its usage still read its input: the
+    /// run's usage counts it at the estimate, marked as projected, rather
+    /// than leaving out a request the provider bills.
+    private func chargeUnfinishedStream(
+        _ request: AgentRequest,
+        route: AgentModelRoute?,
+        to checkpoint: inout AgentExecutor.Checkpoint,
+        turnIndex: Int
+    ) async throws {
+        guard let route, let costTracker = recording.costTracker else { return }
+        let projected = costTracker.projectedRecord(
+            existing: nil,
+            request: request,
+            route: route,
+            sessionID: checkpoint.id,
+            turnIndex: turnIndex
+        )
+        guard let turn = projected.turns.first else { return }
+        let base = checkpoint.costRecord ?? AgentCostRecord(
+            sessionID: projected.sessionID,
+            model: projected.model,
+            metadata: projected.metadata
+        )
+        let record = base.appendingUnfinishedTurn(turn)
+        checkpoint.costRecord = record
+        try await appendRunEvent(
+            .init(
+                kind: .cost_projected,
+                iteration: checkpoint.state.iteration,
+                summary: costSummary(phase: "projected", record: projected)
+                    + " (stream ended before usage)"
+            ),
+            to: &checkpoint
+        )
     }
 
     private func failStreamingTurn(

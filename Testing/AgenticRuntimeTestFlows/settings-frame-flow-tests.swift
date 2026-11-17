@@ -1,5 +1,6 @@
 import AgenticRuntime
 import Foundation
+import Path
 import TestFlows
 
 extension AgenticProgramRuntimeFlowTesting {
@@ -24,7 +25,7 @@ extension AgenticProgramRuntimeFlowTesting {
             let manual: PathScope = .{ .path = "/tmp/manual.pdf", .readOnly = true };
 
             var settings: AgenticSettings = .{
-                .paths = .{ .ask = [notes] },
+                .paths = .{ .ask = [notes], .symlinks = .never },
                 .mutations = .{ .publication = .review },
             };
             settings.log = .{ .durability = .buffered };
@@ -34,6 +35,8 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(settings.mutations.publication, .review, "members decode as enum cases")
         try Expect.equal(settings.log.durability, .buffered, "a var field reassigned later")
         try Expect.equal(settings.paths.ask.map(\.path), ["~/notes/**"], "a scope referenced by name")
+        try Expect.equal(settings.paths.symlinks, .never, "symlink policy")
+        try Expect.equal(AgenticSettings().paths.symlinks, .roots, "symlinks default to roots")
         let scopes = try home.pathScopes()
         try Expect.equal(Set(scopes.keys), ["notes", "manual"], "every PathScope binding")
         try Expect.equal(

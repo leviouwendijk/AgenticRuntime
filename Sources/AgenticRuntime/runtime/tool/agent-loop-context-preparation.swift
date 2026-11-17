@@ -19,7 +19,8 @@ extension AgentLoop {
                 modelContextLimit: contextServices?.modelContextLimit
                     ?? configuration.contextPolicy.maximumInputTokens
                         + configuration.contextPolicy.reservedOutputTokens,
-                compactions: await contextServices?.compactions?.compactions ?? []
+                compactions: await contextServices?.compactions?.compactions ?? [],
+                calibration: await inputCalibration()
             )
             if let audit = contextServices?.audit {
                 try await audit.record(
@@ -36,5 +37,36 @@ extension AgentLoop {
             )
         }
         return (prepared, dynamic)
+    }
+
+    /// The provider's last count for the model this request will route to.
+    func inputCalibration() async -> Context.InputCalibration? {
+        guard let meter = contextServices?.inputMeter,
+              let broker = model.invoker as? ModelBroker,
+              let routed = try? broker.route(selection: model.selection)
+        else {
+            return nil
+        }
+        return await meter.calibration(for: routed.route.profile.model)
+    }
+
+    /// Anchors the next request's estimate to what the provider counted
+    /// for this one.
+    func recordInputCalibration(
+        estimated: Int?,
+        response: AgentResponse,
+        route: AgentModelRouteRecord
+    ) async {
+        guard let meter = contextServices?.inputMeter,
+              let estimated,
+              let reported = response.usage?.contextTokens,
+              let calibration = Context.InputCalibration(
+                  estimatedTokens: estimated,
+                  reportedTokens: reported
+              )
+        else {
+            return
+        }
+        await meter.record(calibration, for: route.route.profile.model)
     }
 }

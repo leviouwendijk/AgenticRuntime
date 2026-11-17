@@ -10,17 +10,22 @@ public extension Context {
         public let audit: (any InferenceAuditRecording)?
         /// The session's compactions, applied to every request.
         public let compactions: CompactionLedger?
+        /// The provider's counts of the session's requests, anchoring the
+        /// estimate of each next one.
+        public let inputMeter: InputMeter?
 
         public init(
             resolver: any RecordResolving,
             modelContextLimit: Int,
             audit: (any InferenceAuditRecording)? = nil,
-            compactions: CompactionLedger? = nil
+            compactions: CompactionLedger? = nil,
+            inputMeter: InputMeter? = nil
         ) {
             self.resolver = resolver
             self.modelContextLimit = modelContextLimit
             self.audit = audit
             self.compactions = compactions
+            self.inputMeter = inputMeter
         }
     }
 
