@@ -25,6 +25,15 @@ public struct AgentHomeLayout: Sendable, Codable, Hashable {
         directoryURL(for: schema.profilesdir)
     }
 
+    public var domainsdir: URL {
+        directoryURL(for: schema.domainsdir)
+    }
+
+    /// A domain's configuration file, such as `domains/scheduling.frame`.
+    public func domainfile(_ fileName: String) -> URL {
+        domainsdir.appendingPathComponent(fileName)
+    }
+
     public var runtimeStorage: AgentRuntimeStorageLayout {
         .init(
             root: root,

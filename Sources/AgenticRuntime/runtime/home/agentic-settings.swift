@@ -261,3 +261,33 @@ public extension AgentHome {
         }
     }
 }
+
+public extension AgentHome {
+    /// A domain's configuration document, `domains/<fileName>`, parsed
+    /// against the domain's own Frame environment; `nil` when the file is
+    /// absent. Agentic knows no domain's types: the domain supplies them.
+    func domainDocument(
+        _ fileName: String,
+        environment: Frame.Environment
+    ) throws -> Frame.Document? {
+        let file = layout.domainfile(fileName)
+        let read = try DataFileReader(file).read(
+            options: .init(missingFilePolicy: .returnEmpty)
+        )
+        guard !read.data.isEmpty else {
+            return nil
+        }
+        do {
+            return try Frame.parse(
+                String(decoding: read.data, as: UTF8.self),
+                filePath: file.path,
+                environment: environment
+            )
+        } catch {
+            throw AgenticSettingsError.invalid(
+                file: file.path,
+                message: String(describing: error)
+            )
+        }
+    }
+}

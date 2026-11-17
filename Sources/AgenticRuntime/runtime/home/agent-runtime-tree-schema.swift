@@ -157,6 +157,11 @@ public struct AgentHomeTreeSchema: Sendable, Codable, Hashable {
         root.directory("profiles")
     }
 
+    /// Per-domain configuration, `domains/<domain>.frame`.
+    public var domainsdir: PathTreeDirectoryAddress {
+        root.directory("domains")
+    }
+
     public var tree: PathTree {
         PathTree(root: root.path) {
             PathTreeNode.file("settings.frame")

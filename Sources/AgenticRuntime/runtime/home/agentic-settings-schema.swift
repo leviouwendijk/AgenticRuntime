@@ -74,4 +74,21 @@ public extension AgenticFrame {
     static func install(into directory: URL = Frame.modulesDirectory) throws -> URL {
         try module.install(into: directory)
     }
+
+    /// Writes `Agentic.frame` and every module the application's domains
+    /// declare, such as `Scheduling.frame`.
+    @discardableResult
+    static func install<Application: AgenticApplicationProviding>(
+        for application: Application.Type,
+        into directory: URL = Frame.modulesDirectory
+    ) throws -> [URL] {
+        let declared = (application as? any AgenticFrameModulesProviding.Type)?.frameModules ?? []
+        return try ([module] + declared).map { try $0.install(into: directory) }
+    }
+}
+
+/// An application whose domains read their own `domains/<name>.frame`
+/// files; their modules are installed with `Agentic.frame` for editors.
+public protocol AgenticFrameModulesProviding: AgenticApplicationProviding {
+    static var frameModules: [Frame.Module] { get }
 }
