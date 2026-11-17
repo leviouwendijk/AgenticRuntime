@@ -154,20 +154,33 @@ public extension AgenticSettings {
     /// When coordinated file mutations reach the disk.
     struct Mutations: Sendable, Codable, Hashable {
         public enum Publication: String, Sendable, Codable, Hashable, CaseIterable {
-            /// The root agent's mutations publish once approved; delegated
-            /// workers' changes wait for one combined review at run end.
+            /// The root agent's mutations publish once approved; workers
+            /// follow `workers`.
             case approval
             /// Every mutation stays staged until the owner reviews and
             /// publishes it.
             case review
         }
 
+        /// What a delegated worker's admitted change does.
+        public enum Workers: String, Sendable, Codable, Hashable, CaseIterable {
+            /// Written within the worker's scope as soon as it is admitted,
+            /// so the worker can build and test it; reviewed afterwards
+            /// (keep or roll back) with the rest of the unreviewed changes.
+            case publish
+            /// Staged off disk until the owner reviews and publishes it.
+            case stage
+        }
+
         public var publication: Publication
+        public var workers: Workers
 
         public init(
-            publication: Publication = .approval
+            publication: Publication = .approval,
+            workers: Workers = .publish
         ) {
             self.publication = publication
+            self.workers = workers
         }
 
         public init(from decoder: any Decoder) throws {
@@ -176,6 +189,10 @@ public extension AgenticSettings {
                 Publication.self,
                 forKey: .publication
             ) ?? .approval
+            self.workers = try container.decodeIfPresent(
+                Workers.self,
+                forKey: .workers
+            ) ?? .publish
         }
     }
 }
