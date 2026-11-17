@@ -163,6 +163,7 @@ extension AgentLoop {
                 result,
                 for: call,
                 disposition: disposition,
+                presentation: invocation.execution?.presentation,
                 to: &checkpoint,
                 summary: summary
             )

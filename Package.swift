@@ -90,6 +90,10 @@ let package = Package(
             url: "https://github.com/leviouwendijk/TestFlows.git",
             branch: "master"
         ),
+        .package(
+            url: "https://github.com/leviouwendijk/Reporting.git",
+            branch: "master"
+        ),
     ],
     targets: [
         .target(
@@ -98,6 +102,10 @@ let package = Package(
                 .product(
                     name: "Agentic",
                     package: "Agentic"
+                ),
+                .product(
+                    name: "Reporting",
+                    package: "Reporting"
                 ),
                 .product(
                     name: "AgenticStandard",

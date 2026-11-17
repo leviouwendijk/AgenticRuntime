@@ -410,6 +410,7 @@ extension AgentLoop {
                 disposition: .failed_execution,
                 recovery: execution.recovery,
                 observations: execution.observations,
+                presentation: execution.presentation,
                 to: &checkpoint,
                 summary: "workspace access request failed"
             )
@@ -468,6 +469,7 @@ extension AgentLoop {
             disposition: result.isError ? .failed_execution : .executed,
             recovery: execution.recovery,
             observations: execution.observations,
+            presentation: execution.presentation,
             to: &checkpoint,
             summary: result.isError
                 ? "tool execution failed"

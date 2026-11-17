@@ -65,6 +65,7 @@ extension AgentLoop {
                 disposition: result.isError ? .failed_execution : .executed,
                 recovery: execution.recovery,
                 observations: execution.observations,
+                presentation: execution.presentation,
                 to: &checkpoint,
                 summary: result.isError
                     ? "tool execution failed after suspended approval"
