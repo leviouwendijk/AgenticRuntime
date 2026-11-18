@@ -129,6 +129,8 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(kept?.deletingLastPathComponent().path, home.layout.archivedir.path, "archived in the home")
         try Expect.equal(try kept.map { try String(contentsOf: $0, encoding: .utf8) }, handwritten, "the old file kept whole")
         try Expect.equal(try String(contentsOf: file, encoding: .utf8), AgenticSettingsTemplate.text, "and the template written")
+        let made = try FileManager.default.subpathsOfDirectory(atPath: root.path)
+        try Expect.true(!made.contains { $0.contains("safe-file-backups") || $0.contains(".bak") }, "no Writers backups: \(made)")
         return []
     }
 }
