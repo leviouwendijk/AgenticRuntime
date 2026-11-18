@@ -11,20 +11,24 @@ import Readers
 ///     let settings: AgenticSettings = .{
 ///         .paths = .{ .ask = [notes], .symlinks = .roots },
 ///         .mutations = .{ .publication = .review },
+///         .exports = .{ .directory = "~/exports" },
 ///     };
 ///
 /// Every field is optional and falls back to its default; an unknown field
 /// is an error.
 public struct AgenticSettings: Sendable, Codable, Hashable {
+    public var exports: Exports
     public var log: Log
     public var mutations: Mutations
     public var paths: Paths
 
     public init(
+        exports: Exports = .init(),
         log: Log = .init(),
         mutations: Mutations = .init(),
         paths: Paths = .init()
     ) {
+        self.exports = exports
         self.log = log
         self.mutations = mutations
         self.paths = paths
@@ -32,6 +36,7 @@ public struct AgenticSettings: Sendable, Codable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.exports = try container.decodeIfPresent(Exports.self, forKey: .exports) ?? .init()
         self.log = try container.decodeIfPresent(Log.self, forKey: .log) ?? .init()
         self.mutations = try container.decodeIfPresent(Mutations.self, forKey: .mutations) ?? .init()
         self.paths = try container.decodeIfPresent(Paths.self, forKey: .paths) ?? .init()
@@ -133,6 +138,41 @@ public enum AgenticSettingsError: Error, Sendable, Hashable, LocalizedError {
             return "'\(path)': only a path or dir/** is supported in a PathScope."
         case .invalid(let file, let message):
             return "\(file): \(message)"
+        }
+    }
+}
+
+public extension AgenticSettings {
+    /// Where results the owner exports (`:export`) are written.
+    struct Exports: Sendable, Codable, Hashable {
+        public static let defaultDirectory = ".agentic/artifacts/exports"
+
+        /// Absolute, `~`-relative, or relative to the workspace. Defaults
+        /// to `.agentic/artifacts/exports`: beside the runtime's per-session
+        /// artifact directories, never one of them.
+        public var directory: String
+
+        public init(
+            directory: String = Exports.defaultDirectory
+        ) {
+            self.directory = directory
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.directory = try container.decodeIfPresent(
+                String.self,
+                forKey: .directory
+            ) ?? Exports.defaultDirectory
+        }
+
+        /// `directory` against `workspace`.
+        public func resolvedDirectory(workspace: String) -> URL {
+            let expanded = (directory as NSString).expandingTildeInPath
+            return expanded.hasPrefix("/")
+                ? URL(fileURLWithPath: expanded, isDirectory: true)
+                : URL(fileURLWithPath: workspace, isDirectory: true)
+                    .appendingPathComponent(expanded, isDirectory: true)
         }
     }
 }

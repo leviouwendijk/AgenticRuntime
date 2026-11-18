@@ -29,6 +29,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 .mutations = .{ .publication = .review },
             };
             settings.log = .{ .durability = .buffered };
+            settings.exports = .{ .directory = "~/exports" };
             """.write(to: home.layout.settingsfile, atomically: true, encoding: .utf8)
 
         let settings = try home.settings()
@@ -37,6 +38,16 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(settings.paths.ask.map(\.path), ["~/notes/**"], "a scope referenced by name")
         try Expect.equal(settings.paths.symlinks, .never, "symlink policy")
         try Expect.equal(AgenticSettings().paths.symlinks, .roots, "symlinks default to roots")
+        try Expect.equal(
+            settings.exports.resolvedDirectory(workspace: "/work").path,
+            NSHomeDirectory() + "/exports",
+            "~ in the exports directory is the home"
+        )
+        try Expect.equal(
+            AgenticSettings().exports.resolvedDirectory(workspace: "/work").path,
+            "/work/.agentic/artifacts/exports",
+            "exports default under the workspace's .agentic/artifacts"
+        )
         let scopes = try home.pathScopes()
         try Expect.equal(Set(scopes.keys), ["notes", "manual"], "every PathScope binding")
         try Expect.equal(

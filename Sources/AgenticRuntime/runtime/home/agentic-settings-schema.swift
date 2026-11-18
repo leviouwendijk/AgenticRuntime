@@ -7,6 +7,7 @@ import Path
 extension AgenticSettings: FrameDescribable {
     public static var frameSchema: Frame.Schema {
         .object([
+            .init("exports", .of(Exports.self)),
             .init("log", .of(Log.self)),
             .init("mutations", .of(Mutations.self)),
             .init("paths", .of(Paths.self)),
@@ -38,6 +39,15 @@ extension PathScope: FrameDescribable {
             .init("sessions", .members(of: Sessions.self), summary: "Which sessions it is for; .all by default."),
             .init("readOnly", .boolean, summary: "Only list, read and scan."),
         ], summary: "A path and which sessions it is for.")
+    }
+}
+
+extension AgenticSettings.Exports: FrameDescribable {
+    public static var frameSchema: Frame.Schema {
+        .object([
+            .init("directory", .string,
+                  summary: "Absolute, ~, or relative to the workspace; .agentic/artifacts/exports by default."),
+        ], summary: "Where :export writes results.")
     }
 }
 
