@@ -77,8 +77,9 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
                !instructions.isEmpty {
                 messages.append(Message(role: .system, text: instructions))
             }
-            if let context = dispatcher.services.tooling.services.contextEntryMessage {
-                messages.append(context)
+            let context = dispatcher.services.tooling.services.contextEntries
+            if let context {
+                messages.append(context.message)
             }
             messages.append(Message(
                 role: .user,
@@ -88,6 +89,9 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
                 "parent_agent_session_id": parentSessionID,
                 "parent_agent_call_id": call.id
             ]
+            if let context {
+                metadata["context_always"] = context.ids.joined(separator: ",")
+            }
             if case .object(let envelope) = call.input,
                let execution = envelope["execution"] {
                 guard case .object(let fields) = execution,
