@@ -157,6 +157,11 @@ public struct AgentHomeTreeSchema: Sendable, Codable, Hashable {
         root.directory("profiles")
     }
 
+    /// Earlier `settings.frame` files, kept when the template replaces one.
+    public var archivedir: PathTreeDirectoryAddress {
+        root.directory("archive")
+    }
+
     /// Per-domain configuration, `domains/<domain>.frame`.
     public var domainsdir: PathTreeDirectoryAddress {
         root.directory("domains")

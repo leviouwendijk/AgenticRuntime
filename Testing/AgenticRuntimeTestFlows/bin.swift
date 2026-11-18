@@ -575,6 +575,17 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runSettingsFrame()
         },
         TestFlow(
+            "settings-template",
+            tags: [
+                "agentic-runtime",
+                "settings",
+                "frame",
+            ]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting
+                .runSettingsTemplate()
+        },
+        TestFlow(
             "settings-schema",
             tags: [
                 "agentic-runtime",

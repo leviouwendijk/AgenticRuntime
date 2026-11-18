@@ -67,6 +67,7 @@ public extension AgentRuntimeEnvironment {
 
         if createHomeDirectories, home.kind != .ephemeral {
             try home.ensureBaseDirectoriesExist()
+            try home.prepareSettingsFile()
         }
 
         let effectiveSessionStorageMode = explicitSessionStorageMode

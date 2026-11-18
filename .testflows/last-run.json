@@ -3,12 +3,768 @@
   "failed_names" : [
 
   ],
-  "generated_at" : "2026-11-18T12:33:41Z",
-  "passed" : 2,
+  "generated_at" : "2026-11-18T13:25:25Z",
+  "passed" : 68,
   "results" : [
     {
+      "display_name" : "usage-absorption-cost-tracker",
+      "duration_seconds" : 0.0013870000839233398,
+      "name" : "usage-absorption-cost-tracker",
+      "status" : "passed",
+      "tags" : [
+        "migration",
+        "pricing",
+        "runtime",
+        "tokens",
+        "usage"
+      ]
+    },
+    {
+      "display_name" : "request-input-estimation",
+      "duration_seconds" : 0.013321995735168457,
+      "name" : "request-input-estimation",
+      "status" : "passed",
+      "tags" : [
+        "context",
+        "input-estimation",
+        "pricing",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "instruction-selection",
+      "duration_seconds" : 0.0010669231414794922,
+      "name" : "instruction-selection",
+      "status" : "passed",
+      "tags" : [
+        "catalog",
+        "instructions",
+        "runtime",
+        "selection"
+      ]
+    },
+    {
+      "display_name" : "context-inference-preparation",
+      "duration_seconds" : 0.0012390613555908203,
+      "name" : "context-inference-preparation",
+      "status" : "passed",
+      "tags" : [
+        "budget",
+        "context",
+        "inference",
+        "runtime",
+        "token-estimation"
+      ]
+    },
+    {
+      "display_name" : "context-evidence-resolution",
+      "duration_seconds" : 0.0005840063095092773,
+      "name" : "context-evidence-resolution",
+      "status" : "passed",
+      "tags" : [
+        "authorization",
+        "context",
+        "evidence",
+        "runtime",
+        "session"
+      ]
+    },
+    {
+      "display_name" : "context-invocation-audit",
+      "duration_seconds" : 0.002436041831970215,
+      "name" : "context-invocation-audit",
+      "status" : "passed",
+      "tags" : [
+        "audit",
+        "context",
+        "inference",
+        "runtime",
+        "usage"
+      ]
+    },
+    {
+      "display_name" : "context-allocator-roles",
+      "duration_seconds" : 0.0009639263153076172,
+      "name" : "context-allocator-roles",
+      "status" : "passed",
+      "tags" : [
+        "allocator",
+        "context",
+        "models",
+        "roles",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "context-dynamic-mode",
+      "duration_seconds" : 0.03922700881958008,
+      "name" : "context-dynamic-mode",
+      "status" : "passed",
+      "tags" : [
+        "checkpoint",
+        "context",
+        "dynamic",
+        "history",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "context-usage",
+      "duration_seconds" : 0.0013320446014404297,
+      "name" : "context-usage",
+      "status" : "passed",
+      "tags" : [
+        "context",
+        "cost",
+        "runtime",
+        "usage"
+      ]
+    },
+    {
+      "display_name" : "checkpoint-snapshot",
+      "duration_seconds" : 0.0023919343948364258,
+      "name" : "checkpoint-snapshot",
+      "status" : "passed",
+      "tags" : [
+        "checkpoint",
+        "history",
+        "persistence",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "live-pricing-cache",
+      "duration_seconds" : 0.0021210908889770508,
+      "name" : "live-pricing-cache",
+      "status" : "passed",
+      "tags" : [
+        "cache",
+        "offline",
+        "pricing",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "core-schemas",
+      "duration_seconds" : 0.0018349885940551758,
+      "name" : "core-schemas",
+      "status" : "passed",
+      "tags" : [
+        "capabilities",
+        "context",
+        "runtime",
+        "schemas"
+      ]
+    },
+    {
+      "display_name" : "run-log",
+      "duration_seconds" : 0.02362203598022461,
+      "name" : "run-log",
+      "status" : "passed",
+      "tags" : [
+        "history",
+        "log",
+        "persistence",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "result-budget",
+      "duration_seconds" : 0.01073598861694336,
+      "name" : "result-budget",
+      "status" : "passed",
+      "tags" : [
+        "context",
+        "log",
+        "results",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "malformed-arguments",
+      "duration_seconds" : 0.0021469593048095703,
+      "name" : "malformed-arguments",
+      "status" : "passed",
+      "tags" : [
+        "runtime",
+        "tools"
+      ]
+    },
+    {
+      "display_name" : "delegated-staged-note",
+      "duration_seconds" : 3.2901763916015625e-05,
+      "name" : "delegated-staged-note",
+      "status" : "passed",
+      "tags" : [
+        "delegation",
+        "mutations",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "context-compaction-projection",
+      "duration_seconds" : 0.00022399425506591797,
+      "name" : "context-compaction-projection",
+      "status" : "passed",
+      "tags" : [
+        "canonical",
+        "compaction",
+        "context",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "invocation-trace-projection",
+      "duration_seconds" : 0.0009969472885131836,
+      "name" : "invocation-trace-projection",
+      "status" : "passed",
+      "tags" : [
+        "provenance",
+        "runtime",
+        "trace"
+      ]
+    },
+    {
+      "display_name" : "invocation-boundary-continuity",
+      "duration_seconds" : 8.90493392944336e-05,
+      "name" : "invocation-boundary-continuity",
+      "status" : "passed",
+      "tags" : [
+        "provenance",
+        "resume",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "invocation-provenance-contract",
+      "duration_seconds" : 2.8967857360839844e-05,
+      "name" : "invocation-provenance-contract",
+      "status" : "passed",
+      "tags" : [
+        "provenance",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "execution-trace-projection",
+      "duration_seconds" : 0.00016391277313232422,
+      "name" : "execution-trace-projection",
+      "status" : "passed",
+      "tags" : [
+        "runtime",
+        "trace",
+        "tree"
+      ]
+    },
+    {
+      "display_name" : "execution-trace-difference",
+      "duration_seconds" : 0.00034999847412109375,
+      "name" : "execution-trace-difference",
+      "status" : "passed",
+      "tags" : [
+        "difference",
+        "runtime",
+        "trace"
+      ]
+    },
+    {
+      "display_name" : "tool-observation-history",
+      "duration_seconds" : 0.0002980232238769531,
+      "name" : "tool-observation-history",
+      "status" : "passed",
+      "tags" : [
+        "observations",
+        "persistence",
+        "runtime"
+      ]
+    },
+    {
+      "display_name" : "tool-source-impact",
+      "duration_seconds" : 0.0005910396575927734,
+      "name" : "tool-source-impact",
+      "status" : "passed",
+      "tags" : [
+        "approval",
+        "runtime",
+        "source-impact",
+        "tools"
+      ]
+    },
+    {
+      "display_name" : "agent-capability-state",
+      "duration_seconds" : 8.797645568847656e-05,
+      "name" : "agent-capability-state",
+      "status" : "passed",
+      "tags" : [
+        "agent",
+        "agentic-runtime",
+        "availability",
+        "capabilities",
+        "discovery",
+        "visibility"
+      ]
+    },
+    {
+      "display_name" : "agent-realization",
+      "duration_seconds" : 0.0001609325408935547,
+      "name" : "agent-realization",
+      "status" : "passed",
+      "tags" : [
+        "agent",
+        "agentic-runtime",
+        "capabilities",
+        "installation",
+        "model-selection",
+        "realization",
+        "visibility"
+      ]
+    },
+    {
+      "display_name" : "inference-installation",
+      "duration_seconds" : 0.0002599954605102539,
+      "name" : "inference-installation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "execution",
+        "inference",
+        "installation",
+        "realization"
+      ]
+    },
+    {
+      "display_name" : "agent-owned-capability-inventory-live-mutation",
+      "duration_seconds" : 0.0002999305725097656,
+      "name" : "agent-owned-capability-inventory-live-mutation",
+      "status" : "passed",
+      "tags" : [
+        "agent",
+        "agentic-runtime",
+        "capabilities",
+        "installation",
+        "live"
+      ]
+    },
+    {
+      "display_name" : "capability-dispatch",
+      "duration_seconds" : 0.00014603137969970703,
+      "name" : "capability-dispatch",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "authorization",
+        "capabilities",
+        "inference"
+      ]
+    },
+    {
+      "display_name" : "capability-contract-alignment",
+      "duration_seconds" : 0.0001609325408935547,
+      "name" : "capability-contract-alignment",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "capabilities",
+        "contract",
+        "typed"
+      ]
+    },
+    {
+      "display_name" : "model-capability-projection",
+      "duration_seconds" : 0.0011039972305297852,
+      "name" : "model-capability-projection",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "capabilities",
+        "model",
+        "projection"
+      ]
+    },
+    {
+      "display_name" : "runtime-diagnostics",
+      "duration_seconds" : 0.00011110305786132812,
+      "name" : "runtime-diagnostics",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "capabilities",
+        "diagnostics",
+        "installation",
+        "visibility"
+      ]
+    },
+    {
+      "display_name" : "agent-delegation-admission",
+      "duration_seconds" : 0.0008139610290527344,
+      "name" : "agent-delegation-admission",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "authority",
+        "delegation",
+        "limits",
+        "lineage"
+      ]
+    },
+    {
+      "display_name" : "steering",
+      "duration_seconds" : 0.0001990795135498047,
+      "name" : "steering",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "control",
+        "steering"
+      ]
+    },
+    {
+      "display_name" : "context-change-event",
+      "duration_seconds" : 0.019375920295715332,
+      "name" : "context-change-event",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "context",
+        "history"
+      ]
+    },
+    {
+      "display_name" : "context-pause-and-compaction",
+      "duration_seconds" : 0.0724790096282959,
+      "name" : "context-pause-and-compaction",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "compaction",
+        "context"
+      ]
+    },
+    {
+      "display_name" : "agent-delegation-execution",
+      "duration_seconds" : 0.00639498233795166,
+      "name" : "agent-delegation-execution",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "delegation",
+        "execution",
+        "lineage"
+      ]
+    },
+    {
+      "display_name" : "agent-invocation",
+      "duration_seconds" : 0.0009129047393798828,
+      "name" : "agent-invocation",
+      "status" : "passed",
+      "tags" : [
+        "agent",
+        "agentic-runtime",
+        "capabilities",
+        "invocation",
+        "model-selection",
+        "visibility"
+      ]
+    },
+    {
+      "display_name" : "application-purpose-model-selection",
+      "duration_seconds" : 0.00011706352233886719,
+      "name" : "application-purpose-model-selection",
+      "status" : "passed",
+      "tags" : [
+        "agent",
+        "agentic-runtime",
+        "delegation",
+        "model-selection"
+      ]
+    },
+    {
+      "display_name" : "agent-authored-visible-capabilities-survive-runtime-launch",
+      "duration_seconds" : 0.003345012664794922,
+      "name" : "agent-authored-visible-capabilities-survive-runtime-launch",
+      "status" : "passed",
+      "tags" : [
+        "agent",
+        "agentic-runtime",
+        "capabilities",
+        "launch",
+        "mode",
+        "visibility"
+      ]
+    },
+    {
+      "display_name" : "program-execution-record",
+      "duration_seconds" : 0.00045096874237060547,
+      "name" : "program-execution-record",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "execution",
+        "program",
+        "trace"
+      ]
+    },
+    {
+      "display_name" : "program-execution-failure-record",
+      "duration_seconds" : 0.0005879402160644531,
+      "name" : "program-execution-failure-record",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "execution",
+        "failure",
+        "program"
+      ]
+    },
+    {
+      "display_name" : "program-inference-execution-record",
+      "duration_seconds" : 0.0007489919662475586,
+      "name" : "program-inference-execution-record",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "inference",
+        "program",
+        "realization",
+        "usage"
+      ]
+    },
+    {
+      "display_name" : "program-inference-failure-recovery-evidence",
+      "duration_seconds" : 0.0009959936141967773,
+      "name" : "program-inference-failure-recovery-evidence",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "failure",
+        "handling",
+        "inference",
+        "program",
+        "recovery",
+        "trace"
+      ]
+    },
+    {
+      "display_name" : "model-invocation-transport",
+      "duration_seconds" : 8.690357208251953e-05,
+      "name" : "model-invocation-transport",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "context",
+        "invocation",
+        "model",
+        "selection"
+      ]
+    },
+    {
+      "display_name" : "model-invocation-streaming-completion",
+      "duration_seconds" : 0.00014603137969970703,
+      "name" : "model-invocation-streaming-completion",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "completion",
+        "invocation",
+        "model",
+        "streaming"
+      ]
+    },
+    {
+      "display_name" : "runtime-services-composition",
+      "duration_seconds" : 6.496906280517578e-05,
+      "name" : "runtime-services-composition",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "model",
+        "program",
+        "services"
+      ]
+    },
+    {
+      "display_name" : "mode-model-selection-propagation",
+      "duration_seconds" : 7.200241088867188e-05,
+      "name" : "mode-model-selection-propagation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "mode",
+        "model",
+        "selection"
+      ]
+    },
+    {
+      "display_name" : "runtime-services-recording-propagation",
+      "duration_seconds" : 5.698204040527344e-05,
+      "name" : "runtime-services-recording-propagation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "events",
+        "recording",
+        "services"
+      ]
+    },
+    {
+      "display_name" : "application-program-installation",
+      "duration_seconds" : 0.0002919435501098633,
+      "name" : "application-program-installation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "application",
+        "execution",
+        "program",
+        "realization",
+        "registry"
+      ]
+    },
+    {
+      "display_name" : "application-installation-composition",
+      "duration_seconds" : 0.001757979393005371,
+      "name" : "application-installation-composition",
+      "status" : "passed",
+      "tags" : [
+        "agent",
+        "agentic-runtime",
+        "application",
+        "composition",
+        "installation",
+        "program",
+        "tool"
+      ]
+    },
+    {
+      "display_name" : "application-catalog-installation",
+      "duration_seconds" : 0.0014560222625732422,
+      "name" : "application-catalog-installation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "application",
+        "catalog",
+        "domain",
+        "installation",
+        "linker"
+      ]
+    },
+    {
+      "display_name" : "application-gateway-availability",
+      "duration_seconds" : 4.398822784423828e-05,
+      "name" : "application-gateway-availability",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "application",
+        "availability",
+        "gateway",
+        "model"
+      ]
+    },
+    {
+      "display_name" : "program-governed-tool-execution",
+      "duration_seconds" : 0.000722050666809082,
+      "name" : "program-governed-tool-execution",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "approval",
+        "governance",
+        "policy",
+        "preflight",
+        "program",
+        "tool"
+      ]
+    },
+    {
+      "display_name" : "program-user-input-resume",
+      "duration_seconds" : 0.002110004425048828,
+      "name" : "program-user-input-resume",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "checkpoint",
+        "program",
+        "replay",
+        "resume",
+        "suspension",
+        "user-input"
+      ]
+    },
+    {
+      "display_name" : "program-approval-resume-replay",
+      "duration_seconds" : 0.003188014030456543,
+      "name" : "program-approval-resume-replay",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "approval",
+        "checkpoint",
+        "program",
+        "replay",
+        "resume",
+        "suspension"
+      ]
+    },
+    {
+      "display_name" : "tool-observe-recovery",
+      "duration_seconds" : 0.004266977310180664,
+      "name" : "tool-observe-recovery",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "observe",
+        "recovery",
+        "retry",
+        "tool"
+      ]
+    },
+    {
+      "display_name" : "tool-mutation-recovery",
+      "duration_seconds" : 0.0035309791564941406,
+      "name" : "tool-mutation-recovery",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "mutation",
+        "reconciliation",
+        "recovery",
+        "tool"
+      ]
+    },
+    {
+      "display_name" : "tool-classification-propagation",
+      "duration_seconds" : 0.0008510351181030273,
+      "name" : "tool-classification-propagation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "classification",
+        "program",
+        "propagation",
+        "recovery",
+        "tool"
+      ]
+    },
+    {
+      "display_name" : "workspace-access-lease-activation",
+      "duration_seconds" : 0.0037380456924438477,
+      "name" : "workspace-access-lease-activation",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "lease",
+        "path-grant",
+        "prepared-operation",
+        "session",
+        "turn",
+        "workspace"
+      ]
+    },
+    {
       "display_name" : "settings-frame",
-      "duration_seconds" : 0.014958977699279785,
+      "duration_seconds" : 0.008730053901672363,
       "name" : "settings-frame",
       "status" : "passed",
       "tags" : [
@@ -18,8 +774,19 @@
       ]
     },
     {
+      "display_name" : "settings-template",
+      "duration_seconds" : 0.004472970962524414,
+      "name" : "settings-template",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "frame",
+        "settings"
+      ]
+    },
+    {
       "display_name" : "settings-schema",
-      "duration_seconds" : 0.02204596996307373,
+      "duration_seconds" : 0.021562933921813965,
       "name" : "settings-schema",
       "status" : "passed",
       "tags" : [
@@ -27,9 +794,76 @@
         "frame",
         "settings"
       ]
+    },
+    {
+      "display_name" : "workspace-session-changes",
+      "duration_seconds" : 0.0029619932174682617,
+      "name" : "workspace-session-changes",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "lease",
+        "session",
+        "workspace"
+      ]
+    },
+    {
+      "display_name" : "program-caught-tool-failure-resume",
+      "duration_seconds" : 0.0008649826049804688,
+      "name" : "program-caught-tool-failure-resume",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "program",
+        "recovery",
+        "replay",
+        "resume",
+        "tool",
+        "user-input"
+      ]
+    },
+    {
+      "display_name" : "program-governed-tool-recovery",
+      "duration_seconds" : 0.0012890100479125977,
+      "name" : "program-governed-tool-recovery",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "governance",
+        "program",
+        "reconciliation",
+        "recovery",
+        "tool"
+      ]
+    },
+    {
+      "display_name" : "malformed-clarify-tool-input-recovery",
+      "duration_seconds" : 0.006560921669006348,
+      "name" : "malformed-clarify-tool-input-recovery",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "decode",
+        "recovery",
+        "tool",
+        "user-input"
+      ]
+    },
+    {
+      "display_name" : "agent-run-limit-stop",
+      "duration_seconds" : 0.0018429756164550781,
+      "name" : "agent-run-limit-stop",
+      "status" : "passed",
+      "tags" : [
+        "agentic-runtime",
+        "interruption",
+        "persistence",
+        "run-limit",
+        "suspension"
+      ]
     }
   ],
   "skipped" : 0,
   "title" : "Agentic program runtime flow tests",
-  "total" : 2
+  "total" : 68
 }
