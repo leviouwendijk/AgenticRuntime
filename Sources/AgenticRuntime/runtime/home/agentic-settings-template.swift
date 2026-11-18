@@ -1,6 +1,9 @@
 import Foundation
 import Frame
+import IO
+import Readers
 import Version
+import Writers
 
 /// The `settings.frame` a home starts with: the schema it is written for,
 /// and every setting commented out at its default, so the file decodes to
@@ -122,10 +125,15 @@ public extension AgentHome {
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
             formatter.dateFormat = "yyyy-MM-dd-HHmmss"
-            let archive = layout.archivedir
-                .appendingPathComponent("settings-\(formatter.string(from: now)).frame")
-            try FileManager.default.createDirectory(at: layout.archivedir, withIntermediateDirectories: true)
-            try Data(text.utf8).write(to: archive, options: .withoutOverwriting)
+            let stem = "settings-\(formatter.string(from: now))"
+            // Runs within one second get -2, -3, ...
+            var archive = layout.archivedir.appendingPathComponent("\(stem).frame")
+            var count = 1
+            while FileSystem.default.exists(archive) {
+                count += 1
+                archive = layout.archivedir.appendingPathComponent("\(stem)-\(count).frame")
+            }
+            try FileWriter(archive).write(text)
             archived = archive
         }
         try writeSettingsTemplate()
@@ -133,15 +141,17 @@ public extension AgentHome {
     }
 
     private func settingsFileText() throws -> String? {
-        let file = layout.settingsfile
-        guard FileManager.default.fileExists(atPath: file.path) else { return nil }
-        let text = String(decoding: try Data(contentsOf: file), as: UTF8.self)
-        return text.isEmpty ? nil : text
+        let read = try TextFileReader(layout.settingsfile).read(
+            options: .init(missingFilePolicy: .returnEmpty)
+        )
+        return read.text.isEmpty ? nil : read.text
     }
 
     private func writeSettingsTemplate() throws {
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        try Data(AgenticSettingsTemplate.text.utf8).write(to: layout.settingsfile, options: .atomic)
+        try FileWriter(layout.settingsfile).write(
+            AgenticSettingsTemplate.text,
+            options: .overwriteWithoutBackup
+        )
     }
 }
 
