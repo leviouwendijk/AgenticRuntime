@@ -106,4 +106,48 @@ public extension AgenticFrame {
 /// files; their modules are installed with `Agentic.frame` for editors.
 public protocol AgenticFrameModulesProviding: AgenticApplicationProviding {
     static var frameModules: [Frame.Module] { get }
+    /// A complete file per domain to start from; `agentic example`
+    /// prints them.
+    static var frameExamples: [AgenticFrameExample] { get }
+}
+
+public extension AgenticFrameModulesProviding {
+    static var frameExamples: [AgenticFrameExample] { [] }
+}
+
+/// A `.frame` file to start from, printed by `agentic example <name>`.
+/// The text comes from the same source the program reads and tests, so it
+/// cannot drift from what the program accepts.
+public struct AgenticFrameExample: Sendable, Hashable {
+    public let name: String
+    /// Where it goes, relative to the home: `settings.frame`,
+    /// `domains/scheduling.frame`.
+    public let path: String
+    public let summary: String
+    public let text: String
+
+    public init(name: String, path: String, summary: String, text: String) {
+        self.name = name
+        self.path = path
+        self.summary = summary
+        self.text = text
+    }
+
+    /// The home's `settings.frame`, as the first run writes it.
+    public static var settings: Self {
+        .init(
+            name: "settings",
+            path: "settings.frame",
+            summary: "User settings: path scopes, mutations, logs, exports.",
+            text: AgenticSettingsTemplate.text
+        )
+    }
+
+    /// `settings` first, then what the application declares.
+    public static func all<Application: AgenticApplicationProviding>(
+        for application: Application.Type
+    ) -> [Self] {
+        let declared = (application as? any AgenticFrameModulesProviding.Type)?.frameExamples ?? []
+        return [settings] + declared
+    }
 }
