@@ -193,10 +193,129 @@ extension AgenticProgramRuntimeFlowTesting {
             "A purpose binding no gateway can serve fails at startup"
         )
 
+        // An installed model whose gateway is unconfigured: binding without
+        // fallback fails at startup, with fallback the runtime starts.
+        let unconfiguredModel = AgentModelID(
+            rawValue: "fixture:unconfigured"
+        )
+        let unconfiguredSelection: (Bool) -> AgenticApplication = { allowsFallback in
+            Agentic.application(
+                "fixture.purpose_selection.unconfigured"
+            ) {
+                modelProvider(PurposeSelectionUnconfiguredModelProvider())
+                modelSelection(
+                    default: .init(
+                        preferredModelID: unconfiguredModel,
+                        gateway: PurposeSelectionUnconfiguredModelProvider.gateway,
+                        allowsFallback: allowsFallback
+                    )
+                )
+            }
+        }
+
+        var bindingRejected = false
+        do {
+            _ = try await AgenticRuntime(
+                application: unconfiguredSelection(false)
+            )
+        } catch ApplicationModelSelectionError.unavailable_model(let model, _) {
+            bindingRejected = model == unconfiguredModel
+        }
+        try Expect.true(
+            bindingRejected,
+            "A binding default on an unconfigured gateway fails at startup"
+        )
+
+        let fallback = try await AgenticRuntime(
+            application: unconfiguredSelection(true)
+        )
+        try Expect.equal(
+            fallback.gateways.unavailability(
+                for: PurposeSelectionUnconfiguredModelProvider.gateway
+            )?.kind,
+            .missing_configuration,
+            "A fallback default on an unconfigured gateway starts and keeps the gateway unavailable"
+        )
+
+        let misnamed = Agentic.application(
+            "fixture.purpose_selection.misnamed"
+        ) {
+            modelProvider(PurposeSelectionUnconfiguredModelProvider())
+            modelSelection(
+                default: .init(
+                    preferredModelID: AgentModelID(
+                        rawValue: "fixture:misnamed"
+                    ),
+                    allowsFallback: true
+                )
+            )
+        }
+        var misnamedRejected = false
+        do {
+            _ = try await AgenticRuntime(
+                application: misnamed
+            )
+        } catch ApplicationModelSelectionError.unavailable_model {
+            misnamedRejected = true
+        }
+        try Expect.true(
+            misnamedRejected,
+            "A fallback default must still name an installed model"
+        )
+
         return [
             .field(
                 "coder_cost",
                 coder.preferences.cost?.rawValue ?? "<none>"
+            ),
+        ]
+    }
+}
+
+private struct PurposeSelectionUnconfiguredModelProvider:
+    AgentModelProvider
+{
+    static let gateway = AgentModelGatewayIdentifier(
+        "fixture.purpose_selection.unconfigured"
+    )
+
+    let descriptor = AgentModelProviderDescriptor(
+        source: "fixture.purpose_selection.unconfigured",
+        displayName: "Unconfigured fixture"
+    )
+
+    var gateways: [AgentModelGatewayFactory] {
+        [
+            .init(
+                identifier: Self.gateway,
+                resolve: {
+                    .unavailable(
+                        .init(
+                            kind: .missing_configuration,
+                            message: "Fixture key is not configured."
+                        )
+                    )
+                }
+            ),
+        ]
+    }
+
+    var profileProviders: [any AgentModelProfileProvider] {
+        [
+            SnapshotAgentModelProfileProvider(
+                snapshot: .init(
+                    source: "fixture.purpose_selection.unconfigured",
+                    profiles: [
+                        AgentModelProfile(
+                            identifier: "fixture.purpose_selection.unconfigured",
+                            gatewayIdentifier: Self.gateway,
+                            model: "unconfigured",
+                            modelID: AgentModelID(
+                                rawValue: "fixture:unconfigured"
+                            )
+                        ),
+                    ]
+                )
             ),
         ]
     }

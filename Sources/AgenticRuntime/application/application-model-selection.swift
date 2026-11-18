@@ -57,14 +57,17 @@ public enum ApplicationModelSelectionError: Error, Sendable, Hashable {
 
 extension ApplicationModelSelection {
     /// Fail at startup when a configured default cannot route at all. A
-    /// gateway chain is satisfied by any one of its gateways.
+    /// gateway chain is satisfied by any one of its gateways. A default that
+    /// allows fallback only has to name an installed target: when its
+    /// gateway is unconfigured, routing falls back instead of failing.
     func validate(
-        against routable: ProfileCatalog
+        against routable: ProfileCatalog,
+        installed: ProfileCatalog
     ) throws {
         for preferred in [preferences] + purposes.values.map(preferences.overriding(with:)) {
             try Self.validate(
                 preferred,
-                against: routable
+                against: preferred.allowsFallback ? installed : routable
             )
         }
     }

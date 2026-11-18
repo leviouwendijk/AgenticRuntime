@@ -69,7 +69,8 @@ public struct AgenticRuntime:
         )
 
         try application.modelSelection.validate(
-            against: modelCatalogs.profiles.routable(using: modelCatalogs.gateways)
+            against: modelCatalogs.routableProfiles,
+            installed: modelCatalogs.profiles
         )
 
         self.application = application
