@@ -166,6 +166,18 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
                 .runAgentRealization()
         },
         TestFlow(
+            "context-ambient-grant",
+            tags: ["agentic-runtime", "agent", "realization", "context"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runContextAmbientGrant()
+        },
+        TestFlow(
+            "context-entry-message",
+            tags: ["agentic-runtime", "context", "instructions"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runContextEntryMessage()
+        },
+        TestFlow(
             "inference-installation",
             tags: ["agentic-runtime", "inference", "installation", "execution", "realization"]
         ) {

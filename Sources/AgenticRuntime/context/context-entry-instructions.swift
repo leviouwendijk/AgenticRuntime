@@ -52,6 +52,7 @@ public extension AgentCapabilitySet {
         tools: [
             Context.Tools.Index.identifier,
             Context.Tools.Read.identifier,
+            Context.Tools.Search.identifier,
         ]
     )
 }
