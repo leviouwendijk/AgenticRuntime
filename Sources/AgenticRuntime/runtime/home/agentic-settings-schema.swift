@@ -7,6 +7,11 @@ import Path
 extension AgenticSettings: FrameDescribable {
     public static var frameSchema: Frame.Schema {
         .object([
+            .init("schema", .object([
+                .init("major", .integer, required: true),
+                .init("minor", .integer, required: true),
+                .init("patch", .integer, required: true),
+            ]), summary: "The settings schema this file is written for; the template declares the current one."),
             .init("exports", .of(Exports.self)),
             .init("log", .of(Log.self)),
             .init("mutations", .of(Mutations.self)),

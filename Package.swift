@@ -75,6 +75,10 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/leviouwendijk/Version.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/leviouwendijk/Concatenation.git",
             branch: "master"
         ),
@@ -98,6 +102,10 @@ let package = Package(
                 .product(
                     name: "Agentic",
                     package: "Agentic"
+                ),
+                .product(
+                    name: "Version",
+                    package: "Version"
                 ),
                 .product(
                     name: "AgenticStandard",

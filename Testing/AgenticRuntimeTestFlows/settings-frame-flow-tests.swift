@@ -78,42 +78,57 @@ extension AgenticProgramRuntimeFlowTesting {
 }
 
 extension AgenticProgramRuntimeFlowTesting {
-    /// A new home gets the template; an untouched older template is
-    /// archived and regenerated; an edited file is only replaced on request.
+    /// A new home gets the template, which declares the current schema; a
+    /// file's declared schema is compared with the program's; modernizing
+    /// archives the file and writes the template.
     static func runSettingsTemplate() async throws -> [TestDiagnostic] {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("settings-template-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let home = AgentHome(root: root, kind: .ephemeral)
         let file = home.layout.settingsfile
-        let now = Date(timeIntervalSince1970: 1_763_400_000)
+        let current = AgenticSettings.schemaVersion
 
-        try Expect.equal(try home.prepareSettingsFile(now: now), .written, "a new home gets the template")
-        try Expect.equal(try home.settings(), AgenticSettings(), "the template decodes to the defaults")
-        try Expect.equal(try home.prepareSettingsFile(now: now), .current, "then is left as it is")
+        try Expect.equal(try home.settingsSchemaStanding(), .missing, "no file")
+        try home.prepareSettingsFile()
+        try Expect.equal(try home.settingsSchemaStanding(), .current, "the template declares the current schema")
+        try Expect.equal(try home.settings().schema, current, "and decodes to it")
+        var expected = AgenticSettings()
+        expected.schema = current
+        try Expect.equal(try home.settings(), expected, "every other setting at its default")
 
-        let oldBody = "import Agentic;\n"
-        try (AgenticSettingsTemplate.marker(revision: 0, digest: AgenticSettingsTemplate.digest(oldBody)) + "\n" + oldBody)
-            .write(to: file, atomically: true, encoding: .utf8)
-        guard case .modernized(let archive) = try home.prepareSettingsFile(now: now) else {
-            throw SettingsFrameFixtureError.accepted
+        func declaring(_ major: Int, _ minor: Int, _ patch: Int) -> String {
+            """
+            import Agentic;
+            let settings: AgenticSettings = .{
+                .schema = .{ .major = \(major), .minor = \(minor), .patch = \(patch) },
+            };
+            """
         }
-        try Expect.equal(archive.deletingLastPathComponent().path, home.layout.archivedir.path, "archived in the home")
-        try Expect.true(try String(contentsOf: archive, encoding: .utf8).hasSuffix(oldBody), "the old file kept whole")
-        try Expect.equal(try String(contentsOf: file, encoding: .utf8), AgenticSettingsTemplate.text, "regenerated")
-
-        let edited = AgenticSettingsTemplate.text + "let extra: PathScope = .{ .path = \"/tmp\" };\n"
-        try edited.write(to: file, atomically: true, encoding: .utf8)
-        try Expect.equal(try home.prepareSettingsFile(now: now), .edited, "an edited current file stays")
         let handwritten = "import Agentic;\nlet settings: AgenticSettings = .{};\n"
         try handwritten.write(to: file, atomically: true, encoding: .utf8)
-        try Expect.equal(try home.prepareSettingsFile(now: now), .outdated(revision: nil), "an unmarked file stays")
-        try Expect.equal(try String(contentsOf: file, encoding: .utf8), handwritten, "untouched")
+        try home.prepareSettingsFile()
+        try Expect.equal(try String(contentsOf: file, encoding: .utf8), handwritten, "an existing file is never changed at start")
+        try Expect.equal(try home.settingsSchemaStanding(), .undeclared, "no .schema")
 
-        let later = now.addingTimeInterval(1)
-        let kept = try home.modernizeSettingsFile(now: later)
-        try Expect.equal(try kept.map { try String(contentsOf: $0, encoding: .utf8) }, handwritten, "modernizing on request archives it")
-        try Expect.equal(try String(contentsOf: file, encoding: .utf8), AgenticSettingsTemplate.text, "and writes the template")
+        try declaring(current.major, current.minor + 1, 0).write(to: file, atomically: true, encoding: .utf8)
+        try Expect.equal(
+            try home.settingsSchemaStanding(),
+            .newer(.init(major: current.major, minor: current.minor + 1, patch: 0)),
+            "written for a newer program"
+        )
+        try declaring(current.major - 1, 4, 0).write(to: file, atomically: true, encoding: .utf8)
+        try Expect.equal(
+            try home.settingsSchemaStanding(),
+            .incompatible(.init(major: current.major - 1, minor: 4, patch: 0)),
+            "an older major version"
+        )
+
+        try handwritten.write(to: file, atomically: true, encoding: .utf8)
+        let kept = try home.modernizeSettingsFile(now: Date(timeIntervalSince1970: 1_763_400_000))
+        try Expect.equal(kept?.deletingLastPathComponent().path, home.layout.archivedir.path, "archived in the home")
+        try Expect.equal(try kept.map { try String(contentsOf: $0, encoding: .utf8) }, handwritten, "the old file kept whole")
+        try Expect.equal(try String(contentsOf: file, encoding: .utf8), AgenticSettingsTemplate.text, "and the template written")
         return []
     }
 }

@@ -9,6 +9,7 @@ extension AgenticProgramRuntimeFlowTesting {
     /// types, and an editor reading only the file sees what the program sees.
     static func runSettingsSchema() async throws -> [TestDiagnostic] {
         let everyField = AgenticSettings(
+            schema: AgenticSettings.schemaVersion,
             exports: .init(directory: "~/exports"),
             log: .init(durability: .synced),
             mutations: .init(publication: .review, workers: .stage),

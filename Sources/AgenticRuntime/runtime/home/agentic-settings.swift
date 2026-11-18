@@ -2,6 +2,7 @@ import Foundation
 import Frame
 import Path
 import Readers
+import Version
 
 /// User settings of an Agentic home, the `settings` binding of the home's
 /// `settings.frame`:
@@ -9,6 +10,7 @@ import Readers
 ///     import Agentic;
 ///     let notes: PathScope = .{ .path = "~/notes/**" };
 ///     let settings: AgenticSettings = .{
+///         .schema = .{ .major = 1, .minor = 0, .patch = 0 },
 ///         .paths = .{ .ask = [notes], .symlinks = .roots },
 ///         .mutations = .{ .publication = .review },
 ///         .exports = .{ .directory = "~/exports" },
@@ -17,17 +19,25 @@ import Readers
 /// Every field is optional and falls back to its default; an unknown field
 /// is an error.
 public struct AgenticSettings: Sendable, Codable, Hashable {
+    /// The settings schema this program reads. A minor or patch raise only
+    /// adds; a major raise changes what an existing field means.
+    public static let schemaVersion = SemanticVersion(major: 1, minor: 0, patch: 0)
+
+    /// The schema the file was written for; nil when it declares none.
+    public var schema: SemanticVersion?
     public var exports: Exports
     public var log: Log
     public var mutations: Mutations
     public var paths: Paths
 
     public init(
+        schema: SemanticVersion? = nil,
         exports: Exports = .init(),
         log: Log = .init(),
         mutations: Mutations = .init(),
         paths: Paths = .init()
     ) {
+        self.schema = schema
         self.exports = exports
         self.log = log
         self.mutations = mutations
@@ -36,6 +46,7 @@ public struct AgenticSettings: Sendable, Codable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.schema = try container.decodeIfPresent(SemanticVersion.self, forKey: .schema)
         self.exports = try container.decodeIfPresent(Exports.self, forKey: .exports) ?? .init()
         self.log = try container.decodeIfPresent(Log.self, forKey: .log) ?? .init()
         self.mutations = try container.decodeIfPresent(Mutations.self, forKey: .mutations) ?? .init()
