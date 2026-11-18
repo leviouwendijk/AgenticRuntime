@@ -1,4 +1,5 @@
 import Agentic
+import AgenticConfiguration
 import CryptoKit
 import Foundation
 
@@ -38,18 +39,8 @@ public extension Run.Log {
         }
     }
 
-    /// How appended entries reach the disk.
-    enum Durability: String, Sendable, Codable, Hashable, CaseIterable {
-        /// Entries are staged in memory and written at step boundaries. A
-        /// crash loses the unwritten tail.
-        case buffered
-        /// Each entry is written to the file as it is appended. Survives a
-        /// crash or kill of the process; the OS decides when it reaches disk.
-        case entry
-        /// Each entry is written and synchronized to stable storage. Survives
-        /// power loss; slowest.
-        case synced
-    }
+    /// How appended entries reach the disk; set in `settings.frame`.
+    typealias Durability = AgenticSettings.Log.Durability
 
     /// Content address of a stored payload: SHA-256 of its canonical JSON.
     /// Equal content is stored once, however often it is recorded.
@@ -123,7 +114,7 @@ public extension Run.Log.Entry {
         public let tools: Digest
         /// The request without messages and tools (`AgentRequest`).
         public let options: Digest
-        public let usage: Context.Usage
+        public let usage: ContextWindow.Usage
     }
 
     struct Stored: Sendable, Codable, Hashable {

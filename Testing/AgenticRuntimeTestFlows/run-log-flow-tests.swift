@@ -20,7 +20,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let system = Message(id: "sys", role: .system, content: .init(text: "System"))
         let user = Message(id: "u0", role: .user, content: .init(text: "Read the readme."))
         let request = AgentRequest(messages: [system, user])
-        let usage = Context.Usage(turn: 1, request: request)
+        let usage = ContextWindow.Usage(turn: 1, request: request)
 
         // First process: two turns sharing history, a call, its response,
         // a denial.

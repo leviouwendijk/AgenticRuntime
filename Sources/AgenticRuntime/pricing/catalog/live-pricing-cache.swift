@@ -1,4 +1,5 @@
 import Agentic
+import AgenticConfiguration
 import Foundation
 
 /// Provider-published prices, cached in the Agentic home: one file per

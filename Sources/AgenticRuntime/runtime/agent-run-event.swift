@@ -20,9 +20,9 @@ public extension Run {
 public extension Run.Event {
     struct Request: Sendable, Codable, Hashable {
         public let request: AgentRequest
-        public let usage: Context.Usage
+        public let usage: ContextWindow.Usage
 
-        public init(request: AgentRequest, usage: Context.Usage) {
+        public init(request: AgentRequest, usage: ContextWindow.Usage) {
             self.request = request
             self.usage = usage
         }
@@ -96,7 +96,7 @@ public extension Run.Event {
         public let toolName: String?
         public let summary: String
         /// For `context_changed`: the decisions this request newly made.
-        public let contextChanges: [Context.HistorySelection.Change]?
+        public let contextChanges: [ContextWindow.HistorySelection.Change]?
         /// For `model_routed`: the model that served the request.
         public let route: Run.Event.Route?
 
@@ -108,7 +108,7 @@ public extension Run.Event {
             callID: String? = nil,
             toolName: String? = nil,
             summary: String,
-            contextChanges: [Context.HistorySelection.Change]? = nil,
+            contextChanges: [ContextWindow.HistorySelection.Change]? = nil,
             route: Run.Event.Route? = nil
         ) {
             self.contextChanges = contextChanges

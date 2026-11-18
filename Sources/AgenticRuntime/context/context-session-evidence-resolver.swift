@@ -11,7 +11,7 @@ public enum ContextEvidenceError: Error, Equatable {
     case recordedRevisionMismatch(expected: String, observed: String)
 }
 
-public extension Context {
+public extension ContextWindow {
     /// Resolve individually addressable historical evidence, not executable
     /// instructions. Sessions are only visible when explicitly authorized.
     /// Source convention: session/<sessionID>

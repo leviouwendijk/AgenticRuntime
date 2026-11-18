@@ -4,8 +4,8 @@ import AgenticRuntime
 import Foundation
 import TestFlows
 
-private struct DynamicFixtureResolver: Context.RecordResolving {
-    func resolve(_ pointer: Context.Pointer) async throws -> Context.Resolved {
+private struct DynamicFixtureResolver: ContextWindow.RecordResolving {
+    func resolve(_ pointer: ContextWindow.Pointer) async throws -> ContextWindow.Resolved {
         .init(
             pointer: .init(
                 source: pointer.source,
@@ -24,13 +24,13 @@ private struct DynamicFixtureResolver: Context.RecordResolving {
 
 extension AgenticProgramRuntimeFlowTesting {
     static func runContextDynamicMode() async throws -> [TestDiagnostic] {
-        let policy = Context.Policy(
+        let policy = ContextWindow.Policy(
             preferredInputTokens: 1_000,
             maximumInputTokens: 5_000,
             reservedOutputTokens: 200,
             history: .init(maximumTurns: 2, maximumTokens: 2_000, mode: .fitted)
         )
-        let allocator = try Context.Allocator(policy: policy)
+        let allocator = try ContextWindow.Allocator(policy: policy)
         try await allocator.createWorkingSet(id: "session-dynamic")
 
         let system = Message(id: "sys", role: .system, content: .init(text: "Preserve constraints"))
@@ -68,11 +68,11 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(second.frame.items.count, 1,
             "Evidence allocation and history tail share the allocator's bounded frame")
 
-        let whole = Context.Frame(
+        let whole = ContextWindow.Frame(
             workingSetID: "session-dynamic", items: [],
             skippedAllocationIDs: [], inputBudget: 5_000, estimatedInputTokens: 0
         )
-        let accumulating = try Context.InferencePreparer.prepare(
+        let accumulating = try ContextWindow.InferencePreparer.prepare(
             request: canonical, frame: whole, delivery: .supplement,
             maximumInputTokens: 5_000
         )
@@ -80,13 +80,13 @@ extension AgenticProgramRuntimeFlowTesting {
             ["sys", "old", "middle", "current"],
             "Accumulating mode preserves append-only model-facing history")
 
-        let oversizedPolicy = Context.Policy(
+        let oversizedPolicy = ContextWindow.Policy(
             preferredInputTokens: 1_000,
             maximumInputTokens: 5_000,
             reservedOutputTokens: 200,
             history: .init(maximumTurns: 1, maximumTokens: 600, mode: .fitted)
         )
-        let oversizedAllocator = try Context.Allocator(policy: oversizedPolicy)
+        let oversizedAllocator = try ContextWindow.Allocator(policy: oversizedPolicy)
         try await oversizedAllocator.createWorkingSet(id: "large-output")
         let readCall = FunctionCall(id: "large-read", name: "fixture.read", input: .null)
         let hugeResult = Message(
@@ -127,7 +127,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "History and allocation policies survive checkpoint decoding")
         try Expect.equal(restored.contextWorkingSet?.allocations.count, 1,
             "Allocation working set survives checkpoint decoding")
-        let replay = try Context.Allocator(policy: policy)
+        let replay = try ContextWindow.Allocator(policy: policy)
         if let saved = restored.contextWorkingSet {
             try await replay.restore(saved, transitions: restored.contextTransitions)
             try Expect.equal(try await replay.snapshot("session-dynamic"), saved,

@@ -1,7 +1,7 @@
 import Agentic
 import AgenticContextWindow
 
-public extension Context {
+public extension ContextWindow {
     /// Explicitly provided source authority for a Runner's allocated sessions.
     /// Installed capabilities do not grant source access on their own.
     struct Services: Sendable {

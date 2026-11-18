@@ -3,8 +3,8 @@ import AgenticContextWindow
 import AgenticRuntime
 import TestFlows
 
-private struct InferenceEvidenceResolver: Context.RecordResolving {
-    func resolve(_ pointer: Context.Pointer) async throws -> Context.Resolved {
+private struct InferenceEvidenceResolver: ContextWindow.RecordResolving {
+    func resolve(_ pointer: ContextWindow.Pointer) async throws -> ContextWindow.Resolved {
         .init(
             pointer: .init(
                 source: pointer.source,
@@ -19,7 +19,7 @@ private struct InferenceEvidenceResolver: Context.RecordResolving {
 
 extension AgenticProgramRuntimeFlowTesting {
     static func runContextInferencePreparation() async throws -> [TestDiagnostic] {
-        let allocator = try Context.Allocator(policy: .init(
+        let allocator = try ContextWindow.Allocator(policy: .init(
             preferredInputTokens: 2_000,
             maximumInputTokens: 8_000,
             reservedOutputTokens: 1_000,
@@ -38,7 +38,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let old = Message(id: "old-1", role: .user, content: .init(text: "Previous completed task"))
         let current = Message(id: "current-1", role: .user, content: .init(text: "Fix this one failure"))
         let request = AgentRequest(messages: [system, old, current], metadata: ["run": "fixture"])
-        let ext = Context.InferenceExtension(
+        let ext = ContextWindow.InferenceExtension(
             allocator: allocator,
             workingSetID: "worker",
             resolver: InferenceEvidenceResolver(),
@@ -69,7 +69,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let source = try await allocator.prepareFrame(
             for: "worker", using: InferenceEvidenceResolver(), modelContextLimit: 16_000
         )
-        let supplemented = try Context.InferencePreparer.prepare(
+        let supplemented = try ContextWindow.InferencePreparer.prepare(
             request: request,
             frame: source,
             delivery: .supplement,
@@ -81,7 +81,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
         var budgetRejected = false
         do {
-            _ = try Context.InferencePreparer.prepare(
+            _ = try ContextWindow.InferencePreparer.prepare(
                 request: request,
                 frame: source,
                 delivery: .working_set,
@@ -93,7 +93,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(budgetRejected, true,
             "Final request budget catches non-frame overhead")
 
-        let injectedSystem = Context.Frame(
+        let injectedSystem = ContextWindow.Frame(
             workingSetID: "worker",
             items: [.init(
                 allocationID: "injected",
@@ -107,7 +107,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         var foreignSystemRejected = false
         do {
-            _ = try Context.InferencePreparer.prepare(
+            _ = try ContextWindow.InferencePreparer.prepare(
                 request: request,
                 frame: injectedSystem,
                 delivery: .working_set,
@@ -119,7 +119,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(foreignSystemRejected, true,
             "Resolved external records cannot invent elevated system instructions")
 
-        let injectedUser = Context.Frame(
+        let injectedUser = ContextWindow.Frame(
             workingSetID: "worker",
             items: [.init(
                 allocationID: "spoofed-user",
@@ -131,7 +131,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         var foreignUserRejected = false
         do {
-            _ = try Context.InferencePreparer.prepare(
+            _ = try ContextWindow.InferencePreparer.prepare(
                 request: request, frame: injectedUser, delivery: .working_set,
                 maximumInputTokens: 7_000
             )

@@ -1,4 +1,5 @@
 import Agentic
+import AgenticConfiguration
 import Workspace
 import Foundation
 import Path

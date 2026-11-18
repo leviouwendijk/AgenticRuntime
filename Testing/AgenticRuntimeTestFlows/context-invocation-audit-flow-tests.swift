@@ -44,8 +44,8 @@ private struct ContextAuditedFixtureInvoker: AgentModelInvoking {
 
 extension AgenticProgramRuntimeFlowTesting {
     static func runContextInvocationAudit() async throws -> [TestDiagnostic] {
-        let audit = Context.MemoryInferenceAuditStore()
-        let wrapped = Context.AuditedModelInvoker(
+        let audit = ContextWindow.MemoryInferenceAuditStore()
+        let wrapped = ContextWindow.AuditedModelInvoker(
             wrapping: ContextAuditedFixtureInvoker(), audit: audit
         )
         let request = AgentRequest(messages: [Message(role: .user, text: "Audit this inference")])
@@ -76,14 +76,14 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(events[3].providerUsage?.outputTokens, 7,
             "Completed streamed audit captures provider-reported usage")
 
-        let frame = Context.Frame(
+        let frame = ContextWindow.Frame(
             workingSetID: "scope-A", items: [], skippedAllocationIDs: ["unneeded"],
             inputBudget: 500, estimatedInputTokens: 0
         )
-        let prep = try Context.InferencePreparer.prepare(
+        let prep = try ContextWindow.InferencePreparer.prepare(
             request: request, frame: frame, delivery: .supplement, maximumInputTokens: 500
         )
-        let evidence = try Context.InferenceAuditFingerprint.prepared(prep)
+        let evidence = try ContextWindow.InferenceAuditFingerprint.prepared(prep)
         try await audit.record(evidence)
         try Expect.equal(evidence.workingSetID, "scope-A",
             "Prepared audit retains the working-set identity")
@@ -93,9 +93,9 @@ extension AgenticProgramRuntimeFlowTesting {
         let location = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString + ".jsonl")
         defer { try? FileSystem.default.remove(location) }
-        let fileStore = try Context.FileInferenceAuditStore(fileURL: location)
+        let fileStore = try ContextWindow.FileInferenceAuditStore(fileURL: location)
         try await fileStore.record(evidence)
-        let reopenedStore = try Context.FileInferenceAuditStore(fileURL: location)
+        let reopenedStore = try ContextWindow.FileInferenceAuditStore(fileURL: location)
         try await reopenedStore.record(evidence)
         let written = try String(contentsOf: location, encoding: .utf8)
         let lines = written.split(separator: "\n")
@@ -105,7 +105,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "JSONL records remain newline terminated")
         try Expect.equal(lines.allSatisfy { line in
             (try? JSONDecoder().decode(
-                Context.InferenceAuditEvent.self,
+                ContextWindow.InferenceAuditEvent.self,
                 from: Data(line.utf8)
             )) != nil
         }, true, "Every persisted audit line decodes independently")

@@ -13,7 +13,7 @@ extension AgentLoop {
         let projection: ModelCapabilityProjection
         let tools: [ToolDescriptor]
         let request: AgentRequest
-        let usage: Context.Usage
+        let usage: ContextWindow.Usage
         /// The lexical estimate of the prepared request, in dynamic mode.
         let estimatedInputTokens: Int?
     }
@@ -49,7 +49,7 @@ extension AgentLoop {
             ),
             checkpoint: checkpoint
         )
-        let usage = Context.Usage(
+        let usage = ContextWindow.Usage(
             turn: checkpoint.state.iteration + 1,
             request: request
         )
@@ -137,7 +137,7 @@ extension AgentLoop {
     /// The schema detail to advertise. Core schemas are only safe while the
     /// inspector can return the rest, so it is revealed (within the
     /// available set) or core falls back to full.
-    func schemaDetail() async -> Context.SchemaDetail {
+    func schemaDetail() async -> ContextWindow.SchemaDetail {
         guard configuration.contextPolicy.schemas == .core else {
             return .full
         }
@@ -228,11 +228,11 @@ extension AgentLoop {
     /// has not reported yet, so nothing leaves the model's view unseen by
     /// the operator, and a decision held across requests is reported once.
     func recordContextChanges(
-        _ history: Context.HistorySelection?,
+        _ history: ContextWindow.HistorySelection?,
         to checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         guard let changes = history?.changes, !changes.isEmpty else { return }
-        let reported = Set(checkpoint.events.flatMap { state -> [Context.HistorySelection.Change] in
+        let reported = Set(checkpoint.events.flatMap { state -> [ContextWindow.HistorySelection.Change] in
             state.kind == .context_changed ? state.contextChanges ?? [] : []
         })
         let new = changes.filter { !reported.contains($0) }
@@ -256,7 +256,7 @@ extension AgentLoop {
     /// Past the soft limit, once per run: how full the request is and what
     /// an explicit compaction would save. Advice only; nothing changes.
     func recordContextPressure(
-        _ pressure: Context.Pressure?,
+        _ pressure: ContextWindow.Pressure?,
         to checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         guard let pressure, pressure.level == .soft,
@@ -280,7 +280,7 @@ extension AgentLoop {
         in checkpoint: AgentExecutor.Checkpoint
     ) async -> Int {
         let done = await contextServices?.compactions?.compactions ?? []
-        return Context.Compactor.plan(
+        return ContextWindow.Compactor.plan(
             messages: checkpoint.state.messages,
             excluding: done
         )?.estimatedTokensSaved ?? 0

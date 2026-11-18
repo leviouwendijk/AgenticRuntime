@@ -3,7 +3,7 @@ import AgenticContextWindow
 
 /// Bind executable collaborators against the installed Runtime capabilities.
 /// Context stores the resolved Core values, never Runtime's installation registry.
-public extension Context.Allocator.Agent {
+public extension ContextWindow.Allocator.Agent {
     init(
         resolving identifier: AgentIdentifier,
         in installed: InstalledCapabilities,
@@ -16,7 +16,7 @@ public extension Context.Allocator.Agent {
     }
 }
 
-public extension Context.Allocator.Program {
+public extension ContextWindow.Allocator.Program {
     init(
         resolving identifier: ProgramIdentifier,
         in installed: InstalledCapabilities

@@ -1,3 +1,4 @@
+import AgenticConfiguration
 import Foundation
 
 public struct AgentRuntimeStorageLocations: Sendable, Codable, Hashable {

@@ -96,21 +96,21 @@ extension AgenticProgramRuntimeFlowTesting {
         let request = AgentRequest(messages: turn(0) + turn(1) + [
             Message(id: "followup", role: .user, content: .init(text: "Now summarize both.")),
         ])
-        let empty = Context.Frame(
+        let empty = ContextWindow.Frame(
             workingSetID: "w", items: [], skippedAllocationIDs: [], inputBudget: 0, estimatedInputTokens: 0
         )
-        let full = try Context.InferencePreparer.prepare(
+        let full = try ContextWindow.InferencePreparer.prepare(
             request: request, frame: empty, delivery: .dynamic, maximumInputTokens: 1_000_000
         ).measurement.estimatedInputTokens
-        let plan = Context.Compactor.plan(messages: request.messages)
-        let compacted = try Context.InferencePreparer.prepare(
+        let plan = ContextWindow.Compactor.plan(messages: request.messages)
+        let compacted = try ContextWindow.InferencePreparer.prepare(
             request: request, frame: empty, delivery: .dynamic, maximumInputTokens: 1_000_000,
             compactions: plan.map { [$0] } ?? []
         ).measurement.estimatedInputTokens
         try Expect.true(plan != nil && compacted < full * 2 / 3, "the fixture compacts substantially")
 
         let history = Sessions.HistoryStore()
-        func executor(limit: Int, ledger: Context.CompactionLedger, store: ContextPauseStore) -> AgentExecutor {
+        func executor(limit: Int, ledger: ContextWindow.CompactionLedger, store: ContextPauseStore) -> AgentExecutor {
             AgentExecutor(
                 model: .init(invoker: ContextChangeModel()),
                 configuration: .init(
@@ -121,7 +121,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 capabilityState: AgentCapabilityState(installed: .none),
                 recording: .init(historyStore: store, stateSinks: [history]),
                 contextServices: .init(
-                    resolver: Context.UnmountedResolver(),
+                    resolver: ContextWindow.UnmountedResolver(),
                     modelContextLimit: 10_000_000,
                     compactions: ledger
                 )
@@ -129,7 +129,7 @@ extension AgenticProgramRuntimeFlowTesting {
         }
 
         // Hard: the request does not fit, so the run pauses before sending.
-        let ledger = Context.CompactionLedger()
+        let ledger = ContextWindow.CompactionLedger()
         let store = ContextPauseStore()
         let paused = executor(limit: (full + compacted) / 2, ledger: ledger, store: store)
         let first = try await paused.run(request, sessionID: "context-pause")
@@ -141,7 +141,7 @@ extension AgenticProgramRuntimeFlowTesting {
         }
         try Expect.true(compactable > 0, "the pause says what compacting would free")
 
-        await ledger.record(Context.Compactor.plan(messages: request.messages)!)
+        await ledger.record(ContextWindow.Compactor.plan(messages: request.messages)!)
         let resumed = try await paused.resume(interaction: .init(
             request: interaction,
             resolution: .run_limit(.continue_with(.default))

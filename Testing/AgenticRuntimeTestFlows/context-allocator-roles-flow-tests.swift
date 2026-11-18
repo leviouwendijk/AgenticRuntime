@@ -46,14 +46,14 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let agentID = ContextAllocatorRoleFixtureAgent.definition.identifier
         let programID = ContextAllocatorRoleFixtureProgram.definition.identifier
-        let primary = try Context.Allocator.Agent(
+        let primary = try ContextWindow.Allocator.Agent(
             resolving: agentID,
             in: installed,
             modelPreferences: .init(
                 preferredProfileIdentifier: "fixture.context.profile.a"
             )
         )
-        let worker = try Context.Allocator.Program(
+        let worker = try ContextWindow.Allocator.Program(
             resolving: programID, in: installed
         )
         try Expect.equal(primary.identifier, agentID,
@@ -61,7 +61,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(worker.identifier, programID,
             "Program role resolves against installed executable bindings")
 
-        let allocator = try Context.Allocator()
+        let allocator = try ContextWindow.Allocator()
         try await allocator.createWorkingSet(id: "fixture.work")
         await allocator.configure(.init(
             id: "fixture.preset",
@@ -80,7 +80,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
         var unavailableAgentRejected = false
         do {
-            _ = try Context.Allocator.Agent(
+            _ = try ContextWindow.Allocator.Agent(
                 resolving: .init(rawValue: "not.installed"), in: installed
             )
         } catch ContextAllocatorError.unavailableAgent {
@@ -91,7 +91,7 @@ extension AgenticProgramRuntimeFlowTesting {
 
         var unavailableProgramRejected = false
         do {
-            _ = try Context.Allocator.Program(
+            _ = try ContextWindow.Allocator.Program(
                 resolving: .init(rawValue: "not.installed"), in: installed
             )
         } catch ContextAllocatorError.unavailableProgram {

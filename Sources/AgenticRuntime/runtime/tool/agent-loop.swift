@@ -16,8 +16,8 @@ internal struct AgentLoop: Sendable {
     let runControl: Run.Control
     let extensions: [any AgentHarnessExtension]
     let recording: RuntimeServices.Recording
-    let contextAllocator: Context.Allocator?
-    let contextServices: Context.Services?
+    let contextAllocator: ContextWindow.Allocator?
+    let contextServices: ContextWindow.Services?
     let flow: Flow
 
     init(
@@ -29,8 +29,8 @@ internal struct AgentLoop: Sendable {
         runControl: Run.Control = .init(),
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
-        contextAllocator: Context.Allocator? = nil,
-        contextServices: Context.Services? = nil,
+        contextAllocator: ContextWindow.Allocator? = nil,
+        contextServices: ContextWindow.Services? = nil,
         flow: Flow = .conversational
     ) {
         self.model = model

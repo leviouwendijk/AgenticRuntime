@@ -24,11 +24,11 @@ extension AgenticProgramRuntimeFlowTesting {
         let second = ContextTranscriptFixture([
             .note(id: "failure", text: "Tool mutation failed because matching context was stale")
         ])
-        let resolver = Context.SessionEvidenceResolver(
+        let resolver = ContextWindow.SessionEvidenceResolver(
             authorizedSessions: ["session-A", "session-B"],
             transcripts: ["session-A": first, "session-B": second]
         )
-        let originalPointer = Context.Pointer(
+        let originalPointer = ContextWindow.Pointer(
             source: "session/session-A", record: "event/0"
         )
         let observed = try await resolver.resolve(originalPointer)
@@ -44,7 +44,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(version.hasPrefix("sha256:"), true,
             "Observed evidence has content-derived identity")
 
-        let pinned = Context.Pointer(
+        let pinned = ContextWindow.Pointer(
             source: originalPointer.source, record: originalPointer.record,
             revision: observed.pointer.revision
         )
@@ -73,7 +73,7 @@ extension AgenticProgramRuntimeFlowTesting {
         }
         try Expect.equal(denied, true, "Cross-session retrieval requires explicit authorization")
 
-        let allocator = try Context.Allocator(policy: .init(
+        let allocator = try ContextWindow.Allocator(policy: .init(
             preferredInputTokens: 2_000, maximumInputTokens: 8_000,
             reservedOutputTokens: 100, maximumResolutions: 4
         ))

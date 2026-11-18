@@ -22,10 +22,10 @@ public extension AgentExecutor {
         public let request: AgentRequest
         public var state: State
         public var runLimits: AgentRunLimits
-        public var contextMode: Context.Mode
-        public var contextPolicy: Context.Policy
-        public var contextWorkingSet: Context.WorkingSet?
-        public var contextTransitions: [Context.Transition]
+        public var contextMode: ContextWindow.Mode
+        public var contextPolicy: ContextWindow.Policy
+        public var contextWorkingSet: ContextWindow.WorkingSet?
+        public var contextTransitions: [ContextWindow.Transition]
         public var events: [Run.Event.State]
         /// Authoritative invocation spans, independently of display projections.
         public var invocations: [AgentExecutionInvocation]
@@ -100,19 +100,19 @@ public extension AgentExecutor {
                 forKey: .runLimits
             )
             contextMode = try container.decodeIfPresent(
-                Context.Mode.self,
+                ContextWindow.Mode.self,
                 forKey: .contextMode
             ) ?? .accumulating
             contextPolicy = try container.decodeIfPresent(
-                Context.Policy.self,
+                ContextWindow.Policy.self,
                 forKey: .contextPolicy
             ) ?? .init()
             contextWorkingSet = try container.decodeIfPresent(
-                Context.WorkingSet.self,
+                ContextWindow.WorkingSet.self,
                 forKey: .contextWorkingSet
             )
             contextTransitions = try container.decodeIfPresent(
-                [Context.Transition].self,
+                [ContextWindow.Transition].self,
                 forKey: .contextTransitions
             ) ?? []
             events = try container.decodeIfPresent(
@@ -192,10 +192,10 @@ public extension AgentExecutor {
             request: AgentRequest,
             state: State,
             runLimits: AgentRunLimits,
-            contextMode: Context.Mode = .accumulating,
-            contextPolicy: Context.Policy = .init(),
-            contextWorkingSet: Context.WorkingSet? = nil,
-            contextTransitions: [Context.Transition] = [],
+            contextMode: ContextWindow.Mode = .accumulating,
+            contextPolicy: ContextWindow.Policy = .init(),
+            contextWorkingSet: ContextWindow.WorkingSet? = nil,
+            contextTransitions: [ContextWindow.Transition] = [],
             events: [Run.Event.State] = [],
             invocations: [AgentExecutionInvocation] = [],
             currentModelInvocationID: String? = nil,

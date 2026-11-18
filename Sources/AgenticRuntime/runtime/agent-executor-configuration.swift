@@ -3,8 +3,8 @@ import Agentic
 public extension AgentExecutor {
     struct Configuration: Sendable, Codable, Hashable {
         public var runLimits: AgentRunLimits
-        public var contextMode: Context.Mode
-        public var contextPolicy: Context.Policy
+        public var contextMode: ContextWindow.Mode
+        public var contextPolicy: ContextWindow.Policy
         public var appendToolResultsAsMessages: Bool
         public var autonomyMode: AutonomyMode
         public var executionLimits: ExecutionLimits
@@ -16,8 +16,8 @@ public extension AgentExecutor {
 
         public init(
             runLimits: AgentRunLimits = .default,
-            contextMode: Context.Mode = .accumulating,
-            contextPolicy: Context.Policy = .init(),
+            contextMode: ContextWindow.Mode = .accumulating,
+            contextPolicy: ContextWindow.Policy = .init(),
             appendToolResultsAsMessages: Bool = true,
             autonomyMode: AutonomyMode = .auto_observe,
             executionLimits: ExecutionLimits = .unlimited,
@@ -50,8 +50,8 @@ public extension AgentExecutor {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             self.init(
                 runLimits: try container.decode(AgentRunLimits.self, forKey: .runLimits),
-                contextMode: try container.decodeIfPresent(Context.Mode.self, forKey: .contextMode) ?? .accumulating,
-                contextPolicy: try container.decodeIfPresent(Context.Policy.self, forKey: .contextPolicy) ?? .init(),
+                contextMode: try container.decodeIfPresent(ContextWindow.Mode.self, forKey: .contextMode) ?? .accumulating,
+                contextPolicy: try container.decodeIfPresent(ContextWindow.Policy.self, forKey: .contextPolicy) ?? .init(),
                 appendToolResultsAsMessages: try container.decode(Bool.self, forKey: .appendToolResultsAsMessages),
                 autonomyMode: try container.decode(AutonomyMode.self, forKey: .autonomyMode),
                 executionLimits: try container.decode(ExecutionLimits.self, forKey: .executionLimits),

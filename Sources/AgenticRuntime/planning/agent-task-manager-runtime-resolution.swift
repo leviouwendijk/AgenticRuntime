@@ -1,4 +1,5 @@
 import Agentic
+import AgenticConfiguration
 
 public extension AgentTaskManager {
     static func resolve(

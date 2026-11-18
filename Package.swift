@@ -124,6 +124,14 @@ let package = Package(
                     package: "Agentic"
                 ),
                 .product(
+                    name: "AgenticConfiguration",
+                    package: "Agentic"
+                ),
+                .product(
+                    name: "AgenticContext",
+                    package: "Agentic"
+                ),
+                .product(
                     name: "AgenticSessions",
                     package: "Agentic"
                 ),
@@ -215,6 +223,14 @@ let package = Package(
                 ),
                 .product(
                     name: "AgenticContextWindow",
+                    package: "Agentic"
+                ),
+                .product(
+                    name: "AgenticConfiguration",
+                    package: "Agentic"
+                ),
+                .product(
+                    name: "AgenticContext",
                     package: "Agentic"
                 ),
                 .product(

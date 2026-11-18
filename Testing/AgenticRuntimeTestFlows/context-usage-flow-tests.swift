@@ -31,7 +31,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ]
         )
 
-        let usage = Context.Usage(turn: 2, request: request)
+        let usage = ContextWindow.Usage(turn: 2, request: request)
 
         try Expect.equal(usage.turn, 2, "Usage keeps its turn")
         try Expect.true(usage.instructions > 0, "System text counts as instructions")

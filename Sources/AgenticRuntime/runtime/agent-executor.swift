@@ -18,8 +18,8 @@ public actor AgentExecutor {
     public let runControl: Run.Control
     public let extensions: [any AgentHarnessExtension]
     public let recording: RuntimeServices.Recording
-    public let contextServices: Context.Services?
-    private var contextAllocators: [String: Context.Allocator] = [:]
+    public let contextServices: ContextWindow.Services?
+    private var contextAllocators: [String: ContextWindow.Allocator] = [:]
 
     /// An installed-capability inventory is the single source of live authority.
     /// Callers cannot inject an unrelated capability state beside it.
@@ -31,7 +31,7 @@ public actor AgentExecutor {
         delegation: AgentDelegation? = nil,
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
-        contextServices: Context.Services? = nil
+        contextServices: ContextWindow.Services? = nil
     ) {
         self.model = model
         self.configuration = configuration
@@ -54,7 +54,7 @@ public actor AgentExecutor {
         delegation: AgentDelegation? = nil,
         extensions: [any AgentHarnessExtension] = [],
         recording: RuntimeServices.Recording = .init(),
-        contextServices: Context.Services? = nil
+        contextServices: ContextWindow.Services? = nil
     ) {
         self.init(
             model: model,
@@ -249,7 +249,7 @@ extension AgentExecutor {
             throw ContextExecutionError.incompatibleCompaction
         }
         let identity = checkpoint?.id ?? sessionID
-        let contextAllocator: Context.Allocator?
+        let contextAllocator: ContextWindow.Allocator?
         if configuration.contextMode == .dynamic, let identity {
             contextAllocator = try await contextAllocatorForSession(
                 identity,
@@ -276,13 +276,13 @@ extension AgentExecutor {
 
     private func contextAllocatorForSession(
         _ sessionID: String,
-        restoring saved: Context.WorkingSet?,
-        transitions: [Context.Transition]
-    ) async throws -> Context.Allocator {
+        restoring saved: ContextWindow.WorkingSet?,
+        transitions: [ContextWindow.Transition]
+    ) async throws -> ContextWindow.Allocator {
         if let previous = contextAllocators[sessionID] {
             return previous
         }
-        let allocator = try Context.Allocator(policy: configuration.contextPolicy)
+        let allocator = try ContextWindow.Allocator(policy: configuration.contextPolicy)
         if let saved {
             guard saved.id == sessionID else {
                 throw ContextAllocatorError.unknownWorkingSet(saved.id)
@@ -296,7 +296,7 @@ extension AgentExecutor {
     }
 
     /// Trusted host API. This is not a model-callable capability or a source grant.
-    public func contextAllocator(for sessionID: String) async throws -> Context.Allocator {
+    public func contextAllocator(for sessionID: String) async throws -> ContextWindow.Allocator {
         guard configuration.contextMode == .dynamic else {
             throw ContextExecutionError.requiresDynamicMode
         }

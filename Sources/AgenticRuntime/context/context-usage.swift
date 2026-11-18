@@ -2,7 +2,7 @@ import Agentic
 import Foundation
 import Tokens
 
-public extension Context {
+public extension ContextWindow {
     /// Estimated input tokens of one model turn, by what they were spent on.
     struct Usage: Sendable, Codable, Hashable {
         /// The model turn this request was sent for.

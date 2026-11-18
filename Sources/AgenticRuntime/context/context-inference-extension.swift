@@ -1,7 +1,7 @@
 import Agentic
 import AgenticContextWindow
 
-public extension Context {
+public extension ContextWindow {
     /// Opt-in harness bridge, running after model-facing tool projection and
     /// before the model invocation. A fresh Frame is prepared for each call.
     /// Nothing here mutates AgentExecutor's canonical checkpoint messages.
@@ -14,7 +14,7 @@ public extension Context {
         public let audit: (any InferenceAuditRecording)?
         /// Optional governed source of already-validated allocations.
         /// Callers may invoke a ContextPreparationProgram upstream.
-        public let preparation: (any Context.PreparationSelecting)?
+        public let preparation: (any ContextWindow.PreparationSelecting)?
         private var mostRecent: InferencePreparation?
 
         public init(
@@ -24,7 +24,7 @@ public extension Context {
             modelContextLimit: Int,
             delivery: InferenceDelivery = .supplement,
             audit: (any InferenceAuditRecording)? = nil,
-            preparation: (any Context.PreparationSelecting)? = nil
+            preparation: (any ContextWindow.PreparationSelecting)? = nil
         ) {
             self.allocator = allocator
             self.workingSetID = workingSetID

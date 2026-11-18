@@ -77,6 +77,9 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
                !instructions.isEmpty {
                 messages.append(Message(role: .system, text: instructions))
             }
+            if let context = dispatcher.services.tooling.services.contextEntryMessage {
+                messages.append(context)
+            }
             messages.append(Message(
                 role: .user,
                 text: String(decoding: try JSONEncoder().encode(arguments), as: UTF8.self)

@@ -5,9 +5,9 @@ extension AgentLoop {
     func prepareModelRequest(
         from request: AgentRequest,
         checkpoint: AgentExecutor.Checkpoint
-    ) async throws -> (request: AgentRequest, preparation: Context.InferencePreparation?) {
+    ) async throws -> (request: AgentRequest, preparation: ContextWindow.InferencePreparation?) {
         var prepared = request
-        var dynamic: Context.InferencePreparation?
+        var dynamic: ContextWindow.InferencePreparation?
         if configuration.contextMode == .dynamic {
             guard let allocator = contextAllocator else {
                 throw ContextExecutionError.requiresDynamicMode
@@ -15,7 +15,7 @@ extension AgentLoop {
             let preparation = try await allocator.prepareDynamic(
                 request: prepared,
                 for: checkpoint.id,
-                using: contextServices?.resolver ?? Context.UnmountedResolver(),
+                using: contextServices?.resolver ?? ContextWindow.UnmountedResolver(),
                 modelContextLimit: contextServices?.modelContextLimit
                     ?? configuration.contextPolicy.maximumInputTokens
                         + configuration.contextPolicy.reservedOutputTokens,
@@ -24,7 +24,7 @@ extension AgentLoop {
             )
             if let audit = contextServices?.audit {
                 try await audit.record(
-                    Context.InferenceAuditFingerprint.prepared(preparation)
+                    ContextWindow.InferenceAuditFingerprint.prepared(preparation)
                 )
             }
             prepared = preparation.request
@@ -40,7 +40,7 @@ extension AgentLoop {
     }
 
     /// The provider's last count for the model this request will route to.
-    func inputCalibration() async -> Context.InputCalibration? {
+    func inputCalibration() async -> ContextWindow.InputCalibration? {
         guard let meter = contextServices?.inputMeter,
               let broker = model.invoker as? ModelBroker,
               let routed = try? broker.route(selection: model.selection)
@@ -60,7 +60,7 @@ extension AgentLoop {
         guard let meter = contextServices?.inputMeter,
               let estimated,
               let reported = response.usage?.contextTokens,
-              let calibration = Context.InputCalibration(
+              let calibration = ContextWindow.InputCalibration(
                   estimatedTokens: estimated,
                   reportedTokens: reported
               )

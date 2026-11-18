@@ -5,7 +5,7 @@ import CryptoKit
 import Foundation
 import Tokens
 
-public extension Context {
+public extension ContextWindow {
     /// Audit of a prepared frame or a model invocation. No prompt contents are
     /// stored here. A request digest is not a unique invocation identifier.
     struct InferenceAuditEvent: Sendable, Codable, Hashable {
