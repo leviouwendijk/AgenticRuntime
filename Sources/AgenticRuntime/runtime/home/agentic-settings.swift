@@ -130,7 +130,7 @@ public struct PathScope: Sendable, Codable, Hashable {
 }
 
 /// The `agentic` Frame module: what `import Agentic;` makes nameable.
-public enum AgenticFrame {
+public enum FrameAgenticModule {
     public static let module = Frame.Module("Agentic", types: [
         .decodable(AgenticSettings.self, named: "AgenticSettings"),
         .decodable(PathScope.self, named: "PathScope"),
@@ -294,7 +294,7 @@ public extension AgentHome {
             try Frame.parse(
                 String(decoding: read.data, as: UTF8.self),
                 filePath: layout.settingsfile.path,
-                environment: AgenticFrame.environment
+                environment: FrameAgenticModule.environment
             )
         }
     }

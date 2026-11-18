@@ -2,7 +2,7 @@ import Foundation
 import Frame
 import Path
 
-/// What editors offer inside `settings.frame`; `AgenticFrame.install()`
+/// What editors offer inside `settings.frame`; `FrameAgenticModule.install()`
 /// writes it where they find it. The decoders above still decide what holds.
 extension AgenticSettings: FrameDescribable {
     public static var frameSchema: Frame.Schema {
@@ -83,7 +83,7 @@ extension AgenticSettings.Mutations: FrameDescribable {
     }
 }
 
-public extension AgenticFrame {
+public extension FrameAgenticModule {
     /// Writes `Agentic.frame` where editors look for module files.
     @discardableResult
     static func install(into directory: URL = Frame.modulesDirectory) throws -> URL {

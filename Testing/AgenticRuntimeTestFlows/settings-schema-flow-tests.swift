@@ -29,7 +29,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("agentic-modules-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let file = try AgenticFrame.install(into: directory)
+        let file = try FrameAgenticModule.install(into: directory)
         try Expect.equal(file.lastPathComponent, "Agentic.frame", "written by module name")
         let loaded = Frame.Environment.loading(modulesIn: directory)
         try Expect.equal(loaded.failures.count, 0, "the module file reads back")
@@ -51,7 +51,7 @@ extension AgenticProgramRuntimeFlowTesting {
             "valid settings pass the module file alone"
         )
         try Expect.equal(
-            Frame.problems(in: try Frame.parse(settings), environment: AgenticFrame.environment).map(\.message),
+            Frame.problems(in: try Frame.parse(settings), environment: FrameAgenticModule.environment).map(\.message),
             [],
             "and the program's own types"
         )

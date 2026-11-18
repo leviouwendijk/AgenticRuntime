@@ -105,7 +105,7 @@ public extension AgentHome {
         let document = try Frame.parse(
             text,
             filePath: layout.settingsfile.path,
-            environment: AgenticFrame.environment
+            environment: FrameAgenticModule.environment
         )
         guard document.binding(named: "settings") != nil else { return .undeclared }
         let declared = try document.decode(DeclaredSchema.self, binding: "settings").schema
