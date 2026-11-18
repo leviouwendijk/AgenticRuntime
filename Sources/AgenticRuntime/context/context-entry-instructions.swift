@@ -14,3 +14,15 @@ public extension ToolServices {
         return Message(role: .system, text: instructions)
     }
 }
+
+public extension AgentCapabilitySet {
+    /// Granted to every agent, beyond what it declares, when the
+    /// application installs them: reading the owner's context. Writing it
+    /// stays with agents that declare `context_save`.
+    static let ambient = AgentCapabilitySet(
+        tools: [
+            Context.Tools.Index.identifier,
+            Context.Tools.Read.identifier,
+        ]
+    )
+}

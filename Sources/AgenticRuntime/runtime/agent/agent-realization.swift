@@ -81,14 +81,16 @@ extension AgentRealization {
                 AgentCapabilityScope(agents: definition.delegation.allowedAgents)
             ).agents
             : []
-        let bounded = requestedAvailable.intersecting(installed.capabilities)
+        // Every agent may read the owner's context, when installed.
+        let ambient = AgentCapabilitySet.ambient.intersecting(installed.capabilities)
+        let bounded = requestedAvailable.union(ambient).intersecting(installed.capabilities)
         let available = AgentCapabilitySet(
             tools: bounded.tools,
             programs: bounded.programs,
             inferences: bounded.inferences,
             agents: bounded.agents.filter(delegable.contains)
         )
-        let visible = requestedVisible.intersecting(available)
+        let visible = requestedVisible.union(ambient).intersecting(available)
         return .init(
             definition: definition,
             requestedAvailable: requestedAvailable,
