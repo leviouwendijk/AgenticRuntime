@@ -1,5 +1,5 @@
 import Agentic
-import AgenticContext
+import AgenticContextWindow
 
 /// Bind executable collaborators against the installed Runtime capabilities.
 /// Context stores the resolved Core values, never Runtime's installation registry.

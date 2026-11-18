@@ -120,7 +120,7 @@ let package = Package(
                     package: "Agentic"
                 ),
                 .product(
-                    name: "AgenticContext",
+                    name: "AgenticContextWindow",
                     package: "Agentic"
                 ),
                 .product(
@@ -214,7 +214,7 @@ let package = Package(
                     package: "Agentic"
                 ),
                 .product(
-                    name: "AgenticContext",
+                    name: "AgenticContextWindow",
                     package: "Agentic"
                 ),
                 .product(

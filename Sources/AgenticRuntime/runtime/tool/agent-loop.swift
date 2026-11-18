@@ -1,5 +1,5 @@
 import Agentic
-import AgenticContext
+import AgenticContextWindow
 import Workspace
 import Foundation
 

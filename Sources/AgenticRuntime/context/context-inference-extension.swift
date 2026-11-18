@@ -1,5 +1,5 @@
 import Agentic
-import AgenticContext
+import AgenticContextWindow
 
 public extension Context {
     /// Opt-in harness bridge, running after model-facing tool projection and

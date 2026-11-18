@@ -1,5 +1,5 @@
 import Agentic
-import AgenticContext
+import AgenticContextWindow
 
 public extension Context {
     /// Explicitly provided source authority for a Runner's allocated sessions.

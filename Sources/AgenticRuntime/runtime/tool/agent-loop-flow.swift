@@ -1,5 +1,5 @@
 import Agentic
-import AgenticContext
+import AgenticContextWindow
 
 extension AgentLoop {
     /// Decides what an Agent run does next. It never performs work: the loop
