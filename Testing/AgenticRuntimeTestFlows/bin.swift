@@ -92,10 +92,10 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting.runRunLog()
         },
         TestFlow(
-            "reveal-decision",
+            "undeclared-capabilities",
             tags: ["runtime", "capabilities", "discovery", "cache"]
         ) {
-            try await AgenticProgramRuntimeFlowTesting.runRevealDecision()
+            try await AgenticProgramRuntimeFlowTesting.runUndeclaredCapabilities()
         },
         TestFlow(
             "compaction-payback",

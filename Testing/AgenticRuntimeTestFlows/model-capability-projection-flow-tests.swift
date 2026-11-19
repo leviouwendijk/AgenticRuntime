@@ -304,8 +304,12 @@ extension AgenticProgramRuntimeFlowTesting {
             "Inventory and state projections both observe live hidden changes."
         )
         try Expect.equal(
-            hidden.name(for: programTarget) == nil, true,
-            "Live capability hiding removes a provider-visible Program."
+            hidden.functions.contains { $0.name == programName }, false,
+            "Live capability hiding stops declaring a Program."
+        )
+        try Expect.equal(
+            hidden.name(for: programTarget), programName,
+            "A hidden, available Program stays callable under its stable name."
         )
         try Expect.equal(
             resumedProjection.target(named: programName), programTarget,

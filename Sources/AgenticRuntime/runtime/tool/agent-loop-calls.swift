@@ -84,8 +84,8 @@ extension AgentLoop {
         _ functionCall: FunctionCall,
         checkpoint: inout AgentExecutor.Checkpoint
     ) async throws -> CallOutcome {
-        // A capability revealed after the definitions were fixed arrives
-        // through `call_capability`; from here on it is that capability.
+        // A capability outside the definitions may arrive through
+        // `call_capability`; from here on it is that capability.
         let functionCall = checkpoint.lastAdvertisedCapabilities?.dispatched(functionCall) ?? functionCall
         try begin_tool_invocation(
             call_id: functionCall.id,

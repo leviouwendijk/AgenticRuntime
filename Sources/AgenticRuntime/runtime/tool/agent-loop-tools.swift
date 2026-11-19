@@ -148,7 +148,7 @@ extension AgentLoop {
             catalog: await inventory.catalog(),
             capabilities: capabilityState,
             inspections: await inventory.capabilityInspections(),
-            services: tooling.services.revealing(capabilityState)
+            services: tooling.services.archivingResults()
         )
     }
 
@@ -244,18 +244,15 @@ private struct RuntimeResolvedToolApprovalHandler:
 }
 
 extension ToolServices {
-    /// These services plus the owner's reveal grant over `state`.
-    func revealing(
-        _ state: AgentCapabilityState
-    ) -> ToolServices {
-        let revealing = (try? inserting(CapabilityReveal(state))) ?? self
+    /// These services plus the result archive over the session log.
+    func archivingResults() -> ToolServices {
         guard let log = try? require(Run.Log.self) else {
-            return revealing
+            return self
         }
         // Full results are read back from the session log.
-        return (try? revealing.inserting(ResultArchive(
+        return (try? inserting(ResultArchive(
             { call in try await log.response(call: call) },
             latest: { tool in try await log.response(tool: tool) }
-        ))) ?? revealing
+        ))) ?? self
     }
 }

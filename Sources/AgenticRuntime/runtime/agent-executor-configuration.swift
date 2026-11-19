@@ -17,16 +17,13 @@ public extension AgentExecutor {
         /// declared capabilities; an Agent's own declaration when the
         /// runtime realizes it (`AgentCapabilities.grants`).
         public var grants: AgentCapabilityGrants
-        /// Visible capabilities an earlier run of the same conversation
-        /// revealed, which the host carries into this one; reported as
-        /// `carried` rather than `declared`.
-        public var carried: AgentCapabilitySet
-        /// The function names an earlier run of the same conversation
-        /// declared to the provider, in order. This run opens with the same
-        /// definitions: a carried capability named here stays declared, one
-        /// left out stays behind `call_capability`. Nil decides carried
-        /// capabilities against `ContextWindow.Policy.deferRevealsAbove`.
-        public var declaredFunctions: [String]?
+        /// The conversation's tool definitions, in order, as an earlier run
+        /// declared them; this run declares the same, so the provider's
+        /// cached prefix holds. What the visible set adds or drops is
+        /// pending until a refresh: nil, which declares the visible set
+        /// (a conversation's opening, or a refresh the host chose), or a
+        /// compaction during the run.
+        public var declared: [CapabilityReference]?
 
         public init(
             runLimits: AgentRunLimits = .default,
@@ -41,8 +38,7 @@ public extension AgentExecutor {
             responseDelivery: AgentModelResponseDelivery = .buffered,
             streamCheckpointPolicy: AgentStreamCheckpointPolicy = .default,
             grants: AgentCapabilityGrants = .standard,
-            carried: AgentCapabilitySet = .none,
-            declaredFunctions: [String]? = nil
+            declared: [CapabilityReference]? = nil
         ) {
             self.runLimits = runLimits
             self.contextMode = contextMode
@@ -56,15 +52,14 @@ public extension AgentExecutor {
             self.responseDelivery = responseDelivery
             self.streamCheckpointPolicy = streamCheckpointPolicy
             self.grants = grants
-            self.carried = carried
-            self.declaredFunctions = declaredFunctions
+            self.declared = declared
         }
 
         private enum CodingKeys: String, CodingKey {
             case runLimits, contextMode, contextPolicy, appendToolResultsAsMessages
             case autonomyMode, executionLimits, recovery, historyPersistenceMode
             case compactionStrategy, responseDelivery, streamCheckpointPolicy
-            case grants, carried, declaredFunctions
+            case grants, declared
         }
 
         public init(from decoder: any Decoder) throws {
@@ -82,8 +77,7 @@ public extension AgentExecutor {
                 responseDelivery: try container.decode(AgentModelResponseDelivery.self, forKey: .responseDelivery),
                 streamCheckpointPolicy: try container.decode(AgentStreamCheckpointPolicy.self, forKey: .streamCheckpointPolicy),
                 grants: try container.decodeIfPresent(AgentCapabilityGrants.self, forKey: .grants) ?? .standard,
-                carried: try container.decodeIfPresent(AgentCapabilitySet.self, forKey: .carried) ?? .none,
-                declaredFunctions: try container.decodeIfPresent([String].self, forKey: .declaredFunctions)
+                declared: try container.decodeIfPresent([CapabilityReference].self, forKey: .declared)
             )
         }
 

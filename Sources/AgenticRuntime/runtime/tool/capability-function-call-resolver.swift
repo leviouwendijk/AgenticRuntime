@@ -27,9 +27,9 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
         let call = projection.dispatched(call)
         let function = call.name
         guard let target = projection.target(named: function) else {
-            // Reject unadvertised names with the same typed visibility error
-            // used by the governed Tool resolver. Later reveals cannot add
-            // authority to this already-captured request projection.
+            // Reject names this request cannot call with the same typed
+            // visibility error used by the governed Tool resolver. Later
+            // changes cannot add authority to this captured projection.
             throw FunctionCallResolutionError.toolNotVisible(ToolIdentifier(call.name))
         }
         let invocation: CapabilityInvocation

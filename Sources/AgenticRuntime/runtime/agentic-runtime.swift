@@ -125,8 +125,10 @@ public struct AgenticRuntime:
     public func modelProjection(
         for capabilityState: AgentCapabilityState
     ) async throws -> ModelCapabilityProjection {
-        try installed.modelProjection(
-            visible: await capabilityState.snapshot().visible
+        let snapshot = await capabilityState.snapshot()
+        return try installed.modelProjection(
+            declared: try installed.modelProjection(visible: snapshot.visible).entries.map(\.target),
+            callable: snapshot.available
         )
     }
 

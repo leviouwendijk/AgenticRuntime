@@ -27,12 +27,14 @@ extension AgentLoop {
     func prepareTurn(
         _ checkpoint: inout AgentExecutor.Checkpoint
     ) async throws -> Turn {
-        try await compactIfNeeded(
+        // A compaction rewrites the history, so the cached prefix is lost
+        // anyway: the moment to apply pending declaration changes.
+        let compacted = try await compactIfNeeded(
             &checkpoint
         )
 
         // The opening: grants are applied once, before the first request,
-        // so the advertised tools stay fixed unless the model reveals more.
+        // so the advertised tools stay fixed.
         let before = await capabilityState.snapshot()
         let granted = checkpoint.reportedCapabilities == nil
             ? await applyGrants()
@@ -43,19 +45,17 @@ extension AgentLoop {
 
         // Snapshot the request's capabilities once. Request preparation,
         // advertised transport, and invocation authorization share that view.
-        let (projection, revealDecision) = declaring(
-            advertisingOrder(
-                try await inventory.modelProjection(),
-                after: checkpoint.events.last { $0.kind == .schemas_advertised }?.advertisement
-            ),
+        let (declared, pending, refreshed) = try await declaring(
+            refresh: compacted,
             in: &checkpoint
         )
+        let projection = try await inventory.modelProjection(declared: declared)
         let full = try await modelCapabilityDefinitions(for: projection)
         let tools = full.map { tool in
             schemas == .core && tool.identifier != Self.inspector ? tool.core : tool
         }
         try await recordAdvertisement(
-            tools, full: full, deferred: projection.deferred, revealDecision: revealDecision,
+            tools, full: full, projection: projection, pending: pending, refreshed: refreshed,
             detail: schemas, reason: reason, to: &checkpoint
         )
         let (request, preparation) = try await prepareModelRequest(
@@ -76,8 +76,8 @@ extension AgentLoop {
         try await recordContextPressure(preparation?.pressure, to: &checkpoint)
 
         checkpoint.lastAdvertisedCapabilities = projection
-        checkpoint.lastAdvertisedTools = projection.entries.compactMap { entry in
-            if case .tool(let identifier) = entry.target {
+        checkpoint.lastAdvertisedTools = projection.targets.compactMap { target in
+            if case .tool(let identifier) = target {
                 return identifier
             }
             return nil
@@ -213,7 +213,7 @@ extension AgentLoop {
     func modelCapabilityDefinitions(
         for projection: ModelCapabilityProjection
     ) async throws -> [ToolDescriptor] {
-        let toolIDs = projection.declared.compactMap { entry -> ToolIdentifier? in
+        let toolIDs = projection.entries.compactMap { entry -> ToolIdentifier? in
             if case .tool(let identifier) = entry.target {
                 return identifier
             }
@@ -224,7 +224,7 @@ extension AgentLoop {
         let toolsByName = Dictionary(
             uniqueKeysWithValues: actualTools.map { ($0.name, $0) }
         )
-        return try projection.declared.map { entry in
+        return try projection.entries.map { entry in
             if case .tool = entry.target {
                 guard let tool = toolsByName[entry.function.name],
                       tool.modelFunction == entry.function else {
@@ -240,16 +240,18 @@ extension AgentLoop {
         }
     }
 
+    /// Whether it compacted.
+    @discardableResult
     func compactIfNeeded(
         _ checkpoint: inout AgentExecutor.Checkpoint
-    ) async throws {
+    ) async throws -> Bool {
         guard configuration.contextMode == .accumulating,
               let strategy = configuration.compactionStrategy else {
-            return
+            return false
         }
 
         guard checkpoint.phase == .ready_for_model else {
-            return
+            return false
         }
 
         let compactor = AgentCompactor(
@@ -260,7 +262,7 @@ extension AgentLoop {
             checkpoint: checkpoint,
             budget: contextBudget()
         ) else {
-            return
+            return false
         }
 
         let event = Run.Event.State(
@@ -278,6 +280,7 @@ extension AgentLoop {
         try await saveCheckpoint(
             &checkpoint
         )
+        return true
     }
 }
 

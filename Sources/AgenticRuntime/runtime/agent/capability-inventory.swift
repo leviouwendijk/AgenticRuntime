@@ -36,11 +36,27 @@ public actor CapabilityInventory {
         entries.capabilityInspections()
     }
 
-    /// Canonical model function projection over this Agent's executable view.
-    /// The visible snapshot is captured with the inventory read; no second
-    /// registry of model functions is maintained.
-    public func modelProjection() async throws -> ModelCapabilityProjection {
-        try entries.modelProjection(visible: await state.snapshot().visible)
+    /// Canonical model function projection over this Agent's executable view:
+    /// `declared` sent to the provider in this order (the visible set when
+    /// nil), and every other available capability callable by name. A
+    /// declared capability no longer available stays declared, so the
+    /// definitions hold; invocation refuses it. The snapshot is captured
+    /// with the inventory read; no second registry of model functions is
+    /// maintained.
+    public func modelProjection(
+        declared: [CapabilityReference]? = nil
+    ) async throws -> ModelCapabilityProjection {
+        let snapshot = await state.snapshot()
+        return try entries.modelProjection(
+            declared: try declared?.filter { $0.isVisible(in: snapshot.installed) }
+                ?? entries.modelProjection(visible: snapshot.visible).entries.map(\.target),
+            callable: snapshot.available
+        )
+    }
+
+    /// The visible set in the order it is declared in: by provider name.
+    public func visibleDeclarations() async throws -> [CapabilityReference] {
+        try entries.modelProjection(visible: await state.snapshot().visible).entries.map(\.target)
     }
 
     /// Native Tool transport remains Tool-specific, but definitions are

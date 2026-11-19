@@ -20,9 +20,11 @@ public extension Run.Event {
             case session_readers
             case result_reader
             case friction_notes
-            /// A run before this one in the same conversation revealed it.
+            /// Recorded by runs before inspection became read-only
+            /// (2026-11-19): a reveal an earlier run carried over.
             case carried
-            /// A tool's reveal grant, such as `inspect_capability`.
+            /// Recorded by runs before inspection became read-only
+            /// (2026-11-19): `inspect_capability` revealed it.
             case tool_reveal
             /// Anything outside the loop: the host, an operator, settings.
             case other
@@ -67,6 +69,8 @@ public extension Run.Event {
 
         public struct Entry: Sendable, Codable, Hashable {
             public let name: String
+            /// The capability declared under `name`; nil in older records.
+            public let reference: CapabilityReference?
             /// `core` only where something was abbreviated.
             public let detail: ContextWindow.SchemaDetail
             /// The schema as sent.
@@ -76,44 +80,48 @@ public extension Run.Event {
 
             public init(
                 name: String,
+                reference: CapabilityReference?,
                 detail: ContextWindow.SchemaDetail,
                 estimatedTokens: Int,
                 fullTokens: Int
             ) {
                 self.name = name
+                self.reference = reference
                 self.detail = detail
                 self.estimatedTokens = estimatedTokens
                 self.fullTokens = fullTokens
             }
         }
 
-        /// How capabilities that became visible mid-session reach the model,
-        /// and why: declared (the cached prompt is written once) while the
-        /// request is small, deferred to `call_capability` above the policy's
-        /// threshold.
-        public struct RevealDecision: Sendable, Codable, Hashable {
-            public let capabilities: [String]
-            public let deferred: Bool
-            public let estimatedPromptTokens: Int
-            public let threshold: Int?
+        /// What the visible set adds to or drops from the declared tools,
+        /// waiting for a refresh: the definitions stay fixed until the
+        /// cached prefix is lost anyway (compaction, expiry, a model switch)
+        /// or the operator applies it.
+        public struct Pending: Sendable, Codable, Hashable {
+            public let added: [String]
+            public let removed: [String]
 
-            public init(capabilities: [String], deferred: Bool, estimatedPromptTokens: Int, threshold: Int?) {
-                self.capabilities = capabilities
-                self.deferred = deferred
-                self.estimatedPromptTokens = estimatedPromptTokens
-                self.threshold = threshold
+            public init(added: [String], removed: [String]) {
+                self.added = added
+                self.removed = removed
+            }
+
+            public var isEmpty: Bool {
+                added.isEmpty && removed.isEmpty
             }
         }
 
         public let detail: ContextWindow.SchemaDetail
         public let reason: Reason
         public let entries: [Entry]
-        /// The reveal decision this request made, if it made one.
-        public let revealDecision: RevealDecision?
-        /// Callable but not declared: revealed after the definitions were
-        /// fixed, called through `call_capability`, their contracts in the
-        /// history.
-        public let deferred: [String]
+        /// Available capabilities callable without a definition: by name or
+        /// through `call_capability`, their contracts from
+        /// `inspect_capability`.
+        public let callable: Int
+        public let pending: Pending?
+        /// This request rebuilt the definitions from the visible set,
+        /// applying what was pending.
+        public let refreshed: Bool
         /// The previous request advertised other tools, so the provider's
         /// cached prefix, which starts with them, is written again.
         public let rewritesCachedPrefix: Bool
@@ -122,20 +130,22 @@ public extension Run.Event {
             detail: ContextWindow.SchemaDetail,
             reason: Reason,
             entries: [Entry],
-            deferred: [String] = [],
-            revealDecision: RevealDecision? = nil,
+            callable: Int = 0,
+            pending: Pending? = nil,
+            refreshed: Bool = false,
             rewritesCachedPrefix: Bool
         ) {
             self.detail = detail
             self.reason = reason
             self.entries = entries
-            self.revealDecision = revealDecision
-            self.deferred = deferred
+            self.callable = callable
+            self.pending = pending.flatMap { $0.isEmpty ? nil : $0 }
+            self.refreshed = refreshed
             self.rewritesCachedPrefix = rewritesCachedPrefix
         }
 
         private enum CodingKeys: String, CodingKey {
-            case detail, reason, entries, deferred, revealDecision, rewritesCachedPrefix
+            case detail, reason, entries, callable, pending, refreshed, rewritesCachedPrefix
         }
 
         public init(from decoder: any Decoder) throws {
@@ -144,8 +154,9 @@ public extension Run.Event {
                 detail: try container.decode(ContextWindow.SchemaDetail.self, forKey: .detail),
                 reason: try container.decode(Reason.self, forKey: .reason),
                 entries: try container.decode([Entry].self, forKey: .entries),
-                deferred: try container.decodeIfPresent([String].self, forKey: .deferred) ?? [],
-                revealDecision: try container.decodeIfPresent(RevealDecision.self, forKey: .revealDecision),
+                callable: try container.decodeIfPresent(Int.self, forKey: .callable) ?? 0,
+                pending: try container.decodeIfPresent(Pending.self, forKey: .pending),
+                refreshed: try container.decodeIfPresent(Bool.self, forKey: .refreshed) ?? false,
                 rewritesCachedPrefix: try container.decode(Bool.self, forKey: .rewritesCachedPrefix)
             )
         }

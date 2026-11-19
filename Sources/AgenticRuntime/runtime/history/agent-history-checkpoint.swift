@@ -50,10 +50,10 @@ public extension AgentExecutor {
         /// The capabilities as the last `capability_changed` report left
         /// them; the next request reports what differs. Nil before the first.
         public var reportedCapabilities: AgentCapabilityState.Snapshot?
-        /// The provider function names the run's first request declared.
-        /// They stay the session's tool definitions; what becomes visible
-        /// later is called through `call_capability`. Nil before the first.
-        public var declaredFunctions: [String]?
+        /// The capabilities the run declares to the provider, in order:
+        /// fixed at its first request, rebuilt only by a compaction. Nil
+        /// before the first.
+        public var declared: [CapabilityReference]?
         public let startedAt: Date
         public var updatedAt: Date
 
@@ -82,7 +82,7 @@ public extension AgentExecutor {
             case costRecord
             case capabilities
             case reportedCapabilities
-            case declaredFunctions
+            case declared
             case startedAt
             case updatedAt
         }
@@ -189,9 +189,9 @@ public extension AgentExecutor {
                 AgentCapabilityState.Snapshot.self,
                 forKey: .reportedCapabilities
             )
-            declaredFunctions = try container.decodeIfPresent(
-                [String].self,
-                forKey: .declaredFunctions
+            declared = try container.decodeIfPresent(
+                [CapabilityReference].self,
+                forKey: .declared
             )
             let decodedUpdatedAt = try container.decode(
                 Date.self,
@@ -233,7 +233,7 @@ public extension AgentExecutor {
                 visible: .none
             ),
             reportedCapabilities: AgentCapabilityState.Snapshot? = nil,
-            declaredFunctions: [String]? = nil,
+            declared: [CapabilityReference]? = nil,
             startedAt: Date = Date(),
             updatedAt: Date? = nil
         ) {
@@ -261,7 +261,7 @@ public extension AgentExecutor {
             self.costRecord = costRecord
             self.capabilities = capabilities
             self.reportedCapabilities = reportedCapabilities
-            self.declaredFunctions = declaredFunctions
+            self.declared = declared
             self.startedAt = startedAt
             self.updatedAt = updatedAt ?? startedAt
         }

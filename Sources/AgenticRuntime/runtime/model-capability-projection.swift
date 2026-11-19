@@ -10,21 +10,21 @@ import Schema
 /// carry Tool ActionRisk, and invocation still requires live capability checks.
 public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.entries == rhs.entries && lhs.deferred == rhs.deferred
+        lhs.entries == rhs.entries && lhs.callable == rhs.callable
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(entries)
-        hasher.combine(deferred)
+        hasher.combine(callable)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case entries, deferred
+        case entries, callable
     }
 
     public init(from decoder: any Decoder) throws {
         // Kept in the order it was advertised in. Older records are the
-        // bare entry list, with nothing deferred.
+        // bare entry list.
         if let entries = try? decoder.singleValueContainer().decode([Entry].self) {
             try self.init(ordered: entries)
             return
@@ -32,15 +32,15 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             ordered: container.decode([Entry].self, forKey: .entries),
-            deferred: container.decodeIfPresent([String].self, forKey: .deferred) ?? []
+            callable: container.decodeIfPresent([String: CapabilityReference].self, forKey: .callable) ?? [:]
         )
     }
 
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(entries, forKey: .entries)
-        if !deferred.isEmpty {
-            try container.encode(deferred, forKey: .deferred)
+        if !callable.isEmpty {
+            try container.encode(callable, forKey: .callable)
         }
     }
 
@@ -65,22 +65,24 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
         case duplicateProviderName(String)
     }
 
+    /// The functions declared to the provider, in the order sent.
     public let entries: [Entry]
-    /// Names of entries callable in this request but not declared to the
-    /// provider: revealed after the session's tool definitions were fixed,
-    /// they are called through `call_capability`.
-    public let deferred: [String]
+    /// Every other capability this request can call, by provider name: not
+    /// declared, so the tool definitions and the provider's cached prefix
+    /// stay as they are, and called by that name or through
+    /// `call_capability`. Names only; the contract is `inspect_capability`'s.
+    public let callable: [String: CapabilityReference]
     private let targetsByName: [String: CapabilityReference]
-
-    /// The entries declared to the provider.
-    public var declared: [Entry] {
-        entries.filter { !deferred.contains($0.function.name) }
-    }
 
     /// Provider declarations only; semantic invocation identities remain
     /// bound to this exact projection, never encoded into provider inputs.
     public var functions: [FunctionDescriptor] {
-        declared.map(\.function)
+        entries.map(\.function)
+    }
+
+    /// Everything this request can call, declared or not.
+    public var targets: [CapabilityReference] {
+        entries.map(\.target) + callable.values
     }
 
     init(_ candidates: [Entry]) throws {
@@ -89,8 +91,9 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
         })
     }
 
-    /// Entries in exactly this order.
-    init(ordered candidates: [Entry], deferred: [String] = []) throws {
+    /// Entries in exactly this order; `callable` names what is declared
+    /// already are dropped.
+    init(ordered candidates: [Entry], callable: [String: CapabilityReference] = [:]) throws {
         var targetsByName: [String: CapabilityReference] = [:]
         for entry in candidates {
             guard targetsByName.updateValue(
@@ -100,20 +103,20 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
                 throw ProjectionError.duplicateProviderName(entry.function.name)
             }
         }
+        let declared = Set(targetsByName.values)
         self.entries = candidates
-        self.deferred = deferred.filter { targetsByName[$0] != nil }
+        self.callable = callable.filter { targetsByName[$0.key] == nil && !declared.contains($0.value) }
         self.targetsByName = targetsByName
     }
 
-    /// The same entries, with these called through the dispatcher.
-    func deferring(_ names: [String]) -> Self {
-        (try? Self(ordered: entries, deferred: names)) ?? self
-    }
-
-    /// The entry a dispatcher call names, by capability identifier or by
-    /// provider function name.
-    func entry(dispatchedAs identifier: String) -> Entry? {
-        entries.first { $0.function.name == identifier || $0.target.identifier == identifier }
+    /// The provider name a dispatcher call means, by capability identifier
+    /// or by provider function name.
+    func name(dispatchedAs identifier: String) -> String? {
+        if target(named: identifier) != nil {
+            return identifier
+        }
+        return entries.first { $0.target.identifier == identifier }?.function.name
+            ?? callable.first { $0.value.identifier == identifier }?.key
     }
 
     /// A `call_capability` call as a call of the capability it names, under
@@ -125,8 +128,8 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
               case .object(var outer) = call.input,
               case .object(let arguments)? = outer["arguments"],
               case .string(let identifier)? = arguments["identifier"],
-              let entry = entry(dispatchedAs: identifier),
-              entry.function.name != call.name
+              let name = name(dispatchedAs: identifier),
+              name != call.name
         else { return call }
         var input = arguments["input"] ?? .object([:])
         // Some models send the input as a JSON string.
@@ -135,31 +138,19 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
             input = parsed
         }
         outer["arguments"] = input
-        return FunctionCall(id: call.id, name: entry.function.name, input: .object(outer))
-    }
-
-    /// The same entries, those named in `names` first in that order, the
-    /// rest after in theirs.
-    func ordered(by names: [String]) -> Self {
-        let byName = Dictionary(entries.map { ($0.function.name, $0) }, uniquingKeysWith: { first, _ in first })
-        let first = names.compactMap { byName[$0] }
-        let placed = Set(first.map(\.function.name))
-        // Names are unique already, so this cannot fail.
-        return (try? Self(
-            ordered: first + entries.filter { !placed.contains($0.function.name) },
-            deferred: deferred
-        )) ?? self
+        return FunctionCall(id: call.id, name: name, input: .object(outer))
     }
 
     /// The exact lookup table belonging to this model request's projection.
     /// Invocation checks live Agent availability again; the request-bound
     /// function mapping is retained independently of later projection changes.
     public func target(named name: String) -> CapabilityReference? {
-        targetsByName[name]
+        targetsByName[name] ?? callable[name]
     }
 
     public func name(for target: CapabilityReference) -> String? {
         entries.first(where: { $0.target == target })?.function.name
+            ?? callable.first(where: { $0.value == target })?.key
     }
 
     /// Stable, bounded provider name. Keeping a mapping rather than encoding
@@ -185,28 +176,46 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
 /// visible selection. This function is the sole projection implementation:
 /// neither transport nor callers maintain a parallel capability registry.
 extension InstalledCapabilities {
+    /// Every visible capability declared, in provider-name order.
     func modelProjection(
         visible: AgentCapabilitySet
     ) throws -> ModelCapabilityProjection {
-        var candidates: [ModelCapabilityProjection.Entry] = []
+        try ModelCapabilityProjection(visible.references.map(projectionEntry(for:)))
+    }
 
-        for identifier in visible.tools {
+    /// `declared` in this order with their schemas, and every other
+    /// capability in `callable` by provider name only.
+    func modelProjection(
+        declared: [CapabilityReference],
+        callable: AgentCapabilitySet
+    ) throws -> ModelCapabilityProjection {
+        let declaredSet = Set(declared)
+        var names: [String: CapabilityReference] = [:]
+        for reference in callable.references where !declaredSet.contains(reference) {
+            names[try projectionEntry(for: reference).function.name] = reference
+        }
+        return try ModelCapabilityProjection(
+            ordered: declared.map(projectionEntry(for:)),
+            callable: names
+        )
+    }
+
+    func projectionEntry(
+        for reference: CapabilityReference
+    ) throws -> ModelCapabilityProjection.Entry {
+        switch reference {
+        case .tool(let identifier):
             guard let descriptor = tools.modelFacingDefinition(
                 identifiedBy: identifier
             ) else {
                 throw ModelCapabilityProjection.ProjectionError.missingTool(identifier)
             }
-            candidates.append(.init(
-                function: descriptor.modelFunction,
-                target: .tool(identifier)
-            ))
-        }
-
-        for identifier in visible.programs {
+            return .init(function: descriptor.modelFunction, target: reference)
+        case .program(let identifier):
             guard let binding = program(identifier) else {
                 throw ModelCapabilityProjection.ProjectionError.missingProgram(identifier)
             }
-            candidates.append(.init(
+            return .init(
                 function: .init(
                     name: ModelCapabilityProjection.providerName(
                         kind: "program", identifier: identifier.rawValue
@@ -214,15 +223,13 @@ extension InstalledCapabilities {
                     description: binding.definition.purpose,
                     input: binding.modelFacingInputSchema.jsonvalue
                 ),
-                target: .program(identifier)
-            ))
-        }
-
-        for identifier in visible.inferences {
+                target: reference
+            )
+        case .inference(let identifier):
             guard let binding = inference(identifier) else {
                 throw ModelCapabilityProjection.ProjectionError.missingInference(identifier)
             }
-            candidates.append(.init(
+            return .init(
                 function: .init(
                     name: ModelCapabilityProjection.providerName(
                         kind: "inference", identifier: identifier.rawValue
@@ -230,15 +237,13 @@ extension InstalledCapabilities {
                     description: binding.definition.purpose,
                     input: binding.modelFacingInputSchema.jsonvalue
                 ),
-                target: .inference(identifier)
-            ))
-        }
-
-        for identifier in visible.agents {
+                target: reference
+            )
+        case .agent(let identifier):
             guard let binding = agentBinding(identifier) else {
                 throw ModelCapabilityProjection.ProjectionError.missingAgent(identifier)
             }
-            candidates.append(.init(
+            return .init(
                 function: .init(
                     name: ModelCapabilityProjection.providerName(
                         kind: "agent", identifier: identifier.rawValue
@@ -246,9 +251,8 @@ extension InstalledCapabilities {
                     description: binding.modelFacingDescription,
                     input: binding.modelFacingInputSchema.jsonvalue
                 ),
-                target: .agent(identifier)
-            ))
+                target: reference
+            )
         }
-        return try ModelCapabilityProjection(candidates)
     }
 }

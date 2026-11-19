@@ -39,7 +39,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.true(coreText.contains("\"destination\""), "Optional fields stay named")
 
-        // Inspection returns the full contract and reveals a hidden capability.
+        // Inspection returns the full contract and changes nothing.
         let state = AgentCapabilityState(
             installed: .init(tools: [SystemIO.Tools.MutateFiles.identifier, Standard.Tools.InspectCapability.identifier]),
             available: .init(tools: [SystemIO.Tools.MutateFiles.identifier, Standard.Tools.InspectCapability.identifier]),
@@ -49,16 +49,16 @@ extension AgenticProgramRuntimeFlowTesting {
         let context = ToolContext(
             capabilities: state,
             inspections: installed.capabilityInspections(),
-            services: try ToolServices().inserting(CapabilityReveal(state))
+            services: ToolServices()
         )
         let inspected = try await Standard.Tools.InspectCapability().call(
             .init(kind: .tool, identifier: SystemIO.Tools.MutateFiles.identifier.rawValue),
             in: context
         )
-        try Expect.true(inspected.revealed, "Inspection reveals an available, hidden capability")
-        try Expect.true(
+        try Expect.false(inspected.wasVisible, "The inspected capability is not among the definitions")
+        try Expect.false(
             await state.snapshot().visible.tools.contains(SystemIO.Tools.MutateFiles.identifier),
-            "The revealed capability is visible from the next turn"
+            "Inspection does not reveal it"
         )
         let inspectedText = String(decoding: try JSONEncoder().encode(inspected.input), as: UTF8.self)
         try Expect.true(

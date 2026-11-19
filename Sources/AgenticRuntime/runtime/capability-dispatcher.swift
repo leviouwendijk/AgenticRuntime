@@ -205,7 +205,7 @@ public struct CapabilityDispatcher: Sendable {
                     catalog: effectiveCatalog,
                     capabilities: capabilityState,
                     inspections: inspections,
-                    services: services.tooling.services.revealing(capabilityState)
+                    services: services.tooling.services.archivingResults()
                 ),
                 approvalHandler: services.tooling.approvalHandler,
                 observationHandler: observationHandler,

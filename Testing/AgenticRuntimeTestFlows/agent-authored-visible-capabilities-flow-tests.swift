@@ -338,8 +338,9 @@ extension AgenticProgramRuntimeFlowTesting {
             "First model request projects exactly the Agent-authored visible Tools."
         )
 
-        // The model receives no authority to guess an available-but-hidden
-        // Tool that was absent from this exact request's function definitions.
+        // An available Tool absent from this request's function definitions
+        // is callable all the same: availability is the authority, the
+        // definitions only what the provider was sent.
         let guessedCall = FunctionCall(
             id: "fixture-unadvertised-guessed-call",
             name: AuthoredVisibleBuildTool.definition.identifier.rawValue,
@@ -351,12 +352,14 @@ extension AgenticProgramRuntimeFlowTesting {
                 _ = try await resolver.resolve(guessedCall)
             } catch FunctionCallResolutionError.toolNotVisible {
                 guessedModelToolRejected = true
+            } catch {
+                // Reached the Tool: its input envelope is checked there.
             }
         }
         try Expect.equal(
             guessedModelToolRejected,
-            true,
-            "An actually available hidden Tool is not callable through an unadvertised model function."
+            false,
+            "An available hidden Tool is callable without a definition."
         )
 
         // Acceptance #4: available-but-hidden tools remain hidden until reveal.
@@ -393,17 +396,22 @@ extension AgenticProgramRuntimeFlowTesting {
             "Revealing the build tool promotes it into the live visible set."
         )
 
-        // Previously captured request mappings cannot gain authority later.
+        // A name the captured request could not call stays refused.
+        let unknownCall = FunctionCall(
+            id: "fixture-unknown-call",
+            name: "fixture.authored_visible.unknown",
+            input: .object(["arguments": .object([:])])
+        )
         var guessedAfterRevealRejected = false
         if let resolver = firstInvocations[0].context.functionCallResolver {
             do {
-                _ = try await resolver.resolve(guessedCall)
+                _ = try await resolver.resolve(unknownCall)
             } catch FunctionCallResolutionError.toolNotVisible {
                 guessedAfterRevealRejected = true
             }
         }
         try Expect.equal(guessedAfterRevealRejected, true,
-            "Revealing a Tool later cannot retroactively extend an earlier model request.")
+            "A request cannot call a name outside its captured projection.")
 
         let afterReveal =
             await capabilityState.snapshot()
