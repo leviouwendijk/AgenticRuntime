@@ -111,3 +111,15 @@ public extension Run.Event {
         }
     }
 }
+
+public extension CapabilityReference {
+    /// The identifier, whatever the kind: the name a change is shown by.
+    var identifier: String {
+        switch self {
+        case .tool(let identifier): identifier.rawValue
+        case .program(let identifier): identifier.rawValue
+        case .inference(let identifier): identifier.rawValue
+        case .agent(let identifier): identifier.rawValue
+        }
+    }
+}
