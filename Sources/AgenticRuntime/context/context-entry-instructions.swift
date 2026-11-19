@@ -35,6 +35,23 @@ public extension ToolServices {
         return (Message(role: .system, text: parts.joined(separator: "\n\n")), library?.always.map(\.id) ?? [])
     }
 
+    /// `contextEntries` with sensitive values in the owner's context
+    /// replaced by handles, as it is sent and recorded; tools may still use
+    /// them, since the owner supplied them.
+    func guardedContextEntries() async -> (message: Message, ids: [String])? {
+        guard let entries = contextEntries else { return nil }
+        guard let shield = (try? require(ToolPayloadGuarding.self))?.shield,
+              let text = entries.message.content.blocks.compactMap({ block -> String? in
+                  if case .text(let text) = block { return text }
+                  return nil
+              }).first
+        else {
+            return entries
+        }
+        let protected = await shield.protecting(text, from: ToolIdentifier("context"))
+        return (Message(role: .system, text: protected), entries.ids)
+    }
+
     /// Whether tool payloads pass a guard in this session.
     var payloadGuardInstalled: Bool {
         (try? require(ToolPayloadGuarding.self)) != nil
