@@ -70,8 +70,9 @@ extension AgentLoop {
     /// The order to advertise in, so the tools only grow at the end: the
     /// previous request's order, then anything new. A run's first request
     /// puts what an earlier run of the conversation revealed last, as that
-    /// run's requests had it. The provider's cached prefix starts with the
-    /// tools, so an addition keeps everything before it.
+    /// run's requests had it. This keeps the order stable; it does not keep
+    /// the cache: the tools come before the system prompt and the history,
+    /// so any change to them, appended or not, rewrites the whole prefix.
     func advertisingOrder(
         _ projection: ModelCapabilityProjection,
         after previous: Run.Event.Advertisement?
