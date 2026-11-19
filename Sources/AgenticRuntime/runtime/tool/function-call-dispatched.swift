@@ -25,3 +25,28 @@ public extension Sequence where Element == Message {
         })
     }
 }
+
+extension AgentLoop {
+    /// A tool among the definitions called through `call_capability` still
+    /// runs, but its result says to call it by name: a few tokens once, and
+    /// the model stops paying the wrapper on every call.
+    func dispatchNoted(
+        _ result: FunctionCall.Response,
+        for call: FunctionCall,
+        in checkpoint: AgentExecutor.Checkpoint
+    ) -> FunctionCall.Response {
+        guard checkpoint.lastAdvertisedCapabilities?.entries.contains(where: { $0.function.name == call.name }) == true,
+              let asked = checkpoint.state.messages.last(where: { $0.role == .assistant }),
+              asked.content.blocks.contains(where: { block in
+                  guard case .call(let original) = block else { return false }
+                  return original.id == call.id && original.dispatchedIdentifier != nil
+              })
+        else {
+            return result
+        }
+        return result.rendered(
+            result.modelText + "\n[`\(call.name)` is among your tools: call it by its own name, "
+                + "not through \(Standard.Tools.CallCapability.identifier.rawValue).]"
+        )
+    }
+}

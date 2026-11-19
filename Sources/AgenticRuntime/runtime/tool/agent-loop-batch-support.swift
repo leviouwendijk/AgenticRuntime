@@ -67,7 +67,7 @@ extension AgentLoop {
         )
 
         appendToolResultBlock(
-            .result(await budgeted(result)),
+            .result(dispatchNoted(await budgeted(result), for: functionCall, in: checkpoint)),
             to: &checkpoint.state
         )
 

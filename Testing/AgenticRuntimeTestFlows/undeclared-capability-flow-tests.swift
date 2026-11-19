@@ -192,6 +192,17 @@ extension AgenticProgramRuntimeFlowTesting {
         let dispatchedEcho = try Expect.notNil(response("c-dispatch", in: throughDispatcher.result), "the dispatch was answered")
         try Expect.false(dispatchedEcho.isError, "it ran as the echo: \(dispatchedEcho.modelText)")
         try Expect.true(dispatchedEcho.modelText.contains("hi"), "with the echo's output")
+        try Expect.false(dispatchedEcho.modelText.contains("among your tools"), "an undeclared dispatch gets no note")
+
+        // A declared tool called through the dispatcher still runs, and its
+        // result says to call it by name.
+        let wrapped = try await run([dispatched], visible: AgentCapabilitySet(tools: [echo]), session: "wrapped")
+        let wrappedEcho = try Expect.notNil(response("c-dispatch", in: wrapped.result), "the wrapped call was answered")
+        try Expect.false(wrappedEcho.isError, "it ran as the echo: \(wrappedEcho.modelText)")
+        try Expect.true(
+            wrappedEcho.modelText.contains("hi") && wrappedEcho.modelText.contains("is among your tools: call it by its own name"),
+            "with the echo's output and the pushback: \(wrappedEcho.modelText)"
+        )
 
         // A dispatch naming nothing callable is answered by the dispatcher.
         let unknown = FunctionCall(

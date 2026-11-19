@@ -7,7 +7,7 @@
       "location" : "https://github.com/leviouwendijk/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "e9520d4c456fd80af7bf85834451b05e5fd875f6"
+        "revision" : "a60f0d17ba1a906cfbb7060681f7dc5245370402"
       }
     },
     {
@@ -61,7 +61,7 @@
       "location" : "https://github.com/leviouwendijk/Concatenation.git",
       "state" : {
         "branch" : "master",
-        "revision" : "8c9314ed63ba7b8ebd1df7c729c4244a154f6286"
+        "revision" : "4d9f0e9fc3c4fb7400d85ae8fef285f60ab4688c"
       }
     },
     {
@@ -88,7 +88,7 @@
       "location" : "https://github.com/leviouwendijk/Errors.git",
       "state" : {
         "branch" : "master",
-        "revision" : "aa392c50c6f811056067b65fab5112104c8adc49"
+        "revision" : "ad3f44c682cbdf65bc9e096557b4af75fa3d5bb3"
       }
     },
     {
@@ -277,7 +277,7 @@
       "location" : "https://github.com/leviouwendijk/Primitives.git",
       "state" : {
         "branch" : "master",
-        "revision" : "776500d2ee4eb47ca536bd307ce1bb9d48878423"
+        "revision" : "4b81c1605140fe8b2bd01fd02fe9e8782edec564"
       }
     },
     {
@@ -358,7 +358,7 @@
       "location" : "https://github.com/leviouwendijk/Sensitivity.git",
       "state" : {
         "branch" : "master",
-        "revision" : "776687488c37d0d56faec1cb69676d41112da0e6"
+        "revision" : "519861ec843597f0a570439c7e565d06a51e5b42"
       }
     },
     {
