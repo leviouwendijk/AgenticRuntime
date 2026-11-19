@@ -47,6 +47,9 @@ public extension AgentExecutor {
         public var failure: AgentRunFailure?
         public var costRecord: AgentCostRecord?
         public var capabilities: AgentCapabilityState.Snapshot
+        /// The capabilities as the last `capability_changed` report left
+        /// them; the next request reports what differs. Nil before the first.
+        public var reportedCapabilities: AgentCapabilityState.Snapshot?
         public let startedAt: Date
         public var updatedAt: Date
 
@@ -74,6 +77,7 @@ public extension AgentExecutor {
             case failure
             case costRecord
             case capabilities
+            case reportedCapabilities
             case startedAt
             case updatedAt
         }
@@ -176,6 +180,10 @@ public extension AgentExecutor {
                 AgentCapabilityState.Snapshot.self,
                 forKey: .capabilities
             )
+            reportedCapabilities = try container.decodeIfPresent(
+                AgentCapabilityState.Snapshot.self,
+                forKey: .reportedCapabilities
+            )
             let decodedUpdatedAt = try container.decode(
                 Date.self,
                 forKey: .updatedAt
@@ -215,6 +223,7 @@ public extension AgentExecutor {
                 available: .none,
                 visible: .none
             ),
+            reportedCapabilities: AgentCapabilityState.Snapshot? = nil,
             startedAt: Date = Date(),
             updatedAt: Date? = nil
         ) {
@@ -241,6 +250,7 @@ public extension AgentExecutor {
             self.failure = failure
             self.costRecord = costRecord
             self.capabilities = capabilities
+            self.reportedCapabilities = reportedCapabilities
             self.startedAt = startedAt
             self.updatedAt = updatedAt ?? startedAt
         }

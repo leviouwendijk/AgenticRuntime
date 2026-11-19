@@ -86,6 +86,12 @@ public extension Run.Event {
             /// Which model served a request; `route` says whether it is
             /// the one selected, and if not, why.
             case model_routed
+            /// Capabilities entered or left the Agent's authority or the
+            /// model's view; `capabilityChanges` names each and its source.
+            case capability_changed
+            /// A request advertised other function schemas than the one
+            /// before; `advertisement` gives each, its form and its cost.
+            case schemas_advertised
         }
 
         public let id: String
@@ -99,6 +105,10 @@ public extension Run.Event {
         public let contextChanges: [ContextWindow.HistorySelection.Change]?
         /// For `model_routed`: the model that served the request.
         public let route: Run.Event.Route?
+        /// For `capability_changed`: what changed, and what changed it.
+        public let capabilityChanges: [Run.Event.CapabilityChange]?
+        /// For `schemas_advertised`: the schemas the request carried.
+        public let advertisement: Run.Event.Advertisement?
 
         public init(
             id: String = UUID().uuidString,
@@ -109,10 +119,14 @@ public extension Run.Event {
             toolName: String? = nil,
             summary: String,
             contextChanges: [ContextWindow.HistorySelection.Change]? = nil,
-            route: Run.Event.Route? = nil
+            route: Run.Event.Route? = nil,
+            capabilityChanges: [Run.Event.CapabilityChange]? = nil,
+            advertisement: Run.Event.Advertisement? = nil
         ) {
             self.contextChanges = contextChanges
             self.route = route
+            self.capabilityChanges = capabilityChanges
+            self.advertisement = advertisement
             self.id = id
             self.kind = kind
             self.iteration = iteration

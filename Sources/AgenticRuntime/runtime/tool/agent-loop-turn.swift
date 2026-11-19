@@ -28,18 +28,24 @@ extension AgentLoop {
             &checkpoint
         )
 
-        await exposeDiscovery()
+        let before = await capabilityState.snapshot()
+        var causes = CapabilityCauses()
+        causes.discovery = await exposeDiscovery()
         // Core schemas need the inspector in view; without it, full ones.
-        let schemas = await schemaDetail()
+        let (schemas, reason, inspector) = await schemaDetail()
+        causes.schemaPolicy = inspector
+        try await recordCapabilityChanges(before: before, causes: causes, to: &checkpoint)
 
         // Snapshot the request's capabilities once. Request preparation,
         // advertised transport, and invocation authorization share that view.
         let projection = try await inventory.modelProjection()
-        let tools = try await modelCapabilityDefinitions(
+        let full = try await modelCapabilityDefinitions(
             for: projection
-        ).map { tool in
+        )
+        let tools = full.map { tool in
             schemas == .core && tool.identifier != Self.inspector ? tool.core : tool
         }
+        try await recordAdvertisement(tools, full: full, detail: schemas, reason: reason, to: &checkpoint)
         let (request, preparation) = try await prepareModelRequest(
             from: try await requestWithCurrentState(
                 from: checkpoint.request,
@@ -138,30 +144,33 @@ extension AgentLoop {
     /// The installed discovery tools are enabled and in view for every run,
     /// whatever the Agent declares: without them the model can use only
     /// what it was shown. Done from the first turn, so the advertised set
-    /// does not change mid-session; a no-op once they are visible.
-    func exposeDiscovery() async {
-        guard configuration.capabilityDiscovery else { return }
+    /// does not change mid-session; a no-op once they are visible. Returns
+    /// what it brought into view.
+    func exposeDiscovery() async -> AgentCapabilitySet {
+        guard configuration.capabilityDiscovery else { return .none }
         let snapshot = await capabilityState.snapshot()
         let discovery = AgentCapabilitySet(
             tools: Standard.Tools.discovery.filter(snapshot.installed.tools.contains)
         )
-        guard discovery.subtracting(snapshot.visible) != .none else { return }
+        let missing = discovery.subtracting(snapshot.visible)
+        guard missing != .none else { return .none }
         _ = try? await capabilityState.enable(discovery)
         _ = try? await capabilityState.expose(discovery)
+        return missing
     }
 
     /// The schema detail to advertise. Core schemas are only safe while the
     /// inspector can return the rest, so it is revealed (within the
-    /// available set) or core falls back to full.
-    func schemaDetail() async -> ContextWindow.SchemaDetail {
+    /// available set) or core falls back to full. Also returns why, and the
+    /// inspector when this call revealed it.
+    func schemaDetail() async -> (ContextWindow.SchemaDetail, Run.Event.Advertisement.Reason, AgentCapabilitySet) {
         guard configuration.contextPolicy.schemas == .core else {
-            return .full
+            return (.full, .policy_full, .none)
         }
-        let inspector = AgentCapabilitySet(tools: [Self.inspector])
-        await capabilityState.reveal(inspector)
+        let revealed = await capabilityState.reveal(AgentCapabilitySet(tools: [Self.inspector]))
         return await capabilityState.snapshot().visible.tools.contains(Self.inspector)
-            ? .core
-            : .full
+            ? (.core, .core, revealed)
+            : (.full, .inspector_unavailable, revealed)
     }
 
     /// Existing providers accept ToolDescriptor as their function transport.
