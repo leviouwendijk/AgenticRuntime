@@ -53,6 +53,11 @@ public struct AgentRealization:
         definition.delegation
     }
 
+    /// What the runtime adds before the first request.
+    public var grants: AgentCapabilityGrants {
+        definition.capabilities.grants
+    }
+
     public func makeCapabilityState() -> AgentCapabilityState {
         AgentCapabilityState(
             installed: installed,
@@ -81,16 +86,16 @@ extension AgentRealization {
                 AgentCapabilityScope(agents: definition.delegation.allowedAgents)
             ).agents
             : []
-        // Every agent may read the owner's context, when installed.
-        let ambient = AgentCapabilitySet.ambient.intersecting(installed.capabilities)
-        let bounded = requestedAvailable.union(ambient).intersecting(installed.capabilities)
+        // Grants (the owner's context, discovery, readers) are added by the
+        // loop before the first request, not here.
+        let bounded = requestedAvailable.intersecting(installed.capabilities)
         let available = AgentCapabilitySet(
             tools: bounded.tools,
             programs: bounded.programs,
             inferences: bounded.inferences,
             agents: bounded.agents.filter(delegable.contains)
         )
-        let visible = requestedVisible.union(ambient).intersecting(available)
+        let visible = requestedVisible.intersecting(available)
         return .init(
             definition: definition,
             requestedAvailable: requestedAvailable,

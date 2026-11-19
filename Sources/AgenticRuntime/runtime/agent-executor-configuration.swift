@@ -13,10 +13,10 @@ public extension AgentExecutor {
         public var compactionStrategy: CompactionStrategy?
         public var responseDelivery: AgentModelResponseDelivery
         public var streamCheckpointPolicy: AgentStreamCheckpointPolicy
-        /// Lists, searches and inspects capabilities: the discovery tools
-        /// the run installs are exposed whatever the Agent declares. Off for
-        /// a fixed worker that must use only what it was shown.
-        public var capabilityDiscovery: Bool
+        /// What the loop adds before the first request, beyond the
+        /// declared capabilities; an Agent's own declaration when the
+        /// runtime realizes it (`AgentCapabilities.grants`).
+        public var grants: AgentCapabilityGrants
 
         public init(
             runLimits: AgentRunLimits = .default,
@@ -30,7 +30,7 @@ public extension AgentExecutor {
             compactionStrategy: CompactionStrategy? = nil,
             responseDelivery: AgentModelResponseDelivery = .buffered,
             streamCheckpointPolicy: AgentStreamCheckpointPolicy = .default,
-            capabilityDiscovery: Bool = true
+            grants: AgentCapabilityGrants = .standard
         ) {
             self.runLimits = runLimits
             self.contextMode = contextMode
@@ -43,14 +43,14 @@ public extension AgentExecutor {
             self.compactionStrategy = compactionStrategy
             self.responseDelivery = responseDelivery
             self.streamCheckpointPolicy = streamCheckpointPolicy
-            self.capabilityDiscovery = capabilityDiscovery
+            self.grants = grants
         }
 
         private enum CodingKeys: String, CodingKey {
             case runLimits, contextMode, contextPolicy, appendToolResultsAsMessages
             case autonomyMode, executionLimits, recovery, historyPersistenceMode
             case compactionStrategy, responseDelivery, streamCheckpointPolicy
-            case capabilityDiscovery
+            case grants
         }
 
         public init(from decoder: any Decoder) throws {
@@ -67,7 +67,7 @@ public extension AgentExecutor {
                 compactionStrategy: try container.decodeIfPresent(CompactionStrategy.self, forKey: .compactionStrategy),
                 responseDelivery: try container.decode(AgentModelResponseDelivery.self, forKey: .responseDelivery),
                 streamCheckpointPolicy: try container.decode(AgentStreamCheckpointPolicy.self, forKey: .streamCheckpointPolicy),
-                capabilityDiscovery: try container.decodeIfPresent(Bool.self, forKey: .capabilityDiscovery) ?? true
+                grants: try container.decodeIfPresent(AgentCapabilityGrants.self, forKey: .grants) ?? .standard
             )
         }
 

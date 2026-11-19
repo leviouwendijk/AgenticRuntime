@@ -61,6 +61,10 @@ public extension AgenticRuntime {
         selection.constraints = model.selection.constraints.tightened(
             by: selection.constraints
         )
+        // The realized Agent's declaration decides its grants, for the root
+        // and for every delegated child alike.
+        var configuration = configuration
+        configuration.grants = realization.grants
         return AgentExecutor(
             model: model.selecting(selection),
             configuration: configuration,

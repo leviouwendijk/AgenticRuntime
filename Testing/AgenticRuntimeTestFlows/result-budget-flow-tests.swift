@@ -78,12 +78,13 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.equal(shown.output, .int(400), "The structured output is untouched")
         try Expect.true(
-            invocations[1].request.tools.contains { $0.name == Standard.Tools.ReadResult.identifier.rawValue },
-            "read_result is revealed when a result is shortened"
+            invocations[0].request.tools.contains { $0.name == Standard.Tools.ReadResult.identifier.rawValue },
+            "read_result is in the opening set when results can be shortened"
         )
-        try Expect.true(
-            !invocations[0].request.tools.contains { $0.name == Standard.Tools.ReadResult.identifier.rawValue },
-            "and not before"
+        try Expect.equal(
+            invocations[0].request.tools.map(\.name),
+            invocations[1].request.tools.map(\.name),
+            "so shortening a result leaves the advertised tools unchanged"
         )
 
         let paged = try Expect.notNil(result(page.id, in: invocations[2]), "The model got the page")

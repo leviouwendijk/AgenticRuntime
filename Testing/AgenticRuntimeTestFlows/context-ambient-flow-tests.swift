@@ -54,43 +54,134 @@ private enum ContextAmbientAgentFixture:
     )
 }
 
+/// Records the tools of each request it answers, then ends the turn.
+private actor ContextAmbientRequests {
+    var tools: [[String]] = []
+    func record(_ names: [String]) { tools.append(names) }
+}
+
+private struct ContextAmbientInvoker: AgentModelInvoking {
+    let requests: ContextAmbientRequests
+
+    func buffered(_ invocation: AgentModelInvocation) async throws -> AgentModelInvocation.Result {
+        await requests.record(invocation.request.tools.map(\.name))
+        let response = AgentResponse(message: Message(role: .assistant, text: "done"), stopReason: .end_turn)
+        let route = AgentModelRoute(
+            purpose: invocation.selection.purpose,
+            profile: AgentModelProfile(
+                identifier: "fixture.context_ambient.profile",
+                gatewayIdentifier: "fixture.context_ambient.gateway",
+                model: "fixture",
+                purposes: [invocation.selection.purpose],
+                capabilities: [.text]
+            )
+        )
+        return AgentModelInvocation.Result(
+            response: response,
+            route: AgentModelRouteRecord(
+                route: route,
+                diagnostics: [],
+                requestMetadata: invocation.request.metadata,
+                responseMetadata: response.metadata,
+                usage: response.usage
+            )
+        )
+    }
+
+    func stream(_ invocation: AgentModelInvocation) -> AsyncThrowingStream<AgentModelInvocation.Event, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    let result = try await buffered(invocation)
+                    continuation.yield(.completed(result))
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+}
+
+/// Declares the same tool, and excludes the ambient grant.
+private enum ContextAmbientExcludingFixture:
+    Agent
+{
+    typealias Input = ContextAmbientFixtureValue
+    typealias Output = ContextAmbientFixtureValue
+
+    static let purpose = "Declares one tool and no context reading."
+
+    static let definition = AgentDefinition(
+        identifier: AgentIdentifier(rawValue: "fixture.context_ambient.excluding"),
+        purpose: purpose,
+        capabilities: AgentCapabilities(
+            available: .init(tools: .init(members: [ContextAmbientToolFixture.definition.identifier])),
+            visible: .init(tools: .init(members: [ContextAmbientToolFixture.definition.identifier])),
+            grants: .except(.ambient)
+        )
+    )
+}
+
 extension AgenticProgramRuntimeFlowTesting {
     /// Every agent may read the owner's context when Context is installed,
-    /// whatever it declares; never when it is not. Writing stays declared.
+    /// whatever it declares: the `ambient` grant, applied before the first
+    /// request. Never when it is not installed or the agent excludes it.
+    /// Writing stays declared.
     static func runContextAmbientGrant() async throws -> [TestDiagnostic] {
+        let declared = ContextAmbientToolFixture.definition.identifier.rawValue
         let reading = [
             Context.Tools.Index.identifier,
             Context.Tools.Read.identifier,
             Context.Tools.Search.identifier,
-        ]
-        let with = try await AgenticRuntime(application: Agentic.application("fixture.context_ambient") {
-            install(ContextAmbientToolFixture())
-            install(Context.self)
-            install(ContextAmbientAgentFixture.self)
-        }).realizeAgent(identifiedBy: ContextAmbientAgentFixture.definition.identifier)
+        ].map(\.rawValue)
+
+        func opening(
+            context: Bool,
+            agent: AgentDefinition = ContextAmbientAgentFixture.definition
+        ) async throws -> [String] {
+            let runtime = try await AgenticRuntime(application: Agentic.application("fixture.context_ambient") {
+                install(ContextAmbientToolFixture())
+                if context { install(Context.self) }
+                install(ContextAmbientAgentFixture.self)
+                install(ContextAmbientExcludingFixture.self)
+            })
+            let requests = ContextAmbientRequests()
+            let executor = try runtime.makeAgentExecutor(
+                identifiedBy: agent.identifier,
+                model: .init(invoker: ContextAmbientInvoker(requests: requests)),
+                configuration: .init(runLimits: .init(iterations: 1))
+            )
+            _ = try await executor.run(
+                AgentRequest(messages: [Message(role: .user, text: "Hello.")]),
+                sessionID: "context-ambient-\(context)-\(agent.identifier.rawValue)"
+            )
+            return await requests.tools.first ?? []
+        }
+
+        let with = try await opening(context: true)
         try Expect.equal(
-            with.available.tools,
-            [ContextAmbientToolFixture.definition.identifier] + reading,
-            "Context installed: the reading tools are available beside what the agent declares"
-        )
-        try Expect.equal(
-            with.visible.tools,
-            [ContextAmbientToolFixture.definition.identifier] + reading,
-            "and visible"
+            with.filter { $0 == declared || reading.contains($0) }.sorted(),
+            ([declared] + reading).sorted(),
+            "Context installed: the reading tools are in the opening beside what the agent declares"
         )
         try Expect.false(
-            with.available.tools.contains(Context.Tools.Save.identifier),
+            with.contains(Context.Tools.Save.identifier.rawValue),
             "saving is never granted implicitly"
         )
-
-        let without = try await AgenticRuntime(application: Agentic.application("fixture.context_ambient_none") {
-            install(ContextAmbientToolFixture())
-            install(ContextAmbientAgentFixture.self)
-        }).realizeAgent(identifiedBy: ContextAmbientAgentFixture.definition.identifier)
-        try Expect.equal(
-            without.available.tools,
-            [ContextAmbientToolFixture.definition.identifier],
+        let without = try await opening(context: false)
+        try Expect.false(
+            without.contains { reading.contains($0) },
             "Context not installed: nothing is added"
+        )
+        let excluded = try await opening(context: true, agent: ContextAmbientExcludingFixture.definition)
+        try Expect.false(
+            excluded.contains { reading.contains($0) },
+            "an agent that excludes the ambient grant does not get it"
+        )
+        try Expect.true(
+            excluded.contains(declared),
+            "and keeps what it declares"
         )
         return []
     }

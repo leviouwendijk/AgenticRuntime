@@ -4,19 +4,13 @@ import Foundation
 import Tokens
 
 extension AgentLoop {
-    /// What the loop itself changed while preparing this request, so each
-    /// change is attributed to its cause rather than to `other`.
-    struct CapabilityCauses {
-        var discovery: AgentCapabilitySet = .none
-        var schemaPolicy: AgentCapabilitySet = .none
-    }
-
     /// Reports how the capabilities differ from the last report: on the
-    /// first request the declared view (authority only counted), afterwards
-    /// every change in authority or view, each with its source.
+    /// first request the opening (declared view and each grant; authority
+    /// only counted), afterwards every change in authority or view, each
+    /// with its source.
     func recordCapabilityChanges(
         before initial: AgentCapabilityState.Snapshot,
-        causes: CapabilityCauses,
+        granted: [(AgentCapabilityGrant, AgentCapabilitySet)],
         to checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         let after = await capabilityState.snapshot()
@@ -33,11 +27,10 @@ extension AgentLoop {
         }
 
         func source(_ reference: CapabilityReference, _ operation: Run.Event.CapabilityChange.Operation) -> Run.Event.CapabilityChange.Source {
-            if causes.discovery.references.contains(reference) { return .discovery }
-            if causes.schemaPolicy.references.contains(reference) { return .schema_policy }
-            guard operation == .exposed else { return .other }
-            if reference == .tool(Standard.Tools.ReadResult.identifier) { return .result_reader }
-            return .tool_reveal
+            if let grant = granted.first(where: { $0.1.references.contains(reference) })?.0 {
+                return .init(grant)
+            }
+            return operation == .exposed ? .tool_reveal : .other
         }
         func diff(
             _ from: AgentCapabilitySet,

@@ -9,8 +9,9 @@ extension AgentLoop {
     /// nothing is lost, and the shortened form never changes afterwards,
     /// so the cached prefix stays valid.
     ///
-    /// Applies only when the session is logged and `read_result` can be
-    /// revealed; errors and `read_result`'s own pages are always whole.
+    /// Applies only when the session is logged and `read_result` is in view
+    /// (the `result_reader` grant); errors and `read_result`'s own pages are
+    /// always whole.
     func budgeted(
         _ result: FunctionCall.Response
     ) async -> FunctionCall.Response {
@@ -45,7 +46,6 @@ extension AgentLoop {
             return result
         }
 
-        await capabilityState.reveal(AgentCapabilitySet(tools: [reader]))
         guard await capabilityState.snapshot().visible.tools.contains(reader) else {
             return result
         }

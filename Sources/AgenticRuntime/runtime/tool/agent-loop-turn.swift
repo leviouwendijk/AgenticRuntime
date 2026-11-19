@@ -28,13 +28,15 @@ extension AgentLoop {
             &checkpoint
         )
 
+        // The opening: grants are applied once, before the first request,
+        // so the advertised tools stay fixed unless the model reveals more.
         let before = await capabilityState.snapshot()
-        var causes = CapabilityCauses()
-        causes.discovery = await exposeDiscovery()
+        let granted = checkpoint.reportedCapabilities == nil
+            ? await applyGrants()
+            : []
+        try await recordCapabilityChanges(before: before, granted: granted, to: &checkpoint)
         // Core schemas need the inspector in view; without it, full ones.
-        let (schemas, reason, inspector) = await schemaDetail()
-        causes.schemaPolicy = inspector
-        try await recordCapabilityChanges(before: before, causes: causes, to: &checkpoint)
+        let (schemas, reason) = await schemaDetail()
 
         // Snapshot the request's capabilities once. Request preparation,
         // advertised transport, and invocation authorization share that view.
@@ -141,36 +143,54 @@ extension AgentLoop {
 
     static let inspector = Standard.Tools.InspectCapability.identifier
 
-    /// The installed discovery tools are enabled and in view for every run,
-    /// whatever the Agent declares: without them the model can use only
-    /// what it was shown. Done from the first turn, so the advertised set
-    /// does not change mid-session; a no-op once they are visible. Returns
-    /// what it brought into view.
-    func exposeDiscovery() async -> AgentCapabilitySet {
-        guard configuration.capabilityDiscovery else { return .none }
-        let snapshot = await capabilityState.snapshot()
-        let discovery = AgentCapabilitySet(
-            tools: Standard.Tools.discovery.filter(snapshot.installed.tools.contains)
-        )
-        let missing = discovery.subtracting(snapshot.visible)
-        guard missing != .none else { return .none }
-        _ = try? await capabilityState.enable(discovery)
-        _ = try? await capabilityState.expose(discovery)
-        return missing
+    /// What each grant adds in this run, or nil when its condition does
+    /// not hold. Installation bounds it in `applyGrants`.
+    func capabilities(
+        of grant: AgentCapabilityGrant
+    ) -> AgentCapabilitySet? {
+        switch grant {
+        case .ambient:
+            return .ambient
+        case .discovery:
+            return .init(tools: Standard.Tools.discovery)
+        case .session_readers:
+            guard configuration.contextMode == .dynamic else { return nil }
+            return .init(tools: ContextWindow.Compactor.requiredTools)
+        case .result_reader:
+            guard configuration.contextPolicy.resultBudget != nil,
+                  (try? tooling.services.require(Run.Log.self)) != nil
+            else { return nil }
+            return .init(tools: [Standard.Tools.ReadResult.identifier])
+        }
     }
 
-    /// The schema detail to advertise. Core schemas are only safe while the
-    /// inspector can return the rest, so it is revealed (within the
-    /// available set) or core falls back to full. Also returns why, and the
-    /// inspector when this call revealed it.
-    func schemaDetail() async -> (ContextWindow.SchemaDetail, Run.Event.Advertisement.Reason, AgentCapabilitySet) {
-        guard configuration.contextPolicy.schemas == .core else {
-            return (.full, .policy_full, .none)
+    /// Enables and exposes each grant the configuration takes, bounded by
+    /// what the run installs, whatever the Agent declares. Returns each
+    /// grant with what it covers, for attribution.
+    func applyGrants() async -> [(AgentCapabilityGrant, AgentCapabilitySet)] {
+        let installed = await capabilityState.snapshot().installed
+        var applied: [(AgentCapabilityGrant, AgentCapabilitySet)] = []
+        for grant in configuration.grants.granted {
+            guard let capabilities = capabilities(of: grant)?.intersecting(installed),
+                  capabilities != .none
+            else { continue }
+            _ = try? await capabilityState.enable(capabilities)
+            _ = try? await capabilityState.expose(capabilities)
+            applied.append((grant, capabilities))
         }
-        let revealed = await capabilityState.reveal(AgentCapabilitySet(tools: [Self.inspector]))
+        return applied
+    }
+
+    /// The schema detail to advertise, and why. Core schemas are only safe
+    /// while the inspector (the `discovery` grant) can return the rest;
+    /// without it, full ones.
+    func schemaDetail() async -> (ContextWindow.SchemaDetail, Run.Event.Advertisement.Reason) {
+        guard configuration.contextPolicy.schemas == .core else {
+            return (.full, .policy_full)
+        }
         return await capabilityState.snapshot().visible.tools.contains(Self.inspector)
-            ? (.core, .core, revealed)
-            : (.full, .inspector_unavailable, revealed)
+            ? (.core, .core)
+            : (.full, .inspector_unavailable)
     }
 
     /// Existing providers accept ToolDescriptor as their function transport.

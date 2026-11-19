@@ -14,16 +14,24 @@ public extension Run.Event {
         public enum Source: String, Sendable, Codable, Hashable {
             /// The Agent's declaration, as the run's first request found it.
             case declared
-            /// The runtime's discovery set (`capabilityDiscovery`).
+            /// The grants (`AgentCapabilityGrant`), applied before the first request.
+            case ambient
             case discovery
-            /// The inspector, revealed so schemas can be advertised in core form.
-            case schema_policy
-            /// `read_result`, revealed when a result was shortened.
+            case session_readers
             case result_reader
             /// A tool's reveal grant, such as `inspect_capability`.
             case tool_reveal
             /// Anything outside the loop: the host, an operator, settings.
             case other
+
+            public init(_ grant: AgentCapabilityGrant) {
+                switch grant {
+                case .ambient: self = .ambient
+                case .discovery: self = .discovery
+                case .session_readers: self = .session_readers
+                case .result_reader: self = .result_reader
+                }
+            }
         }
 
         public let reference: CapabilityReference
