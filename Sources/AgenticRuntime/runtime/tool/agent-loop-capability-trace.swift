@@ -69,16 +69,20 @@ extension AgentLoop {
 
     /// The order to advertise in, so the tools only grow at the end: the
     /// previous request's order, then anything new. A run's first request
-    /// puts what an earlier run of the conversation revealed last, as that
-    /// run's requests had it. This keeps the order stable; it does not keep
-    /// the cache: the tools come before the system prompt and the history,
-    /// so any change to them, appended or not, rewrites the whole prefix.
+    /// takes the order an earlier run of the conversation declared in, or
+    /// without one puts what that run revealed last. This keeps the order
+    /// stable; it does not keep the cache: the tools come before the system
+    /// prompt and the history, so any change to them, appended or not,
+    /// rewrites the whole prefix.
     func advertisingOrder(
         _ projection: ModelCapabilityProjection,
         after previous: Run.Event.Advertisement?
     ) -> ModelCapabilityProjection {
         if let previous {
             return projection.ordered(by: previous.entries.map(\.name))
+        }
+        if let declared = configuration.declaredFunctions {
+            return projection.ordered(by: declared)
         }
         let carried = configuration.carried.references.map(\.identifier)
         let names = projection.functions.map(\.name)
@@ -93,8 +97,10 @@ extension AgentLoop {
     /// indirection and no provider-side schema for its input. Declared while
     /// the request is at most `contextPolicy.deferRevealsAbove` estimated
     /// tokens, deferred above; a deferred capability stays deferred. What an
-    /// earlier run of the conversation revealed is decided the same way at
-    /// this run's first request.
+    /// earlier run of the conversation revealed keeps the form that run gave
+    /// it (`Configuration.declaredFunctions`), so the definitions open as it
+    /// left them; without that record it is decided the same way at this
+    /// run's first request.
     func declaring(
         _ projection: ModelCapabilityProjection,
         in checkpoint: inout AgentExecutor.Checkpoint
@@ -113,8 +119,17 @@ extension AgentLoop {
             let isCarried = { (name: String) in
                 carried.contains(projection.target(named: name)?.identifier ?? name)
             }
-            declared = names.filter { !isCarried($0) }
-            pending = names.filter(isCarried)
+            if let earlier = configuration.declaredFunctions {
+                declared = names.filter { !isCarried($0) || earlier.contains($0) }
+                // Without the dispatcher declared there is no other way in.
+                if !declared.contains(dispatcher) {
+                    declared = names
+                }
+                pending = []
+            } else {
+                declared = names.filter { !isCarried($0) }
+                pending = names.filter(isCarried)
+            }
         }
 
         var decision: Run.Event.Advertisement.RevealDecision?

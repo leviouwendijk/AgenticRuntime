@@ -100,15 +100,21 @@ extension AgenticProgramRuntimeFlowTesting {
 
         func run(
             threshold: Int?,
-            then call: FunctionCall
+            then call: FunctionCall?,
+            carried: [String]? = nil
         ) async throws -> (tools: [[String]], result: AgentExecutor.Result) {
             let requests = RevealRequests()
             let tools = AgentCapabilitySet(tools: [echo] + Standard.Tools.discovery)
+            // A later turn: the echo was revealed by an earlier run, which
+            // declared `carried` (nil: no record of it).
+            let later = call == nil
             let executor = AgentExecutor(
-                model: .init(invoker: RevealInvoker(requests: requests, calls: [inspect, call])),
+                model: .init(invoker: RevealInvoker(requests: requests, calls: call.map { [inspect, $0] } ?? [])),
                 configuration: .init(
                     runLimits: .init(iterations: 4),
-                    contextPolicy: .init(deferRevealsAbove: threshold)
+                    contextPolicy: .init(deferRevealsAbove: threshold),
+                    carried: later ? AgentCapabilitySet(tools: [echo]) : .none,
+                    declaredFunctions: carried
                 ),
                 tooling: .init(registry: try ToolRegistry {
                     RevealEchoTool()
@@ -117,11 +123,15 @@ extension AgenticProgramRuntimeFlowTesting {
                     Standard.Tools.InspectCapability()
                     Standard.Tools.CallCapability()
                 }),
-                capabilityState: AgentCapabilityState(installed: tools, available: tools, visible: AgentCapabilitySet.none)
+                capabilityState: AgentCapabilityState(
+                    installed: tools,
+                    available: tools,
+                    visible: later ? AgentCapabilitySet(tools: [echo]) : AgentCapabilitySet.none
+                )
             )
             let result = try await executor.run(
                 AgentRequest(messages: [Message(role: .user, text: "Echo hi.")]),
-                sessionID: "reveal-\(threshold.map(String.init) ?? "none")"
+                sessionID: "reveal-\(threshold.map(String.init) ?? "none")-\(later ? "later" : "first")"
             )
             return (await requests.requests.map { $0.tools.map(\.name) }, result)
         }
@@ -181,6 +191,23 @@ extension AgenticProgramRuntimeFlowTesting {
         let refused = try await run(threshold: 0, then: unknown)
         let refusal = try Expect.notNil(response("c-unknown", in: refused.result), "the dispatch was answered")
         try Expect.true(refusal.isError && refusal.modelText.contains("inspect_capability"), "with how to find it: \(refusal.modelText)")
+
+        // A later turn keeps the form the earlier run gave the reveal, even
+        // with its prompt now past the threshold: the definitions, and the
+        // cache, hold across the turn.
+        func lastDeclared(_ result: AgentExecutor.Result) throws -> [String] {
+            try Expect.notNil(
+                result.events.last { $0.kind == .schemas_advertised }?.advertisement,
+                "the run advertised"
+            ).entries.map(\.name)
+        }
+        let kept = try await run(threshold: 0, then: nil, carried: try lastDeclared(declared.result))
+        try Expect.equal(kept.tools.first, declared.tools.last, "declared stays declared")
+        let stillDeferred = try await run(threshold: nil, then: nil, carried: try lastDeclared(deferred.result))
+        try Expect.equal(stillDeferred.tools.first, deferred.tools.last, "deferred stays deferred")
+        // Without the record it is decided again (the threshold of 0 defers it).
+        let redecided = try await run(threshold: 0, then: nil)
+        try Expect.false(redecided.tools.first?.contains(echo.rawValue) ?? true, "no record: decided again")
         return []
     }
 }
