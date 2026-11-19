@@ -132,6 +132,10 @@ let package = Package(
                     package: "Agentic"
                 ),
                 .product(
+                    name: "AgenticSensitivity",
+                    package: "Agentic"
+                ),
+                .product(
                     name: "AgenticSessions",
                     package: "Agentic"
                 ),
@@ -235,6 +239,10 @@ let package = Package(
                 ),
                 .product(
                     name: "AgenticContext",
+                    package: "Agentic"
+                ),
+                .product(
+                    name: "AgenticSensitivity",
                     package: "Agentic"
                 ),
                 .product(

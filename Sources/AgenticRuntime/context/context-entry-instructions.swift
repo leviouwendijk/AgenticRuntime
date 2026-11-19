@@ -1,5 +1,6 @@
 import Agentic
 import AgenticContext
+import AgenticSensitivity
 import Tokens
 
 /// What the owner's context holds for a session: for diagnostics, and the
@@ -21,15 +22,22 @@ public extension ToolServices {
     }
 
     /// The owner's `.always` context entries as a system message, with
-    /// their identifiers; nil without a store or without such entries. Read
-    /// on every run, so an entry saved mid-session reaches the next one.
+    /// their identifiers, followed by how to work with handles when a
+    /// privacy guard is installed; nil when there is neither. Read on every
+    /// run, so an entry saved mid-session reaches the next one.
     var contextEntries: (message: Message, ids: [String])? {
-        guard let library = contextStore?.library(),
-              let instructions = library.instructions
-        else {
-            return nil
-        }
-        return (Message(role: .system, text: instructions), library.always.map(\.id))
+        let library = contextStore?.library()
+        let parts = [
+            library?.instructions,
+            payloadGuardInstalled ? "# Sensitive values\n\n" + Privacy.Instructions.Handles.content : nil,
+        ].compactMap { $0 }
+        guard !parts.isEmpty else { return nil }
+        return (Message(role: .system, text: parts.joined(separator: "\n\n")), library?.always.map(\.id) ?? [])
+    }
+
+    /// Whether tool payloads pass a guard in this session.
+    var payloadGuardInstalled: Bool {
+        (try? require(ToolPayloadGuarding.self)) != nil
     }
 
     var contextSummary: ContextEntrySummary? {
@@ -46,13 +54,16 @@ public extension ToolServices {
 
 public extension AgentCapabilitySet {
     /// Granted to every agent, beyond what it declares, when the
-    /// application installs them: reading the owner's context. Writing it
-    /// stays with agents that declare `context_save`.
+    /// application installs them: reading the owner's context, describing
+    /// handles and asking the owner for one. Writing context stays with
+    /// agents that declare `context_save`.
     static let ambient = AgentCapabilitySet(
         tools: [
             Context.Tools.Index.identifier,
             Context.Tools.Read.identifier,
             Context.Tools.Search.identifier,
+            Privacy.Tools.Handles.identifier,
+            Privacy.Tools.Grant.identifier,
         ]
     )
 }
