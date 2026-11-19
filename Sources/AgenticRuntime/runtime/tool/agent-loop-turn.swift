@@ -1,5 +1,6 @@
 import Agentic
 import AgenticContextWindow
+import AgenticHarness
 import AgenticIO
 import AgenticStandard
 import Foundation
@@ -41,8 +42,9 @@ extension AgentLoop {
         // Snapshot the request's capabilities once. Request preparation,
         // advertised transport, and invocation authorization share that view.
         let projection = try await inventory.modelProjection()
-        let full = try await modelCapabilityDefinitions(
-            for: projection
+        let full = advertisingOrder(
+            try await modelCapabilityDefinitions(for: projection),
+            after: checkpoint.events.last { $0.kind == .schemas_advertised }?.advertisement
         )
         let tools = full.map { tool in
             schemas == .core && tool.identifier != Self.inspector ? tool.core : tool
@@ -161,6 +163,8 @@ extension AgentLoop {
                   (try? tooling.services.require(Run.Log.self)) != nil
             else { return nil }
             return .init(tools: [Standard.Tools.ReadResult.identifier])
+        case .friction_notes:
+            return .init(tools: [Harness.Tools.NoteFriction.identifier])
         }
     }
 

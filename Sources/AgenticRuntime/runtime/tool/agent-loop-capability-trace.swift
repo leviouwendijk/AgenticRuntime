@@ -20,8 +20,9 @@ extension AgentLoop {
         if let reported = checkpoint.reportedCapabilities {
             baseline = reported
         } else {
+            let carried = configuration.carried.references
             changes += initial.visible.references.map {
-                .init(reference: $0, operation: .exposed, source: .declared)
+                .init(reference: $0, operation: .exposed, source: carried.contains($0) ? .carried : .declared)
             }
             baseline = initial
         }
@@ -64,6 +65,28 @@ extension AgentLoop {
             ),
             to: &checkpoint
         )
+    }
+
+    /// The order to advertise in, so the tools only grow at the end: the
+    /// previous request's order, then anything new. A run's first request
+    /// puts what an earlier run of the conversation revealed last, as that
+    /// run's requests had it. The provider's cached prefix starts with the
+    /// tools, so an addition keeps everything before it.
+    func advertisingOrder(
+        _ definitions: [ToolDescriptor],
+        after previous: Run.Event.Advertisement?
+    ) -> [ToolDescriptor] {
+        let earlier: [String]
+        if let previous {
+            earlier = previous.entries.map(\.name)
+        } else {
+            let carried = configuration.carried.references.map(\.identifier)
+            earlier = definitions.map(\.name).filter { !carried.contains($0) } + carried
+        }
+        let byName = Dictionary(definitions.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+        let kept = earlier.compactMap { byName[$0] }
+        let keptNames = Set(kept.map(\.name))
+        return kept + definitions.filter { !keptNames.contains($0.name) }
     }
 
     /// Reports the advertised schemas when they differ from the last report,

@@ -23,6 +23,35 @@ extension Run.Log: Sessions.LogReading {
     }
 }
 
+public extension Run.Log.Store {
+    /// Another session's log, read only: what a session reviewing it, such
+    /// as a retrospective, reads with the Sessions log tools.
+    func reader(session: String) -> any Sessions.LogReading {
+        RunLogStoreReader(store: self, session: session)
+    }
+}
+
+private struct RunLogStoreReader: Sessions.LogReading {
+    let store: Run.Log.Store
+    let session: String
+
+    func lines() async throws -> (session: String, lines: [Sessions.LogLine]) {
+        let contents = try store.read(session: session)
+        return (contents.header.session, contents.entries.map(\.sessionsLine))
+    }
+
+    func step(seq: Int) async throws -> (line: Sessions.LogLine, detail: JSONValue)? {
+        guard let entry = try store.read(session: session).entries.first(where: { $0.seq == seq }) else {
+            return nil
+        }
+        return (entry.sessionsLine, try store.detail(of: entry, session: session))
+    }
+
+    func payload(digest: String) async throws -> JSONValue {
+        try store.payload(.init(rawValue: digest), as: JSONValue.self, session: session)
+    }
+}
+
 extension Run.Log.Entry {
     var sessionsLine: Sessions.LogLine {
         .init(seq: seq, time: time, run: run, kind: kind, call: callID, summary: summary)

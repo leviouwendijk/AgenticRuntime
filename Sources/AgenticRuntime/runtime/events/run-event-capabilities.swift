@@ -19,6 +19,9 @@ public extension Run.Event {
             case discovery
             case session_readers
             case result_reader
+            case friction_notes
+            /// A run before this one in the same conversation revealed it.
+            case carried
             /// A tool's reveal grant, such as `inspect_capability`.
             case tool_reveal
             /// Anything outside the loop: the host, an operator, settings.
@@ -30,6 +33,7 @@ public extension Run.Event {
                 case .discovery: self = .discovery
                 case .session_readers: self = .session_readers
                 case .result_reader: self = .result_reader
+                case .friction_notes: self = .friction_notes
                 }
             }
         }

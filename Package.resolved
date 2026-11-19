@@ -1,5 +1,5 @@
 {
-  "originHash" : "7ab4cd5a02060ec70a2610b253227d9eeb439bbe9c9e4e78c4705d84783db27e",
+  "originHash" : "34c2bd71d6b72b2ec0c651d0f4423c775289e4779d7e847fb9dc96eccc29986c",
   "pins" : [
     {
       "identity" : "agentic",
@@ -7,7 +7,7 @@
       "location" : "https://github.com/leviouwendijk/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "ede9a453acfedf965def904d1656d9131bc3c5a0"
+        "revision" : "2dbefd6bfbbd1a584822687b4118c3a6e563f5e1"
       }
     },
     {

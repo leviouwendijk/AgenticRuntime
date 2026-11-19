@@ -17,6 +17,10 @@ public extension AgentExecutor {
         /// declared capabilities; an Agent's own declaration when the
         /// runtime realizes it (`AgentCapabilities.grants`).
         public var grants: AgentCapabilityGrants
+        /// Visible capabilities an earlier run of the same conversation
+        /// revealed, which the host carries into this one; reported as
+        /// `carried` rather than `declared`.
+        public var carried: AgentCapabilitySet
 
         public init(
             runLimits: AgentRunLimits = .default,
@@ -30,7 +34,8 @@ public extension AgentExecutor {
             compactionStrategy: CompactionStrategy? = nil,
             responseDelivery: AgentModelResponseDelivery = .buffered,
             streamCheckpointPolicy: AgentStreamCheckpointPolicy = .default,
-            grants: AgentCapabilityGrants = .standard
+            grants: AgentCapabilityGrants = .standard,
+            carried: AgentCapabilitySet = .none
         ) {
             self.runLimits = runLimits
             self.contextMode = contextMode
@@ -44,13 +49,14 @@ public extension AgentExecutor {
             self.responseDelivery = responseDelivery
             self.streamCheckpointPolicy = streamCheckpointPolicy
             self.grants = grants
+            self.carried = carried
         }
 
         private enum CodingKeys: String, CodingKey {
             case runLimits, contextMode, contextPolicy, appendToolResultsAsMessages
             case autonomyMode, executionLimits, recovery, historyPersistenceMode
             case compactionStrategy, responseDelivery, streamCheckpointPolicy
-            case grants
+            case grants, carried
         }
 
         public init(from decoder: any Decoder) throws {
@@ -67,7 +73,8 @@ public extension AgentExecutor {
                 compactionStrategy: try container.decodeIfPresent(CompactionStrategy.self, forKey: .compactionStrategy),
                 responseDelivery: try container.decode(AgentModelResponseDelivery.self, forKey: .responseDelivery),
                 streamCheckpointPolicy: try container.decode(AgentStreamCheckpointPolicy.self, forKey: .streamCheckpointPolicy),
-                grants: try container.decodeIfPresent(AgentCapabilityGrants.self, forKey: .grants) ?? .standard
+                grants: try container.decodeIfPresent(AgentCapabilityGrants.self, forKey: .grants) ?? .standard,
+                carried: try container.decodeIfPresent(AgentCapabilitySet.self, forKey: .carried) ?? .none
             )
         }
 
