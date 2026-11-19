@@ -92,6 +92,9 @@ public extension Run.Event {
             /// A request advertised other function schemas than the one
             /// before; `advertisement` gives each, its form and its cost.
             case schemas_advertised
+            /// A request read much less from the prompt cache than the one
+            /// before left there; `cacheMiss` says why.
+            case cache_miss
         }
 
         public let id: String
@@ -109,6 +112,8 @@ public extension Run.Event {
         public let capabilityChanges: [Run.Event.CapabilityChange]?
         /// For `schemas_advertised`: the schemas the request carried.
         public let advertisement: Run.Event.Advertisement?
+        /// For `cache_miss`: what was expected, what was read, and why not.
+        public let cacheMiss: ContextWindow.CacheMiss?
 
         public init(
             id: String = UUID().uuidString,
@@ -121,12 +126,14 @@ public extension Run.Event {
             contextChanges: [ContextWindow.HistorySelection.Change]? = nil,
             route: Run.Event.Route? = nil,
             capabilityChanges: [Run.Event.CapabilityChange]? = nil,
-            advertisement: Run.Event.Advertisement? = nil
+            advertisement: Run.Event.Advertisement? = nil,
+            cacheMiss: ContextWindow.CacheMiss? = nil
         ) {
             self.contextChanges = contextChanges
             self.route = route
             self.capabilityChanges = capabilityChanges
             self.advertisement = advertisement
+            self.cacheMiss = cacheMiss
             self.id = id
             self.kind = kind
             self.iteration = iteration

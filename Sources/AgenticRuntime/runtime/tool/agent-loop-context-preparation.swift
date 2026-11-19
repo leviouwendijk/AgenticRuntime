@@ -1,5 +1,6 @@
 import Agentic
 import AgenticContextWindow
+import Foundation
 
 extension AgentLoop {
     func prepareModelRequest(
@@ -68,5 +69,37 @@ extension AgentLoop {
             return
         }
         await meter.record(calibration, for: route.route.profile.model)
+    }
+
+    /// Names a cache miss: what the previous request to this model left
+    /// cached, what this one read, and whether content, expiry or neither
+    /// explains the difference.
+    func recordCacheMiss(
+        request: AgentRequest,
+        startedAt: Date,
+        response: AgentResponse,
+        route: AgentModelRouteRecord,
+        to checkpoint: inout AgentExecutor.Checkpoint
+    ) async throws {
+        guard let meter = contextServices?.cacheMeter,
+              let miss = await meter.observe(
+                  request: request,
+                  model: route.route.profile.model,
+                  usage: response.usage,
+                  startedAt: startedAt
+              )
+        else {
+            return
+        }
+        try await appendRunEvent(
+            .init(
+                kind: .cache_miss,
+                iteration: checkpoint.state.iteration,
+                messageID: response.message.id,
+                summary: "\(miss.cause.rawValue): " + miss.summary,
+                cacheMiss: miss
+            ),
+            to: &checkpoint
+        )
     }
 }

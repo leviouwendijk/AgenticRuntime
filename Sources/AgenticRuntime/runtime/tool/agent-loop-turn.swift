@@ -17,6 +17,8 @@ extension AgentLoop {
         let usage: ContextWindow.Usage
         /// The lexical estimate of the prepared request, in dynamic mode.
         let estimatedInputTokens: Int?
+        /// When the request left; cache lifetimes run start to start.
+        let startedAt: Date
     }
 
     /// Builds the request for the next model turn. Compaction, dynamic context
@@ -98,7 +100,8 @@ extension AgentLoop {
             tools: tools,
             request: request,
             usage: usage,
-            estimatedInputTokens: preparation?.measurement.estimatedInputTokens
+            estimatedInputTokens: preparation?.measurement.estimatedInputTokens,
+            startedAt: Date()
         )
     }
 }

@@ -191,6 +191,13 @@ extension AgentLoop {
             response: response,
             route: invocationResult.route
         )
+        try await recordCacheMiss(
+            request: preparedRequest,
+            startedAt: turn.startedAt,
+            response: response,
+            route: invocationResult.route,
+            to: &checkpoint
+        )
         try await applyProjectedCost(
             for: preparedRequest,
             route: invocationResult.route.route,

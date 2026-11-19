@@ -149,6 +149,7 @@ extension AgentLoop {
                 checkpoint: checkpoint,
                 turnIndex: turnIndex,
                 estimatedInput: turn.estimatedInputTokens,
+                startedAt: turn.startedAt,
                 nativeInvocations: await journal.snapshot(),
                 nativeSemanticInvocations: await journal.semanticSnapshot()
             )
@@ -221,6 +222,7 @@ extension AgentLoop {
         checkpoint: AgentExecutor.Checkpoint,
         turnIndex: Int,
         estimatedInput: Int?,
+        startedAt: Date,
         nativeInvocations: [ToolInvocation.Result],
         nativeSemanticInvocations: [ModelSemanticInvocationResult]
     ) async throws -> AgentExecutor.Checkpoint {
@@ -264,6 +266,13 @@ extension AgentLoop {
             estimated: estimatedInput,
             response: response,
             route: result.route
+        )
+        try await recordCacheMiss(
+            request: preparedRequest,
+            startedAt: startedAt,
+            response: response,
+            route: result.route,
+            to: &checkpoint
         )
         try await applyProjectedCost(
             for: preparedRequest,

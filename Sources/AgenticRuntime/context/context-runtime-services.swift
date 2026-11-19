@@ -13,19 +13,23 @@ public extension ContextWindow {
         /// The provider's counts of the session's requests, anchoring the
         /// estimate of each next one.
         public let inputMeter: InputMeter?
+        /// The session's previous request per model, naming each cache miss.
+        public let cacheMeter: CacheMeter?
 
         public init(
             resolver: any RecordResolving,
             modelContextLimit: Int,
             audit: (any InferenceAuditRecording)? = nil,
             compactions: CompactionLedger? = nil,
-            inputMeter: InputMeter? = nil
+            inputMeter: InputMeter? = nil,
+            cacheMeter: CacheMeter? = nil
         ) {
             self.resolver = resolver
             self.modelContextLimit = modelContextLimit
             self.audit = audit
             self.compactions = compactions
             self.inputMeter = inputMeter
+            self.cacheMeter = cacheMeter
         }
     }
 

@@ -64,7 +64,8 @@ public extension Sessions.ApprovalEvent {
              .context_pressure,
              .model_routed,
              .capability_changed,
-             .schemas_advertised:
+             .schemas_advertised,
+             .cache_miss:
             return nil
         }
 

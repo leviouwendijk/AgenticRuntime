@@ -110,7 +110,8 @@ private extension AgentTranscriptRecorder {
              .context_pressure,
              .model_routed,
              .capability_changed,
-             .schemas_advertised:
+             .schemas_advertised,
+             .cache_miss:
             return true
         }
     }
