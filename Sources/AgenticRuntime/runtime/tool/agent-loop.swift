@@ -285,13 +285,6 @@ extension AgentLoop {
         let warnings: [String]?
     }
 
-    struct ToolErrorPayload: Encodable, Sendable {
-        let kind: String
-        let callID: String
-        let toolName: String
-        let message: String
-    }
-
     struct ToolSkipPayload: Encodable, Sendable {
         let kind: String
         let callID: String
