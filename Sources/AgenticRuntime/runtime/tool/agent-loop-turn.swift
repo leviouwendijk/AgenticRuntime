@@ -41,15 +41,21 @@ extension AgentLoop {
 
         // Snapshot the request's capabilities once. Request preparation,
         // advertised transport, and invocation authorization share that view.
-        let projection = advertisingOrder(
-            try await inventory.modelProjection(),
-            after: checkpoint.events.last { $0.kind == .schemas_advertised }?.advertisement
+        let (projection, revealDecision) = declaring(
+            advertisingOrder(
+                try await inventory.modelProjection(),
+                after: checkpoint.events.last { $0.kind == .schemas_advertised }?.advertisement
+            ),
+            in: &checkpoint
         )
         let full = try await modelCapabilityDefinitions(for: projection)
         let tools = full.map { tool in
             schemas == .core && tool.identifier != Self.inspector ? tool.core : tool
         }
-        try await recordAdvertisement(tools, full: full, detail: schemas, reason: reason, to: &checkpoint)
+        try await recordAdvertisement(
+            tools, full: full, deferred: projection.deferred, revealDecision: revealDecision,
+            detail: schemas, reason: reason, to: &checkpoint
+        )
         let (request, preparation) = try await prepareModelRequest(
             from: try await requestWithCurrentState(
                 from: checkpoint.request,
@@ -204,7 +210,7 @@ extension AgentLoop {
     func modelCapabilityDefinitions(
         for projection: ModelCapabilityProjection
     ) async throws -> [ToolDescriptor] {
-        let toolIDs = projection.entries.compactMap { entry -> ToolIdentifier? in
+        let toolIDs = projection.declared.compactMap { entry -> ToolIdentifier? in
             if case .tool(let identifier) = entry.target {
                 return identifier
             }
@@ -215,7 +221,7 @@ extension AgentLoop {
         let toolsByName = Dictionary(
             uniqueKeysWithValues: actualTools.map { ($0.name, $0) }
         )
-        return try projection.entries.map { entry in
+        return try projection.declared.map { entry in
             if case .tool = entry.target {
                 guard let tool = toolsByName[entry.function.name],
                       tool.modelFunction == entry.function else {

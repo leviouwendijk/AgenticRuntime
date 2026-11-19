@@ -87,9 +87,33 @@ public extension Run.Event {
             }
         }
 
+        /// How capabilities that became visible mid-session reach the model,
+        /// and why: declared (the cached prompt is written once) while the
+        /// request is small, deferred to `call_capability` above the policy's
+        /// threshold.
+        public struct RevealDecision: Sendable, Codable, Hashable {
+            public let capabilities: [String]
+            public let deferred: Bool
+            public let estimatedPromptTokens: Int
+            public let threshold: Int?
+
+            public init(capabilities: [String], deferred: Bool, estimatedPromptTokens: Int, threshold: Int?) {
+                self.capabilities = capabilities
+                self.deferred = deferred
+                self.estimatedPromptTokens = estimatedPromptTokens
+                self.threshold = threshold
+            }
+        }
+
         public let detail: ContextWindow.SchemaDetail
         public let reason: Reason
         public let entries: [Entry]
+        /// The reveal decision this request made, if it made one.
+        public let revealDecision: RevealDecision?
+        /// Callable but not declared: revealed after the definitions were
+        /// fixed, called through `call_capability`, their contracts in the
+        /// history.
+        public let deferred: [String]
         /// The previous request advertised other tools, so the provider's
         /// cached prefix, which starts with them, is written again.
         public let rewritesCachedPrefix: Bool
@@ -98,12 +122,32 @@ public extension Run.Event {
             detail: ContextWindow.SchemaDetail,
             reason: Reason,
             entries: [Entry],
+            deferred: [String] = [],
+            revealDecision: RevealDecision? = nil,
             rewritesCachedPrefix: Bool
         ) {
             self.detail = detail
             self.reason = reason
             self.entries = entries
+            self.revealDecision = revealDecision
+            self.deferred = deferred
             self.rewritesCachedPrefix = rewritesCachedPrefix
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case detail, reason, entries, deferred, revealDecision, rewritesCachedPrefix
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(
+                detail: try container.decode(ContextWindow.SchemaDetail.self, forKey: .detail),
+                reason: try container.decode(Reason.self, forKey: .reason),
+                entries: try container.decode([Entry].self, forKey: .entries),
+                deferred: try container.decodeIfPresent([String].self, forKey: .deferred) ?? [],
+                revealDecision: try container.decodeIfPresent(RevealDecision.self, forKey: .revealDecision),
+                rewritesCachedPrefix: try container.decode(Bool.self, forKey: .rewritesCachedPrefix)
+            )
         }
 
         public var estimatedTokens: Int {

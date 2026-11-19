@@ -1,4 +1,6 @@
 import Agentic
+import AgenticStandard
+import Foundation
 import Primitives
 import Schema
 
@@ -8,22 +10,38 @@ import Schema
 /// carry Tool ActionRisk, and invocation still requires live capability checks.
 public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.entries == rhs.entries
+        lhs.entries == rhs.entries && lhs.deferred == rhs.deferred
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(entries)
+        hasher.combine(deferred)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case entries, deferred
     }
 
     public init(from decoder: any Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        // Kept in the order it was advertised in.
-        try self.init(ordered: container.decode([Entry].self))
+        // Kept in the order it was advertised in. Older records are the
+        // bare entry list, with nothing deferred.
+        if let entries = try? decoder.singleValueContainer().decode([Entry].self) {
+            try self.init(ordered: entries)
+            return
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            ordered: container.decode([Entry].self, forKey: .entries),
+            deferred: container.decodeIfPresent([String].self, forKey: .deferred) ?? []
+        )
     }
 
     public func encode(to encoder: any Encoder) throws {
-        var container = encoder.singleValueContainer()
-        try container.encode(entries)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(entries, forKey: .entries)
+        if !deferred.isEmpty {
+            try container.encode(deferred, forKey: .deferred)
+        }
     }
 
     public struct Entry: Sendable, Codable, Hashable {
@@ -48,12 +66,21 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
     }
 
     public let entries: [Entry]
+    /// Names of entries callable in this request but not declared to the
+    /// provider: revealed after the session's tool definitions were fixed,
+    /// they are called through `call_capability`.
+    public let deferred: [String]
     private let targetsByName: [String: CapabilityReference]
+
+    /// The entries declared to the provider.
+    public var declared: [Entry] {
+        entries.filter { !deferred.contains($0.function.name) }
+    }
 
     /// Provider declarations only; semantic invocation identities remain
     /// bound to this exact projection, never encoded into provider inputs.
     public var functions: [FunctionDescriptor] {
-        entries.map(\.function)
+        declared.map(\.function)
     }
 
     init(_ candidates: [Entry]) throws {
@@ -63,7 +90,7 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
     }
 
     /// Entries in exactly this order.
-    init(ordered candidates: [Entry]) throws {
+    init(ordered candidates: [Entry], deferred: [String] = []) throws {
         var targetsByName: [String: CapabilityReference] = [:]
         for entry in candidates {
             guard targetsByName.updateValue(
@@ -74,7 +101,41 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
             }
         }
         self.entries = candidates
+        self.deferred = deferred.filter { targetsByName[$0] != nil }
         self.targetsByName = targetsByName
+    }
+
+    /// The same entries, with these called through the dispatcher.
+    func deferring(_ names: [String]) -> Self {
+        (try? Self(ordered: entries, deferred: names)) ?? self
+    }
+
+    /// The entry a dispatcher call names, by capability identifier or by
+    /// provider function name.
+    func entry(dispatchedAs identifier: String) -> Entry? {
+        entries.first { $0.function.name == identifier || $0.target.identifier == identifier }
+    }
+
+    /// A `call_capability` call as a call of the capability it names, under
+    /// the same call id, so authorization, approval, preflight and the
+    /// record treat it as that capability. Unchanged when it names nothing
+    /// this request can call; the dispatcher tool then says why.
+    func dispatched(_ call: FunctionCall) -> FunctionCall {
+        guard call.name == Standard.Tools.CallCapability.identifier.rawValue,
+              case .object(var outer) = call.input,
+              case .object(let arguments)? = outer["arguments"],
+              case .string(let identifier)? = arguments["identifier"],
+              let entry = entry(dispatchedAs: identifier),
+              entry.function.name != call.name
+        else { return call }
+        var input = arguments["input"] ?? .object([:])
+        // Some models send the input as a JSON string.
+        if case .string(let text) = input,
+           let parsed = try? JSONDecoder().decode(JSONValue.self, from: Data(text.utf8)) {
+            input = parsed
+        }
+        outer["arguments"] = input
+        return FunctionCall(id: call.id, name: entry.function.name, input: .object(outer))
     }
 
     /// The same entries, those named in `names` first in that order, the
@@ -84,7 +145,10 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
         let first = names.compactMap { byName[$0] }
         let placed = Set(first.map(\.function.name))
         // Names are unique already, so this cannot fail.
-        return (try? Self(ordered: first + entries.filter { !placed.contains($0.function.name) })) ?? self
+        return (try? Self(
+            ordered: first + entries.filter { !placed.contains($0.function.name) },
+            deferred: deferred
+        )) ?? self
     }
 
     /// The exact lookup table belonging to this model request's projection.

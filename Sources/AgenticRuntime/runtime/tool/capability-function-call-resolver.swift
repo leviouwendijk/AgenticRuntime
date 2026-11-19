@@ -24,6 +24,7 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
     let journal: AgentModelToolInvocationJournal?
 
     func resolve(_ call: FunctionCall) async throws -> FunctionCall.Response {
+        let call = projection.dispatched(call)
         let function = call.name
         guard let target = projection.target(named: function) else {
             // Reject unadvertised names with the same typed visibility error

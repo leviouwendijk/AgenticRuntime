@@ -85,11 +85,68 @@ extension AgentLoop {
         return projection.ordered(by: names.filter { !carried.contains($0) } + carried)
     }
 
+    /// Fixes the run's tool definitions at its first request, and decides
+    /// for each capability that becomes visible later how it reaches the
+    /// model. The provider's cached prefix is tools, then system, then
+    /// history, so declaring it rewrites the whole prompt once; deferring it
+    /// to `call_capability` keeps the prompt cached, at the cost of an
+    /// indirection and no provider-side schema for its input. Declared while
+    /// the request is at most `contextPolicy.deferRevealsAbove` estimated
+    /// tokens, deferred above; a deferred capability stays deferred. What an
+    /// earlier run of the conversation revealed is decided the same way at
+    /// this run's first request.
+    func declaring(
+        _ projection: ModelCapabilityProjection,
+        in checkpoint: inout AgentExecutor.Checkpoint
+    ) -> (projection: ModelCapabilityProjection, decision: Run.Event.Advertisement.RevealDecision?) {
+        let names = projection.entries.map(\.function.name)
+        let dispatcher = Standard.Tools.CallCapability.identifier.rawValue
+        let previous = checkpoint.events.last { $0.kind == .schemas_advertised }?.advertisement
+        var declared: [String]
+        let pending: [String]
+        if let fixed = checkpoint.declaredFunctions {
+            declared = fixed
+            let deferred = previous?.deferred ?? []
+            pending = names.filter { !fixed.contains($0) && !deferred.contains($0) }
+        } else {
+            let carried = configuration.carried.references.map(\.identifier)
+            let isCarried = { (name: String) in
+                carried.contains(projection.target(named: name)?.identifier ?? name)
+            }
+            declared = names.filter { !isCarried($0) }
+            pending = names.filter(isCarried)
+        }
+
+        var decision: Run.Event.Advertisement.RevealDecision?
+        if !pending.isEmpty {
+            let threshold = configuration.contextPolicy.deferRevealsAbove
+            let prompt = AgentRequest(messages: checkpoint.state.messages)
+                .estimatedInputTokens().estimatedTokens
+                + (previous?.estimatedTokens ?? 0)
+            // Without the dispatcher declared there is no other way in.
+            let limit = declared.contains(dispatcher) ? threshold : nil
+            let throughDispatcher = limit.map { prompt > $0 } == true
+            if !throughDispatcher {
+                declared += pending
+            }
+            decision = .init(
+                capabilities: pending,
+                deferred: throughDispatcher,
+                estimatedPromptTokens: prompt,
+                threshold: limit
+            )
+        }
+        checkpoint.declaredFunctions = declared
+        return (projection.deferring(names.filter { !declared.contains($0) }), decision)
+    }
+
     /// Reports the advertised schemas when they differ from the last report,
     /// in name, order or form, with what each costs as sent and in full.
     func recordAdvertisement(
         _ tools: [ToolDescriptor],
         full: [ToolDescriptor],
+        deferred: [String],
+        revealDecision: Run.Event.Advertisement.RevealDecision?,
         detail: ContextWindow.SchemaDetail,
         reason: Run.Event.Advertisement.Reason,
         to checkpoint: inout AgentExecutor.Checkpoint
@@ -100,9 +157,15 @@ extension AgentLoop {
         let previous = checkpoint.events.last { $0.kind == .schemas_advertised }?.advertisement
         if let previous,
            previous.entries.map(\.name) == shape.map(\.0),
-           previous.entries.map(\.detail) == shape.map(\.1) {
+           previous.entries.map(\.detail) == shape.map(\.1),
+           previous.deferred == deferred {
             return
         }
+        // Only a change to what is declared rewrites the cached prefix; a
+        // deferred reveal adds to the history.
+        let declaredChanged = previous.map {
+            $0.entries.map(\.name) != shape.map(\.0) || $0.entries.map(\.detail) != shape.map(\.1)
+        } ?? false
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
@@ -125,12 +188,23 @@ extension AgentLoop {
             detail: detail,
             reason: reason,
             entries: entries,
-            rewritesCachedPrefix: previous != nil
+            deferred: deferred,
+            revealDecision: revealDecision,
+            rewritesCachedPrefix: declaredChanged
         )
         let core = entries.filter { $0.detail == .core }.count
         var summary = "\(entries.count) schema\(entries.count == 1 ? "" : "s"), ≈\(advertisement.estimatedTokens) tokens"
         if core > 0 {
             summary += " (\(core) core; ≈\(advertisement.fullTokens) in full)"
+        }
+        if !deferred.isEmpty {
+            summary += " · \(deferred.count) through call_capability"
+        }
+        if let revealDecision {
+            let limit = revealDecision.threshold.map { "\($0)" } ?? "no limit"
+            summary += revealDecision.deferred
+                ? " · deferred \(revealDecision.capabilities.joined(separator: ", ")): prompt ≈\(revealDecision.estimatedPromptTokens) > \(limit)"
+                : " · declared \(revealDecision.capabilities.joined(separator: ", ")): prompt ≈\(revealDecision.estimatedPromptTokens) ≤ \(limit)"
         }
         summary += " · \(reason.rawValue)"
         if advertisement.rewritesCachedPrefix {
