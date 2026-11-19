@@ -162,7 +162,8 @@ extension AgentLoop {
             callID: functionCall.id,
             toolName: functionCall.name,
             requirement: requirement.rawValue,
-            summary: preflight.summary
+            summary: preflight.summary,
+            warnings: preflight.warnings.isEmpty ? nil : preflight.warnings
         )
 
         return FunctionCall.Response(

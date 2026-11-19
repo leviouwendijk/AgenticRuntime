@@ -280,6 +280,8 @@ extension AgentLoop {
         let toolName: String
         let requirement: String
         let summary: String
+        /// The preflight's warnings, often why it was denied and how to proceed.
+        let warnings: [String]?
     }
 
     struct ToolErrorPayload: Encodable, Sendable {
