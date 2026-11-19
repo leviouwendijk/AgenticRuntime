@@ -19,6 +19,7 @@ internal struct AgentLoop: Sendable {
     let contextAllocator: ContextWindow.Allocator?
     let contextServices: ContextWindow.Services?
     let flow: Flow
+    let served = ServedRoute()
 
     init(
         model: RuntimeServices.Model,

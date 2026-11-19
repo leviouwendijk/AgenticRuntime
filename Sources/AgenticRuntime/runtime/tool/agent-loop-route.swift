@@ -46,6 +46,7 @@ extension AgentLoop {
         to checkpoint: inout AgentExecutor.Checkpoint
     ) async throws {
         let profile = record.route.profile
+        await served.record(profile.capabilities)
         let preferences = model.selection.preferences
         let rerouted = preferences.preferredProfileIdentifier.map { $0 != profile.identifier } == true
             || preferences.preferredModelID.map { $0 != profile.modelID } == true

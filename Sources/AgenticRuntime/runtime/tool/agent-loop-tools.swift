@@ -148,7 +148,7 @@ extension AgentLoop {
             catalog: await inventory.catalog(),
             capabilities: capabilityState,
             inspections: await inventory.capabilityInspections(),
-            services: tooling.services.archivingResults()
+            services: tooling.services.archivingResults().calling(await served.callForm)
         )
     }
 
@@ -191,21 +191,18 @@ extension AgentLoop {
         )
     }
 
+    /// The model's answer for a failed call, through the session's payload
+    /// guard like any other result.
     func makeToolErrorResult(
         for functionCall: FunctionCall,
-        error: Error
-    ) throws -> FunctionCall.Response {
-        let payload = ToolErrorPayload(
-            kind: "tool_error",
-            callID: functionCall.id,
-            toolName: functionCall.name,
-            message: localizedDescription(for: error)
-        )
-
-        return FunctionCall.Response(
+        error: Error,
+        guidance: String? = nil
+    ) async throws -> FunctionCall.Response {
+        try await .toolError(
             call: functionCall.reference,
-            output: try JSONCoding.default.value(payload),
-            isError: true
+            error: error,
+            guidance: guidance,
+            guard: (try? tooling.services.require(ToolPayloadGuarding.self))?.shield
         )
     }
 
@@ -244,6 +241,12 @@ private struct RuntimeResolvedToolApprovalHandler:
 }
 
 extension ToolServices {
+    /// These services plus how the model reaches capabilities outside its
+    /// definitions.
+    func calling(_ form: UndeclaredCallForm) -> ToolServices {
+        (try? inserting(form)) ?? self
+    }
+
     /// These services plus the result archive over the session log.
     func archivingResults() -> ToolServices {
         guard let log = try? require(Run.Log.self) else {

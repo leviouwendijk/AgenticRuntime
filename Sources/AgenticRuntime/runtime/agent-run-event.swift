@@ -95,6 +95,9 @@ public extension Run.Event {
             /// A request read much less from the prompt cache than the one
             /// before left there; `cacheMiss` says why.
             case cache_miss
+            /// A reply carried nothing after tool results, so the run asked
+            /// once more instead of ending the turn silent.
+            case empty_reply_recovered
         }
 
         public let id: String

@@ -38,12 +38,20 @@ private actor UndeclaredRequests {
 private struct UndeclaredInvoker: AgentModelInvoking {
     let requests: UndeclaredRequests
     let calls: [FunctionCall]
+    /// What the serving route can do.
+    var capabilities: Set<AgentModelCapability> = [.text]
+    /// The request answered with an empty reply, as a gateway that drops a
+    /// call to an undeclared tool leaves it.
+    var emptyAt: Int?
 
     func buffered(_ invocation: AgentModelInvocation) async throws -> AgentModelInvocation.Result {
         let index = await requests.record(invocation.request)
-        let response = index < calls.count
+        let script = index - (emptyAt.map { index > $0 ? 1 : 0 } ?? 0)
+        let response = index == emptyAt
+            ? AgentResponse(message: Message(role: .assistant, content: .init(blocks: [])), stopReason: .end_turn)
+            : script < calls.count
             ? AgentResponse(
-                message: Message(role: .assistant, content: .init(blocks: [.call(calls[index])])),
+                message: Message(role: .assistant, content: .init(blocks: [.call(calls[script])])),
                 stopReason: .tool_use
             )
             : AgentResponse(message: Message(role: .assistant, text: "done"), stopReason: .end_turn)
@@ -54,7 +62,7 @@ private struct UndeclaredInvoker: AgentModelInvoking {
                 gatewayIdentifier: "fixture.undeclared.gateway",
                 model: "fixture",
                 purposes: [invocation.selection.purpose],
-                capabilities: [.text]
+                capabilities: capabilities
             )
         )
         return AgentModelInvocation.Result(
@@ -111,6 +119,8 @@ extension AgenticProgramRuntimeFlowTesting {
             visible: AgentCapabilitySet = .none,
             available: AgentCapabilitySet? = nil,
             declared: [CapabilityReference]? = nil,
+            capabilities: Set<AgentModelCapability> = [.text],
+            emptyAt: Int? = nil,
             session: String
         ) async throws -> Outcome {
             let requests = UndeclaredRequests()
@@ -121,7 +131,12 @@ extension AgenticProgramRuntimeFlowTesting {
                 visible: visible
             )
             let executor = AgentExecutor(
-                model: .init(invoker: UndeclaredInvoker(requests: requests, calls: calls)),
+                model: .init(invoker: UndeclaredInvoker(
+                    requests: requests,
+                    calls: calls,
+                    capabilities: capabilities,
+                    emptyAt: emptyAt
+                )),
                 configuration: .init(
                     runLimits: .init(iterations: 4),
                     declared: declared
@@ -193,6 +208,41 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.false(dispatchedEcho.isError, "it ran as the echo: \(dispatchedEcho.modelText)")
         try Expect.true(dispatchedEcho.modelText.contains("hi"), "with the echo's output")
         try Expect.false(dispatchedEcho.modelText.contains("among your tools"), "an undeclared dispatch gets no note")
+
+        // On a route that takes calls to undeclared tools, inspection says
+        // to call it by its own name.
+        let native = try await run([inspect, direct], capabilities: [.text, .undeclared_calls], session: "native")
+        let nativeContract = try Expect.notNil(response("c-inspect", in: native.result), "the contract was returned")
+        let fields = try Expect.notNil(
+            { () -> [String: JSONValue]? in
+                if case .object(let fields) = nativeContract.output { return fields }
+                return nil
+            }(),
+            "the contract is an object: \(nativeContract.output)"
+        )
+        try Expect.equal(fields["callWith"], .string(echo.rawValue), "callWith names the echo itself")
+        let nativeEcho = try Expect.notNil(response("c-echo", in: native.result), "the direct call was answered")
+        try Expect.false(nativeEcho.isError, "and ran: \(nativeEcho.modelText)")
+
+        // An empty reply after tool results is asked once more, with how to
+        // reach a capability outside the tools; the empty turn is dropped.
+        let silent = try await run([inspect], emptyAt: 1, session: "silent")
+        try Expect.true(silent.result.isCompleted, "the run completes")
+        try Expect.equal(silent.tools.count, 3, "inspect, empty reply, answer")
+        try Expect.equal(
+            silent.result.events.filter { $0.kind == .empty_reply_recovered }.count, 1,
+            "the recovery is recorded once"
+        )
+        let nudge = silent.result.state.messages.last { $0.role == .user }?.content.text ?? ""
+        try Expect.true(
+            nudge.contains("Your last reply was empty") && nudge.contains("call_capability"),
+            "the run says how to reach it: \(nudge)"
+        )
+        try Expect.false(
+            silent.result.state.messages.contains { $0.role == .assistant && $0.content.blocks.isEmpty },
+            "the empty reply is not kept in the history"
+        )
+        try Expect.equal(silent.result.response?.message.content.text, "done", "the next reply answers")
 
         // A declared tool called through the dispatcher still runs, and its
         // result says to call it by name.

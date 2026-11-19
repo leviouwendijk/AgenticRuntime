@@ -226,6 +226,12 @@ extension AgentLoop {
             after: response,
             calls: functionCalls
         )
+        try await recoverEmptyReply(
+            response,
+            calls: functionCalls,
+            route: invocationResult.route,
+            checkpoint: &checkpoint
+        )
 
         if let interruption = await requestedUrgentInterruption() {
             try await applyInterruption(

@@ -111,7 +111,8 @@ private extension AgentTranscriptRecorder {
              .model_routed,
              .capability_changed,
              .schemas_advertised,
-             .cache_miss:
+             .cache_miss,
+             .empty_reply_recovered:
             return true
         }
     }

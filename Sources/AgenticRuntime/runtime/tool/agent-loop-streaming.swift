@@ -302,6 +302,12 @@ extension AgentLoop {
             after: response,
             calls: functionCalls
         )
+        try await recoverEmptyReply(
+            response,
+            calls: functionCalls,
+            route: result.route,
+            checkpoint: &checkpoint
+        )
 
         try await saveCheckpoint(
             &checkpoint

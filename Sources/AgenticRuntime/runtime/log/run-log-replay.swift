@@ -43,6 +43,7 @@ public extension Run.Log {
             .pending_approval, .pending_user_input, .pending_workspace_access,
             .mutation_staged, .mutation_published, .mutation_withdrawn,
             .operator_command, .workspace_changed, .output_repaired, .input_applied,
+            .empty_reply_recovered,
         ]
     }
 }

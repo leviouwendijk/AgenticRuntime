@@ -47,7 +47,9 @@ public struct AgentRunFailure: Sendable, Codable, Hashable {
             kind: .model_invocation_failed,
             message: error.localizedDescription,
             metadata: metadata,
-            report: error.report
+            report: error.report.redacted(
+                policy: .internal_diagnostic
+            )
         )
     }
 }
