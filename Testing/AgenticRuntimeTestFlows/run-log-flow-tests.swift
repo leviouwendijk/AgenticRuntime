@@ -92,7 +92,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         try Expect.equal(
             replay.items[1].event,
-            .call(call.reference, input: call.input),
+            .call(call.reference, input: call.input, via: nil),
             "Replay carries call input"
         )
         try Expect.equal(

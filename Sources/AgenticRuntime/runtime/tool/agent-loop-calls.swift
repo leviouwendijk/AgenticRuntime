@@ -99,7 +99,11 @@ extension AgentLoop {
         if let raw = functionCall.malformedArguments {
             try await answer(
                 functionCall,
-                failingWith: FunctionCall.MalformedArguments(raw: raw),
+                failingWith: await teaching(
+                    FunctionCall.MalformedArguments(raw: raw),
+                    for: functionCall,
+                    checkpoint: checkpoint
+                ),
                 checkpoint: &checkpoint
             )
             return .next
@@ -295,8 +299,9 @@ extension AgentLoop {
             )
             return .stop(try suspendedResult(from: checkpoint))
         } catch {
+            let taught = await teaching(error, for: functionCall, checkpoint: checkpoint)
             try await appendToolResult(
-                try makeToolErrorResult(for: functionCall, error: error),
+                try makeToolErrorResult(for: functionCall, error: taught),
                 for: functionCall,
                 disposition: .failed_execution,
                 to: &checkpoint,
@@ -327,7 +332,11 @@ extension AgentLoop {
                 for: functionCall
             )
         } catch {
-            try await answer(functionCall, failingWith: error, checkpoint: &checkpoint)
+            try await answer(
+                functionCall,
+                failingWith: await teaching(error, for: functionCall, checkpoint: checkpoint),
+                checkpoint: &checkpoint
+            )
             return nil
         }
     }
@@ -352,7 +361,11 @@ extension AgentLoop {
             if let request = accessRequest(for: error) {
                 throw AccessAsked(request: request)
             }
-            try await answer(functionCall, failingWith: error, checkpoint: &checkpoint)
+            try await answer(
+                functionCall,
+                failingWith: await teaching(error, for: functionCall, checkpoint: checkpoint),
+                checkpoint: &checkpoint
+            )
             return nil
         }
     }

@@ -54,6 +54,19 @@ public actor CapabilityInventory {
         )
     }
 
+    /// A capability's contract as a definition would carry it, in core
+    /// form: required fields in full, optional ones abbreviated.
+    public func contract(
+        for reference: CapabilityReference
+    ) throws -> ToolDescriptor {
+        let entry = try entries.projectionEntry(for: reference)
+        return ToolDescriptor(
+            name: entry.function.name,
+            description: entry.function.description,
+            input: entry.function.input
+        ).core
+    }
+
     /// The visible set in the order it is declared in: by provider name.
     public func visibleDeclarations() async throws -> [CapabilityReference] {
         try entries.modelProjection(visible: await state.snapshot().visible).entries.map(\.target)

@@ -1,4 +1,5 @@
 import Agentic
+import AgenticStandard
 import Foundation
 import Primitives
 
@@ -20,7 +21,9 @@ public extension Run.Log {
             /// Text a message carried; tool calls and results appear as
             /// `call` and `response`.
             case message(role: MessageRole, text: String)
-            case call(FunctionCall.Reference, input: JSONValue)
+            /// `via` names the tool the model called it through
+            /// (`call_capability`), when not by its own name.
+            case call(FunctionCall.Reference, input: JSONValue, via: String?)
             case response(FunctionCall.Reference, output: JSONValue, isError: Bool)
             /// A delegated run started from `parent`.
             case branch(parent: String)
@@ -55,6 +58,9 @@ public extension Run.Log.Store {
         let contents = try read(session: session)
         var depths: [String: Int] = [:]
         var items: [Run.Log.Replay.Item] = []
+        // Calls the model made through the dispatcher; the log records
+        // them as the capability's own.
+        var dispatched: Set<String> = []
 
         for entry in contents.entries {
             if case .branch(let event) = entry.body {
@@ -63,7 +69,7 @@ public extension Run.Log.Store {
             if let reference, !(entry.run ?? "").contains(reference) {
                 continue
             }
-            guard let event = try replayEvent(entry, session: session) else {
+            guard let event = try replayEvent(entry, session: session, dispatched: &dispatched) else {
                 continue
             }
             items.append(
@@ -94,8 +100,8 @@ public extension Run.Log.Store {
             .split(whereSeparator: \.isNewline)
             .joined(separator: " ")
         let calls = message.content.blocks.compactMap { block -> String? in
-            if case .call(let call) = block { return "→ " + call.name }
-            return nil
+            guard case .call(let call) = block else { return nil }
+            return "→ " + (call.dispatchedIdentifier.map { $0 + " via call_capability" } ?? call.name)
         }
         let preview = text.count > 120 ? String(text.prefix(119)) + "…" : text
         return ([message.role.rawValue, preview] + calls)
@@ -107,18 +113,21 @@ public extension Run.Log.Store {
 private extension Run.Log.Store {
     func replayEvent(
         _ entry: Run.Log.Entry,
-        session: String
+        session: String,
+        dispatched: inout Set<String>
     ) throws -> Run.Log.Replay.Event? {
         switch entry.body {
         case .message(let stored):
             let message = try payload(stored.digest, as: Message.self, session: session)
+            dispatched.formUnion([message].dispatchedCallIDs)
             let text = Self.text(of: message)
             guard !text.isEmpty else { return nil }
             return .message(role: message.role, text: text)
         case .call(let call):
             return .call(
                 call.call,
-                input: try payload(call.input, as: JSONValue.self, session: session)
+                input: try payload(call.input, as: JSONValue.self, session: session),
+                via: dispatched.contains(call.call.id) ? Standard.Tools.CallCapability.identifier.rawValue : nil
             )
         case .response(let stored):
             let response = try payload(stored.digest, as: FunctionCall.Response.self, session: session)

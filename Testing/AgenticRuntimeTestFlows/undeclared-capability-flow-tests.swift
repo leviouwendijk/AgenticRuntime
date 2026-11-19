@@ -218,6 +218,46 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.true(refreshed.tools.first?.contains(echo.rawValue) == true, "refreshed: the echo is declared")
         try Expect.true(try lastAdvertisement(refreshed.result).pending == nil, "nothing left pending")
 
+        // Input that does not fit an undeclared capability is answered with
+        // its contract; a name nothing answers to, with how to find one.
+        let misfit = FunctionCall(
+            id: "c-misfit",
+            name: echo.rawValue,
+            input: .object(["arguments": .object(["wrong": .string("hi")])])
+        )
+        let nowhere = FunctionCall(
+            id: "c-nowhere",
+            name: "fixture.nowhere",
+            input: .object(["arguments": .object([:])])
+        )
+        let taught = try await run([misfit, nowhere], session: "taught")
+        let misfitAnswer = try Expect.notNil(response("c-misfit", in: taught.result), "the misfit was answered")
+        try Expect.true(
+            misfitAnswer.isError && misfitAnswer.modelText.contains("Its input") && misfitAnswer.modelText.contains("properties"),
+            "with the echo's contract: \(misfitAnswer.modelText)"
+        )
+        let nowhereAnswer = try Expect.notNil(response("c-nowhere", in: taught.result), "the unknown name was answered")
+        try Expect.true(
+            nowhereAnswer.isError && nowhereAnswer.modelText.contains("search_capabilities"),
+            "with how to find a capability: \(nowhereAnswer.modelText)"
+        )
+        // A declared tool's misfit gets no contract: its definition has it.
+        let declaredMisfit = try await run([misfit], visible: AgentCapabilitySet(tools: [echo]), session: "declared-misfit")
+        let declaredAnswer = try Expect.notNil(response("c-misfit", in: declaredMisfit.result), "the misfit was answered")
+        try Expect.true(
+            declaredAnswer.isError && !declaredAnswer.modelText.contains("Its input"),
+            "without the contract: \(declaredAnswer.modelText)"
+        )
+
+        // A dispatched call is shown as the capability it names.
+        try Expect.equal(dispatched.dispatchedIdentifier, echo.rawValue, "the dispatch names the echo")
+        try Expect.true(direct.dispatchedIdentifier == nil, "a direct call is not a dispatch")
+        try Expect.equal(
+            throughDispatcher.result.state.messages.dispatchedCallIDs,
+            ["c-dispatch"],
+            "the dispatched call is found in the transcript"
+        )
+
         // Withdrawn: still declared, so the definitions hold, but refused.
         let withdrawnCall = FunctionCall(id: "c-withdrawn", name: echo.rawValue, input: try arguments(UndeclaredEchoValue(value: "hi")))
         let withdrawn = try await run(
