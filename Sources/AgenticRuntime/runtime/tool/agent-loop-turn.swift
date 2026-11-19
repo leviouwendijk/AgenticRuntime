@@ -28,6 +28,7 @@ extension AgentLoop {
             &checkpoint
         )
 
+        await exposeDiscovery()
         // Core schemas need the inspector in view; without it, full ones.
         let schemas = await schemaDetail()
 
@@ -133,6 +134,21 @@ extension AgentLoop {
     }
 
     static let inspector = Standard.Tools.InspectCapability.identifier
+
+    /// The installed discovery tools are enabled and in view for every run,
+    /// whatever the Agent declares: without them the model can use only
+    /// what it was shown. Done from the first turn, so the advertised set
+    /// does not change mid-session; a no-op once they are visible.
+    func exposeDiscovery() async {
+        guard configuration.capabilityDiscovery else { return }
+        let snapshot = await capabilityState.snapshot()
+        let discovery = AgentCapabilitySet(
+            tools: Standard.Tools.discovery.filter(snapshot.installed.tools.contains)
+        )
+        guard discovery.subtracting(snapshot.visible) != .none else { return }
+        _ = try? await capabilityState.enable(discovery)
+        _ = try? await capabilityState.expose(discovery)
+    }
 
     /// The schema detail to advertise. Core schemas are only safe while the
     /// inspector can return the rest, so it is revealed (within the

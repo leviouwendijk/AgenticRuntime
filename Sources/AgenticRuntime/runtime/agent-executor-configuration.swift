@@ -13,6 +13,10 @@ public extension AgentExecutor {
         public var compactionStrategy: CompactionStrategy?
         public var responseDelivery: AgentModelResponseDelivery
         public var streamCheckpointPolicy: AgentStreamCheckpointPolicy
+        /// Lists, searches and inspects capabilities: the discovery tools
+        /// the run installs are exposed whatever the Agent declares. Off for
+        /// a fixed worker that must use only what it was shown.
+        public var capabilityDiscovery: Bool
 
         public init(
             runLimits: AgentRunLimits = .default,
@@ -25,7 +29,8 @@ public extension AgentExecutor {
             historyPersistenceMode: HistoryPersistenceMode = .disabled,
             compactionStrategy: CompactionStrategy? = nil,
             responseDelivery: AgentModelResponseDelivery = .buffered,
-            streamCheckpointPolicy: AgentStreamCheckpointPolicy = .default
+            streamCheckpointPolicy: AgentStreamCheckpointPolicy = .default,
+            capabilityDiscovery: Bool = true
         ) {
             self.runLimits = runLimits
             self.contextMode = contextMode
@@ -38,12 +43,14 @@ public extension AgentExecutor {
             self.compactionStrategy = compactionStrategy
             self.responseDelivery = responseDelivery
             self.streamCheckpointPolicy = streamCheckpointPolicy
+            self.capabilityDiscovery = capabilityDiscovery
         }
 
         private enum CodingKeys: String, CodingKey {
             case runLimits, contextMode, contextPolicy, appendToolResultsAsMessages
             case autonomyMode, executionLimits, recovery, historyPersistenceMode
             case compactionStrategy, responseDelivery, streamCheckpointPolicy
+            case capabilityDiscovery
         }
 
         public init(from decoder: any Decoder) throws {
@@ -59,7 +66,8 @@ public extension AgentExecutor {
                 historyPersistenceMode: try container.decode(HistoryPersistenceMode.self, forKey: .historyPersistenceMode),
                 compactionStrategy: try container.decodeIfPresent(CompactionStrategy.self, forKey: .compactionStrategy),
                 responseDelivery: try container.decode(AgentModelResponseDelivery.self, forKey: .responseDelivery),
-                streamCheckpointPolicy: try container.decode(AgentStreamCheckpointPolicy.self, forKey: .streamCheckpointPolicy)
+                streamCheckpointPolicy: try container.decode(AgentStreamCheckpointPolicy.self, forKey: .streamCheckpointPolicy),
+                capabilityDiscovery: try container.decodeIfPresent(Bool.self, forKey: .capabilityDiscovery) ?? true
             )
         }
 
