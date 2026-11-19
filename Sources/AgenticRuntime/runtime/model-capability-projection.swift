@@ -17,7 +17,8 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
-        try self.init(container.decode([Entry].self))
+        // Kept in the order it was advertised in.
+        try self.init(ordered: container.decode([Entry].self))
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -56,6 +57,13 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
     }
 
     init(_ candidates: [Entry]) throws {
+        try self.init(ordered: candidates.sorted {
+            $0.function.name < $1.function.name
+        })
+    }
+
+    /// Entries in exactly this order.
+    init(ordered candidates: [Entry]) throws {
         var targetsByName: [String: CapabilityReference] = [:]
         for entry in candidates {
             guard targetsByName.updateValue(
@@ -65,10 +73,18 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
                 throw ProjectionError.duplicateProviderName(entry.function.name)
             }
         }
-        self.entries = candidates.sorted {
-            $0.function.name < $1.function.name
-        }
+        self.entries = candidates
         self.targetsByName = targetsByName
+    }
+
+    /// The same entries, those named in `names` first in that order, the
+    /// rest after in theirs.
+    func ordered(by names: [String]) -> Self {
+        let byName = Dictionary(entries.map { ($0.function.name, $0) }, uniquingKeysWith: { first, _ in first })
+        let first = names.compactMap { byName[$0] }
+        let placed = Set(first.map(\.function.name))
+        // Names are unique already, so this cannot fail.
+        return (try? Self(ordered: first + entries.filter { !placed.contains($0.function.name) })) ?? self
     }
 
     /// The exact lookup table belonging to this model request's projection.

@@ -41,11 +41,11 @@ extension AgentLoop {
 
         // Snapshot the request's capabilities once. Request preparation,
         // advertised transport, and invocation authorization share that view.
-        let projection = try await inventory.modelProjection()
-        let full = advertisingOrder(
-            try await modelCapabilityDefinitions(for: projection),
+        let projection = advertisingOrder(
+            try await inventory.modelProjection(),
             after: checkpoint.events.last { $0.kind == .schemas_advertised }?.advertisement
         )
+        let full = try await modelCapabilityDefinitions(for: projection)
         let tools = full.map { tool in
             schemas == .core && tool.identifier != Self.inspector ? tool.core : tool
         }

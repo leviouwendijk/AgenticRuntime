@@ -73,20 +73,15 @@ extension AgentLoop {
     /// run's requests had it. The provider's cached prefix starts with the
     /// tools, so an addition keeps everything before it.
     func advertisingOrder(
-        _ definitions: [ToolDescriptor],
+        _ projection: ModelCapabilityProjection,
         after previous: Run.Event.Advertisement?
-    ) -> [ToolDescriptor] {
-        let earlier: [String]
+    ) -> ModelCapabilityProjection {
         if let previous {
-            earlier = previous.entries.map(\.name)
-        } else {
-            let carried = configuration.carried.references.map(\.identifier)
-            earlier = definitions.map(\.name).filter { !carried.contains($0) } + carried
+            return projection.ordered(by: previous.entries.map(\.name))
         }
-        let byName = Dictionary(definitions.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
-        let kept = earlier.compactMap { byName[$0] }
-        let keptNames = Set(kept.map(\.name))
-        return kept + definitions.filter { !keptNames.contains($0.name) }
+        let carried = configuration.carried.references.map(\.identifier)
+        let names = projection.functions.map(\.name)
+        return projection.ordered(by: names.filter { !carried.contains($0) } + carried)
     }
 
     /// Reports the advertised schemas when they differ from the last report,
