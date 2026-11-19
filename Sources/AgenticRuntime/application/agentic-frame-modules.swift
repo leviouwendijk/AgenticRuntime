@@ -1,18 +1,20 @@
 import AgenticConfiguration
 import AgenticContext
+import AgenticSensitivity
 import Foundation
 import Frame
 
 public extension FrameAgenticModule {
-    /// Writes `Agentic.frame`, `Context.frame` and every module the
-    /// application's domains declare, such as `Scheduling.frame`.
+    /// Writes `Agentic.frame`, `Context.frame`, `Sensitivity.frame` and
+    /// every module the application's domains declare, such as
+    /// `Scheduling.frame`.
     @discardableResult
     static func install<Application: AgenticApplicationProviding>(
         for application: Application.Type,
         into directory: URL = Frame.modulesDirectory
     ) throws -> [URL] {
         let declared = (application as? any AgenticFrameModulesProviding.Type)?.frameModules ?? []
-        return try ([module, ContextFrame.module] + declared).map { try $0.install(into: directory) }
+        return try ([module, ContextFrame.module, SensitivityFrame.module] + declared).map { try $0.install(into: directory) }
     }
 }
 
@@ -40,11 +42,23 @@ public extension AgenticFrameExample {
         )
     }
 
-    /// `settings` and `context` first, then what the application declares.
+    /// `domains/sensitivity.frame`: where handle values are kept and how
+    /// long, and which findings become handles.
+    static var sensitivity: Self {
+        .init(
+            name: "sensitivity",
+            path: "domains/sensitivity.frame",
+            summary: "Handles for sensitive values: the vault's store and expiry, thresholds, public values never replaced.",
+            text: SensitivityFrame.example
+        )
+    }
+
+    /// `settings`, `context` and `sensitivity` first, then what the
+    /// application declares.
     static func all<Application: AgenticApplicationProviding>(
         for application: Application.Type
     ) -> [Self] {
         let declared = (application as? any AgenticFrameModulesProviding.Type)?.frameExamples ?? []
-        return [settings, context] + declared
+        return [settings, context, sensitivity] + declared
     }
 }
