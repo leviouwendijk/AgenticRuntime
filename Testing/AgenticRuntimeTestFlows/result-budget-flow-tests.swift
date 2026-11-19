@@ -1,4 +1,5 @@
 import Agentic
+import AgenticContextWindow
 import AgenticRuntime
 import AgenticStandard
 import Foundation
@@ -228,5 +229,30 @@ private struct BudgetModelInvoker: AgentModelInvoking {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+}
+
+extension AgenticProgramRuntimeFlowTesting {
+    /// Compaction rewrites what stays of the cached prefix once; each later
+    /// request reads the saved tokens fewer. At a 1.25× write and 0.1× read
+    /// price, 30k tokens of which 6k are compacted take 46 requests to repay;
+    /// where writes cost the plain input price, fewer.
+    static func runCompactionPayback() async throws -> [TestDiagnostic] {
+        try Expect.equal(
+            ContextWindow.compactionPayback(prefix: 30_000, saving: 6_000, read: 0.30, write: 3.75),
+            46,
+            "24k rewritten at 3.45 extra, repaid at 6k × 0.30 per request"
+        )
+        try Expect.equal(
+            ContextWindow.compactionPayback(prefix: 30_000, saving: 6_000, read: 1.25, write: 2.50),
+            4,
+            "with a plain input price as the write price"
+        )
+        try Expect.equal(
+            ContextWindow.compactionPayback(prefix: 10_000, saving: 9_000, read: 1, write: 1),
+            1,
+            "free rewrites repay at once"
+        )
+        return []
     }
 }

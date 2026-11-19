@@ -312,16 +312,50 @@ extension AgentLoop {
               !checkpoint.events.contains(where: { $0.kind == .context_pressure })
         else { return }
         let saving = await compactableTokens(in: checkpoint)
+        var advice = ""
+        if saving > 0 {
+            advice = "; :compact would save ≈\(saving) per request, at the cost of one cache miss"
+            if let payback = compactionPayback(prefix: pressure.estimatedInputTokens, saving: saving) {
+                advice += payback == 1
+                    ? ", repaid by the next request"
+                    : ", repaid after ≈\(payback) requests at this route's cache prices"
+            }
+        }
         try await appendRunEvent(
             .init(
                 kind: .context_pressure,
                 iteration: checkpoint.state.iteration,
                 summary: "≈\(pressure.estimatedInputTokens) of \(pressure.hardLimit) input tokens "
                     + "(soft limit \(pressure.softLimit))"
-                    + (saving > 0 ? "; :compact would save ≈\(saving), at the cost of one cache miss" : "")
+                    + advice
             ),
             to: &checkpoint
         )
+    }
+
+    /// How many later requests a compaction takes to pay for itself at the
+    /// route's prices, or nil when they are unknown. Compacting rewrites
+    /// what stays of the prefix once, at the cache-write price (the plain
+    /// input price where writes cost nothing extra) instead of the read
+    /// price; each later request then reads `saving` fewer cached tokens.
+    func compactionPayback(prefix: Int, saving: Int) -> Int? {
+        guard let catalog = recording.costTracker?.catalog,
+              let broker = model.invoker as? ModelBroker,
+              let route = try? broker.route(selection: model.selection).route,
+              let provider = route.profile.metadata["provider"] ?? route.metadata["provider"],
+              let pricing = try? catalog.pricing(for: .init(
+                  provider: provider,
+                  model: route.profile.model,
+                  region: route.profile.metadata["region"] ?? route.metadata["region"]
+              ))
+        else { return nil }
+        func price(_ kind: PricingComponentKind) -> Double? {
+            pricing.components.first { $0.kind == kind }.map { Double($0.priceMicros) }
+        }
+        guard let read = price(.cachedInputReadTokens), read > 0,
+              let write = price(.cachedInputWriteTokens) ?? price(.inputTokens)
+        else { return nil }
+        return ContextWindow.compactionPayback(prefix: prefix, saving: saving, read: read, write: write)
     }
 
     /// What compacting now would take out of later requests.
@@ -333,5 +367,14 @@ extension AgentLoop {
             messages: checkpoint.state.messages,
             excluding: done
         )?.estimatedTokensSaved ?? 0
+    }
+}
+
+package extension ContextWindow {
+    /// Requests until rewriting `prefix − saving` tokens at `write` instead
+    /// of `read` is repaid by reading `saving` fewer tokens at `read`.
+    static func compactionPayback(prefix: Int, saving: Int, read: Double, write: Double) -> Int {
+        let rewrite = Double(max(0, prefix - saving)) * max(0, write - read)
+        return max(1, Int((rewrite / (Double(max(1, saving)) * read)).rounded(.up)))
     }
 }
