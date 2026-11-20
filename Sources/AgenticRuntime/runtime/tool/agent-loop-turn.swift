@@ -382,10 +382,10 @@ extension AgentLoop {
     }
 }
 
-public extension ContextWindow {
+extension ContextWindow {
     /// Requests until rewriting `prefix − saving` tokens at `write` instead
     /// of `read` is repaid by reading `saving` fewer tokens at `read`.
-    static func compactionPayback(prefix: Int, saving: Int, read: Double, write: Double) -> Int {
+    @_spi(Testing) public static func compactionPayback(prefix: Int, saving: Int, read: Double, write: Double) -> Int {
         let rewrite = Double(max(0, prefix - saving)) * max(0, write - read)
         return max(1, Int((rewrite / (Double(max(1, saving)) * read)).rounded(.up)))
     }

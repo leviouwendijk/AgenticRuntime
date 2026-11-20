@@ -162,7 +162,7 @@ public actor AgentDelegation {
     /// One report-only repair for a completed child whose final answer did
     /// not satisfy its output contract: the child's own model, its
     /// transcript and the failure, with no tools, so no work is repeated.
-    public func repairReport(
+    @_spi(Testing) public func repairReport(
         _ child: AgentExecutor.Result,
         contract: AgentOutputContract,
         failure: AgentOutputFailure

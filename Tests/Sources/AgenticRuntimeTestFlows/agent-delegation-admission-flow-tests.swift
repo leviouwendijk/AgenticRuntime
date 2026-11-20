@@ -1,6 +1,6 @@
 import Agentic
 import Foundation
-import AgenticRuntime
+@_spi(Testing) import AgenticRuntime
 import Schema
 import TestFlows
 

@@ -1,6 +1,6 @@
 import Agentic
 import AgenticContextWindow
-import AgenticRuntime
+@_spi(Testing) import AgenticRuntime
 import AgenticStandard
 import Foundation
 import IO
