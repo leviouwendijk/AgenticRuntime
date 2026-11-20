@@ -14,12 +14,6 @@ let package = Package(
                 "AgenticRuntime",
             ]
         ),
-        .executable(
-            name: "t_ar_main",
-            targets: [
-                "AgenticRuntimeTestFlows",
-            ]
-        ),
     ],
     dependencies: [
         .package(
@@ -92,10 +86,6 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/leviouwendijk/Errors.git",
-            branch: "master"
-        ),
-        .package(
-            url: "https://github.com/leviouwendijk/TestFlows.git",
             branch: "master"
         ),
     ],
@@ -216,81 +206,6 @@ let package = Package(
                     package: "Difference"
                 ),
             ]
-        ),
-        .executableTarget(
-            name: "AgenticRuntimeTestFlows",
-            dependencies: [
-                "AgenticRuntime",
-                .product(
-                    name: "Agentic",
-                    package: "Agentic"
-                ),
-                .product(
-                    name: "AgenticStandard",
-                    package: "Agentic"
-                ),
-                .product(
-                    name: "AgenticContextWindow",
-                    package: "Agentic"
-                ),
-                .product(
-                    name: "AgenticConfiguration",
-                    package: "Agentic"
-                ),
-                .product(
-                    name: "AgenticContext",
-                    package: "Agentic"
-                ),
-                .product(
-                    name: "AgenticSensitivity",
-                    package: "Agentic"
-                ),
-                .product(
-                    name: "AgenticSessions",
-                    package: "Agentic"
-                ),
-                .product(
-                    name: "Workspace",
-                    package: "Workspace"
-                ),
-                .product(
-                    name: "AgenticIO",
-                    package: "AgenticIO"
-                ),
-                .product(
-                    name: "IO",
-                    package: "IO"
-                ),
-                .product(
-                    name: "Path",
-                    package: "Path"
-                ),
-                .product(
-                    name: "Frame",
-                    package: "Frame"
-                ),
-                .product(
-                    name: "Primitives",
-                    package: "Primitives"
-                ),
-                .product(
-                    name: "Schema",
-                    package: "Schema"
-                ),
-                .product(
-                    name: "Macros",
-                    package: "Macros"
-                ),
-                .product(
-                    name: "Difference",
-                    package: "Difference"
-                ),
-                .product(
-                    name: "TestFlows",
-                    package: "TestFlows"
-                ),
-            ],
-            path: "Testing/AgenticRuntimeTestFlows"
         ),
     ],
     swiftLanguageModes: [
