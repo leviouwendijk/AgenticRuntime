@@ -152,24 +152,6 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
         entries.first(where: { $0.target == target })?.function.name
             ?? callable.first(where: { $0.value == target })?.key
     }
-
-    /// Stable, bounded provider name. Keeping a mapping rather than encoding
-    /// the identifier in provider output avoids interpreting arbitrary names.
-    static func providerName(
-        kind: String,
-        identifier: String
-    ) -> String {
-        var hash: UInt64 = 0xcbf29ce484222325
-        for byte in identifier.utf8 {
-            hash = (hash ^ UInt64(byte)) &* 0x100000001b3
-        }
-        let hexadecimal = String(hash, radix: 16)
-        let padded = String(
-            repeating: "0",
-            count: max(0, 16 - hexadecimal.count)
-        ) + hexadecimal
-        return "agentic_\(kind)_\(padded)"
-    }
 }
 
 /// A read-only projection over one installed binding snapshot and one Agent's
@@ -180,7 +162,8 @@ extension InstalledCapabilities {
     func modelProjection(
         visible: AgentCapabilitySet
     ) throws -> ModelCapabilityProjection {
-        try ModelCapabilityProjection(visible.references.map(projectionEntry(for:)))
+        var taken: Set<String> = []
+        return try ModelCapabilityProjection(visible.references.map { try projectionEntry(for: $0, taken: &taken) })
     }
 
     /// `declared` in this order with their schemas, and every other
@@ -190,18 +173,44 @@ extension InstalledCapabilities {
         callable: AgentCapabilitySet
     ) throws -> ModelCapabilityProjection {
         let declaredSet = Set(declared)
+        var taken: Set<String> = []
+        let entries = try declared.map { try projectionEntry(for: $0, taken: &taken) }
         var names: [String: CapabilityReference] = [:]
         for reference in callable.references where !declaredSet.contains(reference) {
-            names[try projectionEntry(for: reference).function.name] = reference
+            names[uniqueName(for: reference, taken: &taken)] = reference
         }
         return try ModelCapabilityProjection(
-            ordered: declared.map(projectionEntry(for:)),
+            ordered: entries,
             callable: names
         )
     }
 
+    /// The entry under a name not in `taken`, which it then joins. Names are
+    /// `CapabilityReference.providerName`; a non-tool whose name is taken
+    /// falls back to its hashed form (a tool's name is its identifier, which
+    /// calls are matched against).
     func projectionEntry(
-        for reference: CapabilityReference
+        for reference: CapabilityReference,
+        taken: inout Set<String>
+    ) throws -> ModelCapabilityProjection.Entry {
+        try projectionEntry(for: reference, named: uniqueName(for: reference, taken: &taken))
+    }
+
+    func uniqueName(
+        for reference: CapabilityReference,
+        taken: inout Set<String>
+    ) -> String {
+        var name = reference.providerName
+        if case .tool = reference {} else if taken.contains(name) {
+            name = reference.hashedProviderName
+        }
+        taken.insert(name)
+        return name
+    }
+
+    func projectionEntry(
+        for reference: CapabilityReference,
+        named name: String
     ) throws -> ModelCapabilityProjection.Entry {
         switch reference {
         case .tool(let identifier):
@@ -217,9 +226,7 @@ extension InstalledCapabilities {
             }
             return .init(
                 function: .init(
-                    name: ModelCapabilityProjection.providerName(
-                        kind: "program", identifier: identifier.rawValue
-                    ),
+                    name: name,
                     description: binding.definition.purpose,
                     input: binding.modelFacingInputSchema.jsonvalue
                 ),
@@ -231,9 +238,7 @@ extension InstalledCapabilities {
             }
             return .init(
                 function: .init(
-                    name: ModelCapabilityProjection.providerName(
-                        kind: "inference", identifier: identifier.rawValue
-                    ),
+                    name: name,
                     description: binding.definition.purpose,
                     input: binding.modelFacingInputSchema.jsonvalue
                 ),
@@ -245,9 +250,7 @@ extension InstalledCapabilities {
             }
             return .init(
                 function: .init(
-                    name: ModelCapabilityProjection.providerName(
-                        kind: "agent", identifier: identifier.rawValue
-                    ),
+                    name: name,
                     description: binding.modelFacingDescription,
                     input: binding.modelFacingInputSchema.jsonvalue
                 ),

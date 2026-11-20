@@ -59,7 +59,7 @@ public actor CapabilityInventory {
     public func contract(
         for reference: CapabilityReference
     ) throws -> ToolDescriptor {
-        let entry = try entries.projectionEntry(for: reference)
+        let entry = try entries.projectionEntry(for: reference, named: reference.providerName)
         return ToolDescriptor(
             name: entry.function.name,
             description: entry.function.description,
