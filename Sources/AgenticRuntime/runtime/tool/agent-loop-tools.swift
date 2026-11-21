@@ -1,5 +1,6 @@
 import Agentic
 import AgenticIO
+import AgenticIntents
 import AgenticStandard
 import Workspace
 import Foundation
@@ -148,8 +149,31 @@ extension AgentLoop {
             catalog: await inventory.catalog(),
             capabilities: capabilityState,
             inspections: await inventory.capabilityInspections(),
-            services: tooling.services.archivingResults().calling(await served.callForm)
+            services: await intentServices(
+                tooling.services.archivingResults().calling(await served.callForm)
+            )
         )
+    }
+
+    /// Where the host installed an intents manager, approved intents run
+    /// through this run's tools and policy.
+    private func intentServices(
+        _ services: ToolServices
+    ) async -> ToolServices {
+        guard let manager = try? services.require(Intents.Manager.self),
+              (try? services.require(Intents.Executor.self)) == nil
+        else {
+            return services
+        }
+        let executor = Intents.Executor(
+            manager: manager,
+            tools: ToolExecutor(
+                registry: await currentTools(),
+                policy: configuration.toolExecutionPolicy,
+                recovery: configuration.recovery
+            )
+        )
+        return (try? services.inserting(executor)) ?? services
     }
 
     func makeDeniedToolResult(

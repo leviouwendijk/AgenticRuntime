@@ -90,6 +90,17 @@ extension AgentLoop {
             declared = visible
             refreshed = true
         }
+        // A capability the session declared earlier may be gone: renamed
+        // (`read` became `io_tool_read`) or uninstalled since. Its definition
+        // can't be sent again, and the cached prefix no longer matches, so the
+        // session declares what is visible now.
+        if !refreshed, let current {
+            let installed = Set(await capabilityState.snapshot().installed.references)
+            if current.contains(where: { !installed.contains($0) }) {
+                declared = visible
+                refreshed = true
+            }
+        }
         checkpoint.declared = declared
         let pending = Run.Event.Advertisement.Pending(
             added: visible.filter { !declared.contains($0) }.map(\.identifier),

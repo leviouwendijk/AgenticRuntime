@@ -319,6 +319,19 @@ extension AgenticProgramRuntimeFlowTesting {
             "the dispatched call is found in the transcript"
         )
 
+        // Declared earlier under a name that is gone (renamed or uninstalled):
+        // the run declares what is visible now instead of failing.
+        let vanished = CapabilityReference.tool(ToolIdentifier(rawValue: "read"))
+        let renamed = try await run(
+            [],
+            visible: AgentCapabilitySet(tools: [echo]),
+            declared: earlier + [vanished],
+            session: "renamed"
+        )
+        try Expect.true(renamed.result.isCompleted, "a session that declared a vanished name still runs")
+        try Expect.true(renamed.tools.first?.contains(echo.rawValue) == true, "the visible echo is declared")
+        try Expect.false(renamed.tools.first?.contains("read") == true, "the vanished name is not")
+
         // Withdrawn: still declared, so the definitions hold, but refused.
         let withdrawnCall = FunctionCall(id: "c-withdrawn", name: echo.rawValue, input: try arguments(UndeclaredEchoValue(value: "hi")))
         let withdrawn = try await run(
