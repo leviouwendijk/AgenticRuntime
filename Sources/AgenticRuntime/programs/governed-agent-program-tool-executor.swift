@@ -111,7 +111,10 @@ public struct GovernedProgramToolExecutor:
                 identifier
             )
 
-        case .needshuman:
+        case .needs_human,
+             .deferred:
+            // Programs can't continue without a step's result yet, so a
+            // deferral suspends them like a pending approval.
             throw ProgramSuspensionSignal(
                 suspension: .approval(
                     pendingApproval,

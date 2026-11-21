@@ -155,7 +155,8 @@ extension AgentLoop {
                     to: &checkpoint
                 )
 
-            case .needshuman:
+            case .needs_human,
+                 .deferred:
                 continue
             }
 

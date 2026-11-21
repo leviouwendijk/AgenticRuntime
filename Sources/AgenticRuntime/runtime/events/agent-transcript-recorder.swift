@@ -94,6 +94,7 @@ private extension AgentTranscriptRecorder {
              .tool_approved,
              .tool_denied,
              .tool_skipped,
+             .tool_deferred,
              .pending_approval,
              .pending_user_input,
              .pending_workspace_access,

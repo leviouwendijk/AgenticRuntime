@@ -21,6 +21,8 @@ public enum AgentToolUseDisposition: String, Sendable, Codable, Hashable, CaseIt
     case skipped_by_user
     case skipped_after_user_input
     case skipped_after_workspace_access
+    /// Stored as an intent for later review instead of running now.
+    case deferred_for_review
     case failed_preflight
     case failed_execution
 }
@@ -98,6 +100,7 @@ public struct AgentToolUseRecord: Sendable, Codable, Hashable, Identifiable {
              .skipped_by_user,
              .skipped_after_user_input,
              .skipped_after_workspace_access,
+             .deferred_for_review,
              .failed_preflight,
              .failed_execution:
             return false

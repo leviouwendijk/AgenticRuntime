@@ -1,4 +1,5 @@
 import Agentic
+import AgenticIntents
 import AgenticSessions
 import IO
 import Foundation
@@ -127,17 +128,10 @@ public struct AgentSessionCatalog: Sendable {
         let artifacts = try await listArtifacts(
             sessionID: sessionID
         )
-#if AGENTIC_ENABLE_DEFERRED_INTENTS
-        let preparedIntents = try await listPreparedIntents(
+        let intents = try await environment.intentManager()?.list(
             sessionID: sessionID,
             includeExpired: true
-        )
-#endif
-#if AGENTIC_ENABLE_DEFERRED_INTENTS
-        let sessionIntentCount = preparedIntents.count
-#else
-        let sessionIntentCount = 0
-#endif
+        ) ?? []
         let branches = try listBranches(
             parentSessionID: sessionID
         )
@@ -147,7 +141,7 @@ public struct AgentSessionCatalog: Sendable {
             transcriptEventCount: transcriptEvents.count,
             approvalEventCount: approvalEvents.count,
             artifactCount: artifacts.count,
-            preparedIntentCount: sessionIntentCount,
+            intentCount: intents.count,
             childBranchCount: branches.count
         )
     }
@@ -280,72 +274,6 @@ public struct AgentSessionCatalog: Sendable {
 
         return record
     }
-
-#if AGENTIC_ENABLE_DEFERRED_INTENTS
-    public func listPreparedIntents(
-        sessionID: String,
-        statuses: [PreparedIntentStatus] = [],
-        operationIdentifier: PreparedOperation.Identifier? = nil,
-        includeExpired: Bool = false,
-        limit: Int? = nil
-    ) async throws -> [PreparedIntent] {
-        _ = try loadSession(
-            sessionID: sessionID
-        )
-
-        guard let manager = preparedIntentManager() else {
-            return []
-        }
-
-        let intents = try await manager.list(
-            statuses: statuses,
-            sessionID: sessionID,
-            operationIdentifier: operationIdentifier,
-            includeExpired: includeExpired
-        )
-
-        guard let limit else {
-            return intents
-        }
-
-        return Array(
-            intents.prefix(
-                max(
-                    0,
-                    limit
-                )
-            )
-        )
-    }
-
-    public func loadPreparedIntent(
-        sessionID: String,
-        id: PreparedIntentIdentifier
-    ) async throws -> PreparedIntent {
-        _ = try loadSession(
-            sessionID: sessionID
-        )
-
-        guard let manager = preparedIntentManager() else {
-            throw PreparedIntentError.intentNotFound(
-                id
-            )
-        }
-
-        let intent = try await manager.get(
-            id
-        )
-
-        guard intent.sessionID == sessionID else {
-            throw PreparedIntentError.intentNotFound(
-                id
-            )
-        }
-
-        return intent
-    }
-#endif // AGENTIC_ENABLE_DEFERRED_INTENTS
-
 }
 
 private extension AgentSessionCatalog {
@@ -371,12 +299,6 @@ private extension AgentSessionCatalog {
         metadata: Sessions.Metadata
     ) -> Sessions.Summary {
         let sessionID = metadata.sessionID
-#if AGENTIC_ENABLE_DEFERRED_INTENTS
-        let sessionIntentCount = preparedIntentCount(sessionID: sessionID)
-#else
-        let sessionIntentCount = 0
-#endif
-
         return .init(
             metadata: metadata,
             hasCheckpoint: exists(
@@ -396,8 +318,7 @@ private extension AgentSessionCatalog {
             ),
             artifactCount: artifactCount(
                 sessionID: sessionID
-            ),
-            preparedIntentCount: sessionIntentCount
+            )
         )
     }
 
@@ -416,19 +337,6 @@ private extension AgentSessionCatalog {
         )
     }
 
-#if AGENTIC_ENABLE_DEFERRED_INTENTS
-    func preparedIntentManager() -> PreparedIntentManager? {
-        guard let preparedIntentsdir = environment.preparedintentsdir() else {
-            return nil
-        }
-
-        return PreparedIntentManager(
-            store: FilePreparedIntentStore(
-                preparedIntentsdir: preparedIntentsdir
-            )
-        )
-    }
-#endif // AGENTIC_ENABLE_DEFERRED_INTENTS
 
     func artifactCount(
         sessionID: String
@@ -457,38 +365,6 @@ private extension AgentSessionCatalog {
         }.count
     }
 
-#if AGENTIC_ENABLE_DEFERRED_INTENTS
-    func preparedIntentCount(
-        sessionID: String
-    ) -> Int {
-        guard let url = environment.preparedintentsdir(),
-              FileSystem.default.exists(url),
-              let urls = try? FileSystem.default.directory.contents(
-                  url,
-                  options: [.skipsHiddenFiles]
-              )
-        else {
-            return 0
-        }
-
-        return urls.filter { url in
-            guard url.pathExtension == "json",
-                  let data = try? Data(
-                    contentsOf: url
-                  ),
-                  !data.isEmpty,
-                  let intent = try? JSONDecoder().decode(
-                    PreparedIntent.self,
-                    from: data
-                  )
-            else {
-                return false
-            }
-
-            return intent.sessionID == sessionID
-        }.count
-    }
-#endif // AGENTIC_ENABLE_DEFERRED_INTENTS
 
     func exists(
         _ url: URL?

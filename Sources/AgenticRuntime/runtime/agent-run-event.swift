@@ -54,6 +54,8 @@ public extension Run.Event {
             case tool_approved
             case tool_denied
             case tool_skipped
+            /// Stored as an intent for later review; the run went on without it.
+            case tool_deferred
             case pending_approval
             case pending_user_input
             case pending_workspace_access

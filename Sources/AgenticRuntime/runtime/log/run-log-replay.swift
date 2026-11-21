@@ -39,7 +39,7 @@ public extension Run.Log {
         static let notices: Set<Run.Event.State.Kind> = [
             .run_failed, .run_limit_reached, .run_limit_stopped, .run_interrupted,
             .compaction, .model_stream_interrupted, .model_stream_failed,
-            .tool_denied, .tool_skipped,
+            .tool_denied, .tool_skipped, .tool_deferred,
             .pending_approval, .pending_user_input, .pending_workspace_access,
             .mutation_staged, .mutation_published, .mutation_withdrawn,
             .operator_command, .workspace_changed, .output_repaired, .input_applied,

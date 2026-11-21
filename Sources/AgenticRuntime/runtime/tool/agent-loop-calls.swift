@@ -239,34 +239,27 @@ extension AgentLoop {
                 try await saveCheckpoint(&checkpoint)
                 return .next
 
-            case .needshuman:
-                suspendToolBatch(
+            case .needs_human:
+                return try await suspendForApproval(
+                    review,
                     for: functionCall,
-                    disposition: .suspended_for_approval,
-                    on: &checkpoint
+                    checkpoint: &checkpoint
                 )
-                checkpoint.suspend(
-                    .approval(
-                        PendingApproval(
-                            functionCall: functionCall,
-                            preflight: preflight,
-                            requirement: review.requirement,
-                            preparedOperation: review.preparedOperation
-                        )
-                    )
+
+            case .deferred:
+                if let deferred = try await deferForReview(
+                    review,
+                    for: functionCall,
+                    checkpoint: &checkpoint
+                ) {
+                    return deferred
+                }
+                return try await suspendForApproval(
+                    review,
+                    for: functionCall,
+                    note: "not deferred: no intent store, or the call prepares no operation",
+                    checkpoint: &checkpoint
                 )
-                try await appendRunEvent(
-                    .init(
-                        kind: .pending_approval,
-                        iteration: checkpoint.state.iteration,
-                        callID: functionCall.id,
-                        toolName: functionCall.name,
-                        summary: preflight.summary
-                    ),
-                    to: &checkpoint
-                )
-                try await saveCheckpoint(&checkpoint)
-                return .stop(try suspendedResult(from: checkpoint))
             }
         }
     }

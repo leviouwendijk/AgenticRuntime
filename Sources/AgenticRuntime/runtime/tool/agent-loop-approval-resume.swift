@@ -178,7 +178,10 @@ extension AgentLoop {
                 from: checkpoint
             )
 
-        case .needshuman:
+        case .needs_human,
+             .deferred:
+            // Deferring happens when a run first reaches the call; an
+            // answered approval stays pending until approved or denied.
             return try suspendedResult(
                 from: checkpoint
             )

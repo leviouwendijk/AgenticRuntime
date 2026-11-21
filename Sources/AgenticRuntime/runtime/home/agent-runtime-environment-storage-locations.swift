@@ -7,7 +7,7 @@ public struct AgentRuntimeStorageLocations: Sendable, Codable, Hashable {
     public let approvalsdir: URL?
     public let artifactsdir: URL?
     public let tasksdir: URL?
-    public let preparedintentsdir: URL?
+    public let intentsdir: URL?
 
     public init(
         sessionsdir: URL? = nil,
@@ -15,14 +15,14 @@ public struct AgentRuntimeStorageLocations: Sendable, Codable, Hashable {
         approvalsdir: URL? = nil,
         artifactsdir: URL? = nil,
         tasksdir: URL? = nil,
-        preparedintentsdir: URL? = nil
+        intentsdir: URL? = nil
     ) {
         self.sessionsdir = sessionsdir
         self.transcriptsdir = transcriptsdir
         self.approvalsdir = approvalsdir
         self.artifactsdir = artifactsdir
         self.tasksdir = tasksdir
-        self.preparedintentsdir = preparedintentsdir
+        self.intentsdir = intentsdir
     }
 }
 
@@ -38,7 +38,7 @@ public extension AgentRuntimeEnvironment {
             approvalsdir: layout.approvalsdir,
             artifactsdir: layout.artifactsdir,
             tasksdir: layout.tasksdir,
-            preparedintentsdir: layout.preparedintentsdir
+            intentsdir: layout.intentsdir
         )
     }
 
@@ -62,8 +62,8 @@ public extension AgentRuntimeEnvironment {
         storageLocations().tasksdir
     }
 
-    func preparedintentsdir() -> URL? {
-        storageLocations().preparedintentsdir
+    func intentsdir() -> URL? {
+        storageLocations().intentsdir
     }
 
     func sessiondir(

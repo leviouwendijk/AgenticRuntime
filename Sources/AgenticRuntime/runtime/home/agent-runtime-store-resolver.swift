@@ -1,4 +1,5 @@
 import Agentic
+import AgenticIntents
 import Foundation
 import Path
 
@@ -44,12 +45,7 @@ public struct AgentRuntimeStoreResolver: Sendable {
             sessionID: sessionID
         )
 
-#if AGENTIC_ENABLE_DEFERRED_INTENTS
-        let preparedIntentStore = try preparedIntentStore()
-#else
-        // Deferred queue intentionally not installed. Conversation checkpoints remain enabled.
-        let preparedIntentStore: (any PreparedIntentStore)? = nil
-#endif
+        let intents = environment.intentManager()
 
         let eventSinks =
             try logEventSinks(
@@ -68,13 +64,13 @@ public struct AgentRuntimeStoreResolver: Sendable {
             sessionMetadataStore: sessionMetadataStore,
             approvalEventStore: approvalEventStore,
             artifactStore: artifactStore,
-            preparedIntentStore: preparedIntentStore,
+            intents: intents,
             eventSinks: eventSinks,
             sessionsdir: locations.sessionsdir,
             transcriptsdir: locations.transcriptsdir,
             approvalsdir: locations.approvalsdir,
             artifactsdir: locations.artifactsdir,
-            preparedintentsdir: locations.preparedintentsdir
+            intentsdir: locations.intentsdir
         )
     }
 }
@@ -157,22 +153,6 @@ private extension AgentRuntimeStoreResolver {
             artifactdir: artifactdir
         )
     }
-
-#if AGENTIC_ENABLE_DEFERRED_INTENTS
-    func preparedIntentStore() throws -> (any PreparedIntentStore)? {
-        guard let preparedIntentsdir = environment.preparedintentsdir() else {
-            return nil
-        }
-
-        try PathCreation.directory(
-            at: preparedIntentsdir
-        )
-
-        return FilePreparedIntentStore(
-            preparedIntentsdir: preparedIntentsdir
-        )
-    }
-#endif // AGENTIC_ENABLE_DEFERRED_INTENTS
 
     func approvalEventSinks(
         sessionID: String,

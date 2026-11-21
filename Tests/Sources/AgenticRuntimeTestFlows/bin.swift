@@ -104,6 +104,18 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting.runCompactionPayback()
         },
         TestFlow(
+            "deferred-call",
+            tags: ["runtime", "approval", "intents"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runDeferredCall()
+        },
+        TestFlow(
+            "deferral-fallback",
+            tags: ["runtime", "approval", "intents"]
+        ) {
+            try await AgenticProgramRuntimeFlowTesting.runDeferralFallback()
+        },
+        TestFlow(
             "result-budget",
             tags: ["runtime", "context", "log", "results"]
         ) {
@@ -557,21 +569,6 @@ enum AgenticProgramRuntimeFlowSuite: TestFlowRegistry {
             try await AgenticProgramRuntimeFlowTesting
                 .runToolClassificationPropagation()
         },
-/* FROZEN: independent durable prepared-intent queue is not required by the conversation or ToolPlan bridge.
-        TestFlow(
-            "prepared-intent-runtime-execution",
-            tags: [
-                "agentic-runtime",
-                "interaction",
-                "prepared-operation",
-                "execution",
-                "registry",
-            ]
-        ) {
-            try await AgenticProgramRuntimeFlowTesting
-                .runPreparedIntentRuntimeExecution()
-        },
-*/
         TestFlow(
             "workspace-access-lease-activation",
             tags: [

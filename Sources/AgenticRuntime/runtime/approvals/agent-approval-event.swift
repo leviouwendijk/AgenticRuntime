@@ -19,7 +19,7 @@ public extension Sessions.ApprovalEvent {
 
         case .pending_approval:
             kind = .pending_approval
-            decision = .needshuman
+            decision = .needs_human
 
         case .tool_approved:
             kind = .approval_decision
@@ -32,6 +32,10 @@ public extension Sessions.ApprovalEvent {
         case .tool_skipped:
             kind = .approval_decision
             decision = .skipped
+
+        case .tool_deferred:
+            kind = .approval_decision
+            decision = .deferred
 
         case .assistant_response,
              .run_failed,

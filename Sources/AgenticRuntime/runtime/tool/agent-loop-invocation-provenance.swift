@@ -89,7 +89,7 @@ extension AgentLoop {
         guard let call_id = event.callID,
               let name = event.toolName else { return }
         switch event.kind {
-        case .tool_preflight, .tool_approved, .tool_denied, .tool_skipped,
+        case .tool_preflight, .tool_approved, .tool_denied, .tool_skipped, .tool_deferred,
              .pending_approval, .pending_user_input, .pending_workspace_access,
              .tool_result, .tool_error:
             try begin_tool_invocation(call_id: call_id, tool_name: name, in: &checkpoint)
@@ -102,7 +102,7 @@ extension AgentLoop {
             try finish_invocation(id: id, state: .completed, to: &checkpoint)
         case .tool_error, .tool_denied:
             try finish_invocation(id: id, state: .failed, to: &checkpoint)
-        case .tool_skipped:
+        case .tool_skipped, .tool_deferred:
             try finish_invocation(id: id, state: .interrupted, to: &checkpoint)
         case .pending_approval, .pending_user_input, .pending_workspace_access:
             try finish_invocation(id: id, state: .suspended, to: &checkpoint)
