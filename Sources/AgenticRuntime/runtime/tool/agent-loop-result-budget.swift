@@ -4,13 +4,13 @@ import Tokens
 
 extension AgentLoop {
     /// The response as the model reads it: whole, or, past the context
-    /// policy's result budget, its beginning and where `read_result`
+    /// policy's result budget, its beginning and where `standard_tool_read_result`
     /// continues. The full response is already in the session log, so
     /// nothing is lost, and the shortened form never changes afterwards,
     /// so the cached prefix stays valid.
     ///
-    /// Applies only when the session is logged and `read_result` is in view
-    /// (the `result_reader` grant); errors and `read_result`'s own pages are
+    /// Applies only when the session is logged and `standard_tool_read_result` is in view
+    /// (the `result_reader` grant); errors and `standard_tool_read_result`'s own pages are
     /// always whole.
     func budgeted(
         _ result: FunctionCall.Response
@@ -52,7 +52,7 @@ extension AgentLoop {
 
         let total = estimate(result.modelText)
         let note = "[Showing lines 1–\(shown) of \(lines.count) (≈\(used) of ≈\(total) tokens). "
-            + "The full result is kept: read_result {\"call\": \"\(result.call.id)\", \"offset\": \(shown + 1)} continues.]"
+            + "The full result is kept: standard_tool_read_result {\"call\": \"\(result.call.id)\", \"offset\": \(shown + 1)} continues.]"
         return result.rendered(
             lines[..<shown].joined(separator: "\n") + "\n" + note
         )

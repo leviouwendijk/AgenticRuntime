@@ -81,7 +81,7 @@ public extension AgentCapabilitySet {
     /// application installs them: reading the owner's context, remembering
     /// and forgetting memories (only below memories/), describing handles
     /// and asking the owner for one. Writing curated context stays with
-    /// agents that declare `context_save`.
+    /// agents that declare `context_tool_save`.
     static let ambient = AgentCapabilitySet(
         tools: [
             Context.Tools.Index.identifier,

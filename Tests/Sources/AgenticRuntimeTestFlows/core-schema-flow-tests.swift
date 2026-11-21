@@ -25,7 +25,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let fullSize = try size(full)
         let coreSize = try size(core)
         try Expect.true(coreSize * 4 < fullSize * 3, "Core schema drops at least a quarter")
-        try Expect.true(core.description.contains("inspect_capability"), "Core schema says where the rest is")
+        try Expect.true(core.description.contains("standard_tool_inspect_capability"), "Core schema says where the rest is")
         try Expect.equal(core.core, core, "Projection is idempotent")
 
         let coreText = String(decoding: try JSONEncoder().encode(core.input), as: UTF8.self)

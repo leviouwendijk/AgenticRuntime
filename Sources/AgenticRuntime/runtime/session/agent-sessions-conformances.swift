@@ -92,7 +92,7 @@ extension AgentSessionCatalog: Sessions.CatalogReading {
     }
 }
 
-/// Fed by run state as runs progress, so `read_session_history` sees every
+/// Fed by run state as runs progress, so `sessions_tool_read_history` sees every
 /// session's canonical messages.
 extension Sessions.HistoryStore: AgentRunStateSink {
     public func publish(

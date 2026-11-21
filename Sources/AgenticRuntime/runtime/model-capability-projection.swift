@@ -70,7 +70,7 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
     /// Every other capability this request can call, by provider name: not
     /// declared, so the tool definitions and the provider's cached prefix
     /// stay as they are, and called by that name or through
-    /// `call_capability`. Names only; the contract is `inspect_capability`'s.
+    /// `standard_tool_call_capability`. Names only; the contract is `standard_tool_inspect_capability`'s.
     public let callable: [String: CapabilityReference]
     private let targetsByName: [String: CapabilityReference]
 
@@ -112,7 +112,7 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
     /// The provider name a dispatcher call means: by capability identifier
     /// or provider function name, else through `CapabilityReference.Raw`
     /// (aliases, `domain.name`, a bare name narrowed by `domain`). Nil when
-    /// that does not name exactly one; `call_capability` then says why.
+    /// that does not name exactly one; `standard_tool_call_capability` then says why.
     func name(
         dispatchedAs identifier: String,
         domain: String? = nil,
@@ -142,7 +142,7 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
         return nil
     }
 
-    /// A `call_capability` call as a call of the capability it names, under
+    /// A `standard_tool_call_capability` call as a call of the capability it names, under
     /// the same call id, so authorization, approval, preflight and the
     /// record treat it as that capability. Unchanged when it names nothing
     /// this request can call; the dispatcher tool then says why.

@@ -182,7 +182,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.false(byName.tools[0].contains(echo.rawValue), "the echo is not declared")
         try Expect.false(byName.visible.tools.contains(echo), "inspection reveals nothing")
         let inspected = try Expect.notNil(response("c-inspect", in: byName.result), "the contract was returned")
-        try Expect.true(inspected.modelText.contains("call_capability"), "and says to call it through the dispatcher")
+        try Expect.true(inspected.modelText.contains("standard_tool_call_capability"), "and says to call it through the dispatcher")
         try Expect.false(
             byName.result.events.contains { ($0.capabilityChanges ?? []).contains { $0.source == .tool_reveal } },
             "no reveal is recorded"
@@ -235,7 +235,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let nudge = silent.result.state.messages.last { $0.role == .user }?.content.text ?? ""
         try Expect.true(
-            nudge.contains("Your last reply was empty") && nudge.contains("call_capability"),
+            nudge.contains("Your last reply was empty") && nudge.contains("standard_tool_call_capability"),
             "the run says how to reach it: \(nudge)"
         )
         try Expect.false(
@@ -262,7 +262,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let refused = try await run([unknown], session: "unknown")
         let refusal = try Expect.notNil(response("c-unknown", in: refused.result), "the dispatch was answered")
-        try Expect.true(refusal.isError && refusal.modelText.contains("inspect_capability"), "with how to find it: \(refusal.modelText)")
+        try Expect.true(refusal.isError && refusal.modelText.contains("standard_tool_inspect_capability"), "with how to find it: \(refusal.modelText)")
 
         // A later turn after the operator selected the echo: the definitions
         // stay as the earlier run declared them, and the echo is pending.
@@ -299,7 +299,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let nowhereAnswer = try Expect.notNil(response("c-nowhere", in: taught.result), "the unknown name was answered")
         try Expect.true(
-            nowhereAnswer.isError && nowhereAnswer.modelText.contains("search_capabilities"),
+            nowhereAnswer.isError && nowhereAnswer.modelText.contains("standard_tool_search_capabilities"),
             "with how to find a capability: \(nowhereAnswer.modelText)"
         )
         // A declared tool's misfit gets no contract: its definition has it.

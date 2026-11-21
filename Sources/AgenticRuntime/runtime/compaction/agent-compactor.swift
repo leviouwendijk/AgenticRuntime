@@ -13,7 +13,7 @@ public struct AgentCompactor: Sendable {
     /// Only the request projection is compacted. Checkpoint history is canonical.
     /// Source messages remain accessible in their original order and with IDs.
     /// When `sessionID` is supplied, the summary names the exact compacted
-    /// message range so the agent can read it back via read_session_history.
+    /// message range so the agent can read it back via sessions_tool_read_history.
     public func project(
         messages: [Message],
         iteration: Int,
@@ -143,7 +143,7 @@ private extension AgentCompactor {
            let last = messages.last?.id {
             lines.append("")
             lines.append(
-                "These messages are retained in full. Read them with read_session_history(sessionID: \"\(sessionID)\", fromMessageID: \"\(first)\", throughMessageID: \"\(last)\")."
+                "These messages are retained in full. Read them with sessions_tool_read_history(sessionID: \"\(sessionID)\", fromMessageID: \"\(first)\", throughMessageID: \"\(last)\")."
             )
         }
 

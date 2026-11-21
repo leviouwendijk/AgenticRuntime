@@ -2,7 +2,7 @@ import Agentic
 import Schema
 
 /// How a model calls an Agent: one definition shared by the request
-/// projection and by `inspect_capability`, so the two cannot drift apart.
+/// projection and by `standard_tool_inspect_capability`, so the two cannot drift apart.
 extension AgentBinding {
     /// The Agent's input, wrapped with the delegation envelope.
     var modelFacingInputSchema: JSONSchema {

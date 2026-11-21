@@ -461,7 +461,7 @@ extension AgenticProgramRuntimeFlowTesting {
                 messages: [
                     Message(
                         role: .user,
-                        text: "Exercise malformed clarify_with_user input recovery."
+                        text: "Exercise malformed standard_tool_clarify_with_user input recovery."
                     ),
                 ]
             ),

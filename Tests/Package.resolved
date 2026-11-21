@@ -7,7 +7,7 @@
       "location" : "https://github.com/leviouwendijk/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "febfe38053fd6c2b5b3c8f7c6cc58584b6e84c9f"
+        "revision" : "6afecce4f7517cdfc19bd3f965fee232a706e996"
       }
     },
     {
@@ -16,7 +16,7 @@
       "location" : "https://github.com/leviouwendijk/AgenticIO.git",
       "state" : {
         "branch" : "master",
-        "revision" : "e9687ff9be88afcba9ba19cce719cc65d6789258"
+        "revision" : "acc1428e88bbe8e65b2c459cf65f39a70bc2709b"
       }
     },
     {
@@ -61,7 +61,7 @@
       "location" : "https://github.com/leviouwendijk/Concatenation.git",
       "state" : {
         "branch" : "master",
-        "revision" : "58bccd02e5b4b0b28be65b7360cc202e5f57f45d"
+        "revision" : "e2eabdd376e3e44ebcce4e8e0afed02d223986d3"
       }
     },
     {
@@ -169,7 +169,7 @@
       "location" : "https://github.com/leviouwendijk/IO.git",
       "state" : {
         "branch" : "master",
-        "revision" : "e7b8b41721cad2458d8bbd01f8d4a5f38dcd44ef"
+        "revision" : "a6f284a47e31a3d904f97b825763657135abbfa1"
       }
     },
     {
@@ -196,7 +196,7 @@
       "location" : "https://github.com/leviouwendijk/Matching.git",
       "state" : {
         "branch" : "master",
-        "revision" : "21f42b5f67c76dfb48d0d6a73e9171dad7c09a96"
+        "revision" : "3db5dd4af391017c3593642b1def87112168516f"
       }
     },
     {
@@ -340,7 +340,7 @@
       "location" : "https://github.com/leviouwendijk/Search.git",
       "state" : {
         "branch" : "master",
-        "revision" : "250c0d21a67ae5fdd42719592ca77121c2dd9743"
+        "revision" : "accb67567bd4586f924b68bc4dc870e0543ee370"
       }
     },
     {
@@ -358,7 +358,7 @@
       "location" : "https://github.com/leviouwendijk/Sensitivity.git",
       "state" : {
         "branch" : "master",
-        "revision" : "67a91fbbdb0eeed41cbe9cde6ab0ca7874ef5837"
+        "revision" : "f68fea54e1fa6edcb5af82bbc77d7d1f23de96ca"
       }
     },
     {
@@ -448,7 +448,7 @@
       "location" : "https://github.com/leviouwendijk/Workspace.git",
       "state" : {
         "branch" : "master",
-        "revision" : "1e24058fbbf774d8d98577ae5d01a3b332a62586"
+        "revision" : "9d74c0c634d88ae5bf93b6f4415532394f89f0cd"
       }
     },
     {
@@ -457,7 +457,7 @@
       "location" : "https://github.com/leviouwendijk/Writers.git",
       "state" : {
         "branch" : "master",
-        "revision" : "0b035b4ce663740e1b7cf08ed120f86dff51f5ad"
+        "revision" : "1f36c58525c798b1aecac4b4546129605716bfda"
       }
     }
   ],

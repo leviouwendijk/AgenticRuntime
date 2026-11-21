@@ -9,8 +9,8 @@ import Schema
 import TestFlows
 
 /// A large result reaches the model as its beginning plus where
-/// `read_result` continues; the log keeps it whole, `read_result` pages
-/// through it and `search_results` finds a line in it.
+/// `standard_tool_read_result` continues; the log keeps it whole, `standard_tool_read_result` pages
+/// through it and `standard_tool_search_results` finds a line in it.
 extension AgenticProgramRuntimeFlowTesting {
     static func runResultBudget() async throws -> [TestDiagnostic] {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -86,13 +86,13 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.true(shown.modelText.count < full.count / 4, "The model reads a shortened listing")
         try Expect.true(shown.modelText.hasPrefix("line 1\nline 2\n"), "It starts at the beginning")
         try Expect.true(
-            shown.modelText.contains(#"read_result {"call": "c-list", "offset": "#),
-            "It says where read_result continues"
+            shown.modelText.contains(#"standard_tool_read_result {"call": "c-list", "offset": "#),
+            "It says where standard_tool_read_result continues"
         )
         try Expect.equal(shown.output, .int(400), "The structured output is untouched")
         try Expect.true(
             invocations[0].request.tools.contains { $0.name == Standard.Tools.ReadResult.identifier.rawValue },
-            "read_result is in the opening set when results can be shortened"
+            "standard_tool_read_result is in the opening set when results can be shortened"
         )
         try Expect.equal(
             invocations[0].request.tools.map(\.name),
@@ -103,8 +103,8 @@ extension AgenticProgramRuntimeFlowTesting {
         let paged = try Expect.notNil(result(page.id, in: invocations[2]), "The model got the page")
         try Expect.equal(
             paged.modelText,
-            "line 101\nline 102\nline 103\n[Lines 101–103 of 400. read_result {\"call\": \"c-list\", \"offset\": 104} continues.]",
-            "read_result pages through the full result"
+            "line 101\nline 102\nline 103\n[Lines 101–103 of 400. standard_tool_read_result {\"call\": \"c-list\", \"offset\": 104} continues.]",
+            "standard_tool_read_result pages through the full result"
         )
         try Expect.equal(
             try await log.response(call: listing.id)?.modelText,
@@ -115,8 +115,8 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             found.modelText,
             "c-list \(BudgetListingTool.definition.identifier.rawValue) · text\n  250: line 250\n"
-                + "read_result {\"call\": \"c-list\", \"segment\": \"text\", \"offset\": 245} reads around a hit.",
-            "search_results finds a line the model was never shown, and not in read_result's own page"
+                + "standard_tool_read_result {\"call\": \"c-list\", \"segment\": \"text\", \"offset\": 245} reads around a hit.",
+            "standard_tool_search_results finds a line the model was never shown, and not in standard_tool_read_result's own page"
         )
         try Expect.equal(
             try await log.responses(limit: 10).map(\.call.id),
