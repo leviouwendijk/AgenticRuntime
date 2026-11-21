@@ -77,10 +77,6 @@ let package = Package(
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/Concatenation.git",
-            branch: "master"
-        ),
-        .package(
             url: "https://github.com/leviouwendijk/Selection.git",
             branch: "master"
         ),
@@ -180,10 +176,6 @@ let package = Package(
                 .product(
                     name: "PathParsing",
                     package: "Path"
-                ),
-                .product(
-                    name: "Concatenation",
-                    package: "Concatenation"
                 ),
                 .product(
                     name: "Selection",
