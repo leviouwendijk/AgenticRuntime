@@ -7,7 +7,7 @@ import TestFlows
 /// on disk, so it reports them instead of retrying or checking the disk.
 extension AgenticProgramRuntimeFlowTesting {
     static func runDelegatedStagedNote() throws -> [TestDiagnostic] {
-        let mutate = FunctionCall(id: "m1", name: "mutate_files", input: .object([:]))
+        let mutate = FunctionCall(id: "m1", name: "mutate", input: .object([:]))
         let staged = AgentToolUseRecord(
             functionCall: mutate,
             disposition: .executed,

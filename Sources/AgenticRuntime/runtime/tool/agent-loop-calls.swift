@@ -420,7 +420,7 @@ extension AgentLoop {
             )
         }
 
-        guard tool == SystemIO.Tools.RequestPathGrant.identifier else {
+        guard tool == SystemIO.Tools.RequestAccess.identifier else {
             return nil
         }
 

@@ -16,7 +16,7 @@ extension AgenticProgramRuntimeFlowTesting {
         var tool = AgentExecutionInvocation(
             id: AgentExecutionInvocation.tool_id(session_id: session, call_id: "call-1"),
             parent_id: model.id, kind: .tool,
-            target_id: "mutate_files", source_record_id: "call-1"
+            target_id: "mutate", source_record_id: "call-1"
         )
         tool.transition(to: .suspended)
         let persisted = try JSONEncoder().encode([root, model, tool])

@@ -9,13 +9,13 @@ import TestFlows
 extension AgenticProgramRuntimeFlowTesting {
     static func runCoreSchemas() async throws -> [TestDiagnostic] {
         var registry = ToolRegistry()
-        try registry.register(SystemIO.Tools.MutateFiles())
+        try registry.register(SystemIO.Tools.Mutate())
         try registry.register(Standard.Tools.InspectCapability())
         let full = try Expect.notNil(
             try registry.modelFacingDefinitions(
-                for: [SystemIO.Tools.MutateFiles.identifier]
+                for: [SystemIO.Tools.Mutate.identifier]
             ).first,
-            "mutate_files has a model-facing schema"
+            "mutate has a model-facing schema"
         )
         let core = full.core
 
@@ -41,8 +41,8 @@ extension AgenticProgramRuntimeFlowTesting {
 
         // Inspection returns the full contract and changes nothing.
         let state = AgentCapabilityState(
-            installed: .init(tools: [SystemIO.Tools.MutateFiles.identifier, Standard.Tools.InspectCapability.identifier]),
-            available: .init(tools: [SystemIO.Tools.MutateFiles.identifier, Standard.Tools.InspectCapability.identifier]),
+            installed: .init(tools: [SystemIO.Tools.Mutate.identifier, Standard.Tools.InspectCapability.identifier]),
+            available: .init(tools: [SystemIO.Tools.Mutate.identifier, Standard.Tools.InspectCapability.identifier]),
             visible: .init(tools: [Standard.Tools.InspectCapability.identifier])
         )
         let installed = InstalledCapabilities(tools: registry)
@@ -52,12 +52,12 @@ extension AgenticProgramRuntimeFlowTesting {
             services: ToolServices()
         )
         let inspected = try await Standard.Tools.InspectCapability().call(
-            .init(kind: .tool, identifier: SystemIO.Tools.MutateFiles.identifier.rawValue),
+            .init(kind: .tool, identifier: SystemIO.Tools.Mutate.identifier.rawValue),
             in: context
         )
         try Expect.false(inspected.wasVisible, "The inspected capability is not among the definitions")
         try Expect.false(
-            await state.snapshot().visible.tools.contains(SystemIO.Tools.MutateFiles.identifier),
+            await state.snapshot().visible.tools.contains(SystemIO.Tools.Mutate.identifier),
             "Inspection does not reveal it"
         )
         let inspectedText = String(decoding: try JSONEncoder().encode(inspected.input), as: UTF8.self)

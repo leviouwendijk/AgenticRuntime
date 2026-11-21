@@ -36,7 +36,7 @@ public struct ExecutePreparedIntentTool: Tool {
     public typealias Input = ExecutePreparedIntentToolInput
     public typealias Output = ExecutePreparedIntentToolOutput
 
-    public static let identifier: ToolIdentifier = .execute_prepared_intent
+    public static let identifier: ToolIdentifier = .init(rawValue: "execute_prepared_intent")
     public static let description = "Execute an approved prepared intent through its stored versioned prepared operation."
     public static let risk: ActionRisk = .boundedmutate
 

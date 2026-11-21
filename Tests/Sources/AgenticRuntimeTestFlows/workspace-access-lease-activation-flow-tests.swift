@@ -240,7 +240,7 @@ extension AgenticProgramRuntimeFlowTesting {
             turnRequest,
             metadata: [
                 "callID": "fixture-request",
-                "toolName": "request_path_grant"
+                "toolName": "request_access"
             ]
         )
         let interaction = Run.Interaction.Request(

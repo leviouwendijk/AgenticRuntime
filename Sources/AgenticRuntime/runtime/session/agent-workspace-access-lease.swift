@@ -295,7 +295,7 @@ public enum WorkspaceAccessOrigin:
     Codable,
     Hashable
 {
-    /// The model asked through `request_path_grant` and the operator
+    /// The model asked through `request_access` and the operator
     /// approved it.
     case request
     /// The operator added it directly, e.g. `:path add`.

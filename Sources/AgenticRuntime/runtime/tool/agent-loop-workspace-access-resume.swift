@@ -33,7 +33,7 @@ extension AgentLoop {
         }
 
         let toolName = suspension.metadata["toolName"]
-            ?? SystemIO.Tools.RequestPathGrant.identifier.rawValue
+            ?? SystemIO.Tools.RequestAccess.identifier.rawValue
         var payloadMetadata = suspension.metadata
 
         payloadMetadata.merge(
