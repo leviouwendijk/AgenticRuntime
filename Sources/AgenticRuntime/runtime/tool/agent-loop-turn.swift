@@ -168,10 +168,11 @@ extension AgentLoop {
             guard configuration.contextMode == .dynamic else { return nil }
             return .init(tools: ContextWindow.Compactor.requiredTools)
         case .result_reader:
-            guard configuration.contextPolicy.resultBudget != nil,
-                  (try? tooling.services.require(Run.Log.self)) != nil
-            else { return nil }
-            return .init(tools: [Standard.Tools.ReadResult.identifier])
+            guard (try? tooling.services.require(Run.Log.self)) != nil else { return nil }
+            return .init(tools: [
+                Standard.Tools.ReadResult.identifier,
+                Standard.Tools.SearchResults.identifier,
+            ])
         case .friction_notes:
             return .init(tools: [Harness.Tools.NoteFriction.identifier])
         }

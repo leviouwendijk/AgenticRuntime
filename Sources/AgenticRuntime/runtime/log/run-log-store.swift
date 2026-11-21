@@ -194,6 +194,23 @@ public extension Run.Log {
         return nil
     }
 
+    /// The session's latest `limit` responses, newest first; a call answered
+    /// more than once counts once, with its latest response.
+    func responses(
+        limit: Int
+    ) throws -> [FunctionCall.Response] {
+        var seen: Set<String> = []
+        var responses: [FunctionCall.Response] = []
+        for entry in try read().entries.reversed() where responses.count < limit {
+            guard case .response(let response) = entry.body,
+                  seen.insert(response.call.id).inserted else {
+                continue
+            }
+            responses.append(try payload(response.digest, as: FunctionCall.Response.self))
+        }
+        return responses
+    }
+
     /// The latest successful response of a tool.
     func response(
         tool: String

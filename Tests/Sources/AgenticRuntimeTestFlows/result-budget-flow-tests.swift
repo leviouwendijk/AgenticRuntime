@@ -9,8 +9,8 @@ import Schema
 import TestFlows
 
 /// A large result reaches the model as its beginning plus where
-/// `read_result` continues; the log keeps it whole and `read_result` pages
-/// through it.
+/// `read_result` continues; the log keeps it whole, `read_result` pages
+/// through it and `search_results` finds a line in it.
 extension AgenticProgramRuntimeFlowTesting {
     static func runResultBudget() async throws -> [TestDiagnostic] {
         let root = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -32,16 +32,28 @@ extension AgenticProgramRuntimeFlowTesting {
                 "limit": .int(3),
             ])])
         )
+        let search = FunctionCall(
+            id: "c-search",
+            name: Standard.Tools.SearchResults.identifier.rawValue,
+            input: .object(["arguments": .object([
+                "query": .string("line 250"),
+            ])])
+        )
         let state = BudgetModelState()
         let registry = try ToolRegistry {
             BudgetListingTool()
             Standard.Tools.ReadResult()
+            Standard.Tools.SearchResults()
         }
-        let tools = [BudgetListingTool.definition.identifier, Standard.Tools.ReadResult.identifier]
+        let tools = [
+            BudgetListingTool.definition.identifier,
+            Standard.Tools.ReadResult.identifier,
+            Standard.Tools.SearchResults.identifier,
+        ]
         let executor = AgentExecutor(
-            model: .init(invoker: BudgetModelInvoker(state: state, calls: [listing, page])),
+            model: .init(invoker: BudgetModelInvoker(state: state, calls: [listing, page, search])),
             configuration: .init(
-                runLimits: .init(iterations: 4),
+                runLimits: .init(iterations: 5),
                 contextPolicy: .init(resultBudget: 300)
             ),
             tooling: .init(
@@ -60,7 +72,7 @@ extension AgenticProgramRuntimeFlowTesting {
             sessionID: "budget"
         )
         let invocations = await state.snapshot()
-        try Expect.equal(invocations.count, 3, "List, page, answer")
+        try Expect.equal(invocations.count, 4, "List, page, search, answer")
 
         func result(_ id: String, in invocation: AgentModelInvocation) -> FunctionCall.Response? {
             invocation.request.messages.flatMap(\.content.blocks).lazy.compactMap { block in
@@ -98,6 +110,18 @@ extension AgenticProgramRuntimeFlowTesting {
             try await log.response(call: listing.id)?.modelText,
             full,
             "The log keeps the full result"
+        )
+        let found = try Expect.notNil(result(search.id, in: invocations[3]), "The model got the search")
+        try Expect.equal(
+            found.modelText,
+            "c-list \(BudgetListingTool.definition.identifier.rawValue) · text\n  250: line 250\n"
+                + "read_result {\"call\": \"c-list\", \"segment\": \"text\", \"offset\": 245} reads around a hit.",
+            "search_results finds a line the model was never shown, and not in read_result's own page"
+        )
+        try Expect.equal(
+            try await log.responses(limit: 10).map(\.call.id),
+            [search.id, page.id, listing.id],
+            "The log lists responses newest first"
         )
         return [.field("shown_characters", "\(shown.modelText.count) of \(full.count)")]
     }

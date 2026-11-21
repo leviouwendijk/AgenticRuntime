@@ -255,7 +255,8 @@ extension ToolServices {
         // Full results are read back from the session log.
         return (try? inserting(ResultArchive(
             { call in try await log.response(call: call) },
-            latest: { tool in try await log.response(tool: tool) }
+            latest: { tool in try await log.response(tool: tool) },
+            recent: { limit in try await log.responses(limit: limit) }
         ))) ?? self
     }
 }
