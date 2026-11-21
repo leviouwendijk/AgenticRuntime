@@ -134,6 +134,8 @@ extension AgenticProgramRuntimeFlowTesting {
             Context.Tools.Index.identifier,
             Context.Tools.Read.identifier,
             Context.Tools.Search.identifier,
+            Context.Tools.Remember.identifier,
+            Context.Tools.Forget.identifier,
         ].map(\.rawValue)
 
         func opening(
@@ -163,7 +165,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(
             with.filter { $0 == declared || reading.contains($0) }.sorted(),
             ([declared] + reading).sorted(),
-            "Context installed: the reading tools are in the opening beside what the agent declares"
+            "Context installed: the reading and memory tools are in the opening beside what the agent declares"
         )
         try Expect.false(
             with.contains(Context.Tools.Save.identifier.rawValue),
@@ -207,11 +209,27 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(context.message.role, .system, "as a system message")
         let text = context.message.content.text
         try Expect.true(text.contains("3 context entries") && text.contains("Alex & Sam"), "awareness and always bodies: \(text)")
+        try Expect.true(text.contains("REMEMBERING") && text.contains(Context.Tools.Remember.identifier.rawValue), "and how to remember")
 
         let summary = services.contextSummary
         try Expect.equal(summary?.entries, 3, "diagnostics count entries")
         try Expect.equal(summary?.always, ["business.voice"], "and the always entries")
         try Expect.true((summary?.alwaysTokens ?? 0) > 0, "with their size")
+        try Expect.equal(summary?.memories, 0, "no memories yet")
+
+        _ = try store.save("""
+            import Context;
+
+            let note: Entry = .{
+                .title = "Note",
+                .summary = "Learned.",
+                .updated = "2026-11-20",
+                .source = "session T, 2026-11-20",
+                .body = "The fact.",
+            };
+            """, to: "memories/sbm.frame")
+        try Expect.equal(services.contextSummary?.memories, 1, "diagnostics count memories")
+        try Expect.equal(services.contextSummary?.oldestMemory, "2026-11-20", "and the oldest")
         return []
     }
 }

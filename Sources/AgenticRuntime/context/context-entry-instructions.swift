@@ -12,6 +12,10 @@ public struct ContextEntrySummary: Sendable, Hashable {
     public let always: [String]
     /// Estimated size of the message they make.
     public let alwaysTokens: Int
+    /// Entries below memories/: what agents learned, unreviewed.
+    public let memories: Int
+    /// The oldest memory's `updated`, to see what has gone unreviewed.
+    public let oldestMemory: String?
     public let problems: [String]
 }
 
@@ -59,11 +63,14 @@ public extension ToolServices {
 
     var contextSummary: ContextEntrySummary? {
         guard let library = contextStore?.library() else { return nil }
+        let memories = library.items.filter { Context.isMemoryFile($0.file) }
         return .init(
             directory: library.directory.path,
             entries: library.items.count,
             always: library.always.map(\.id),
             alwaysTokens: library.instructions.map { TokenEstimator.estimate($0).estimatedTokens } ?? 0,
+            memories: memories.count,
+            oldestMemory: memories.compactMap(\.entry.updated).min(),
             problems: library.problems
         )
     }
@@ -71,14 +78,17 @@ public extension ToolServices {
 
 public extension AgentCapabilitySet {
     /// Granted to every agent, beyond what it declares, when the
-    /// application installs them: reading the owner's context, describing
-    /// handles and asking the owner for one. Writing context stays with
+    /// application installs them: reading the owner's context, remembering
+    /// and forgetting memories (only below memories/), describing handles
+    /// and asking the owner for one. Writing curated context stays with
     /// agents that declare `context_save`.
     static let ambient = AgentCapabilitySet(
         tools: [
             Context.Tools.Index.identifier,
             Context.Tools.Read.identifier,
             Context.Tools.Search.identifier,
+            Context.Tools.Remember.identifier,
+            Context.Tools.Forget.identifier,
             Privacy.Tools.Handles.identifier,
             Privacy.Tools.Grant.identifier,
         ]
