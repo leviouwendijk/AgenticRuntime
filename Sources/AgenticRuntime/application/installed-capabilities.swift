@@ -298,6 +298,9 @@ public struct InstalledCapabilities: Sendable {
                 throw CapabilityInventoryError.notCapabilityInstallation
             }
         }
+        // Domain names and aliases, and computed identifiers, are unique
+        // across everything installed; a macro sees one declaration at a time.
+        try candidate.catalog.validateNames()
         self = candidate
     }
 }

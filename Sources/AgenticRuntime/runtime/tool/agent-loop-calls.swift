@@ -86,7 +86,8 @@ extension AgentLoop {
     ) async throws -> CallOutcome {
         // A capability outside the definitions may arrive through
         // `call_capability`; from here on it is that capability.
-        let functionCall = checkpoint.lastAdvertisedCapabilities?.dispatched(functionCall) ?? functionCall
+        let domains = await inventory.catalog().domains
+        let functionCall = checkpoint.lastAdvertisedCapabilities?.dispatched(functionCall, domains: domains) ?? functionCall
         try begin_tool_invocation(
             call_id: functionCall.id,
             tool_name: functionCall.name,

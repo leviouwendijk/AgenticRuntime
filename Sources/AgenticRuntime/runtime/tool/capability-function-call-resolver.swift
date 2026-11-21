@@ -24,7 +24,12 @@ struct CapabilityFunctionCallResolver: FunctionCallResolver, Sendable {
     let journal: AgentModelToolInvocationJournal?
 
     func resolve(_ call: FunctionCall) async throws -> FunctionCall.Response {
-        let call = projection.dispatched(call)
+        let domains = if let inventory = dispatcher.inventory {
+            await inventory.catalog().domains
+        } else {
+            dispatcher.services.tooling.catalog.domains
+        }
+        let call = projection.dispatched(call, domains: domains)
         let function = call.name
         guard let target = projection.target(named: function) else {
             // Reject names this request cannot call with the same typed

@@ -109,26 +109,58 @@ public struct ModelCapabilityProjection: Sendable, Codable, Hashable {
         self.targetsByName = targetsByName
     }
 
-    /// The provider name a dispatcher call means, by capability identifier
-    /// or by provider function name.
-    func name(dispatchedAs identifier: String) -> String? {
-        if target(named: identifier) != nil {
-            return identifier
+    /// The provider name a dispatcher call means: by capability identifier
+    /// or provider function name, else through `CapabilityReference.Raw`
+    /// (aliases, `domain.name`, a bare name narrowed by `domain`). Nil when
+    /// that does not name exactly one; `call_capability` then says why.
+    func name(
+        dispatchedAs identifier: String,
+        domain: String? = nil,
+        domains: [DomainDefinition] = []
+    ) -> String? {
+        if domain == nil {
+            if target(named: identifier) != nil {
+                return identifier
+            }
+            if let name = entries.first(where: { $0.target.identifier == identifier })?.function.name
+                ?? callable.first(where: { $0.value.identifier == identifier })?.key {
+                return name
+            }
         }
-        return entries.first { $0.target.identifier == identifier }?.function.name
-            ?? callable.first { $0.value.identifier == identifier }?.key
+        let kinds: [CapabilityKind] = (try? CapabilityIdentity(identifier)).map { [$0.kind] } ?? CapabilityKind.allCases
+        for kind in kinds {
+            if let reference = try? CapabilityReference(.init(
+                identifier,
+                domain: domain,
+                kind: kind,
+                domains: domains,
+                offered: targets
+            )) {
+                return name(for: reference)
+            }
+        }
+        return nil
     }
 
     /// A `call_capability` call as a call of the capability it names, under
     /// the same call id, so authorization, approval, preflight and the
     /// record treat it as that capability. Unchanged when it names nothing
     /// this request can call; the dispatcher tool then says why.
-    func dispatched(_ call: FunctionCall) -> FunctionCall {
+    func dispatched(
+        _ call: FunctionCall,
+        domains: [DomainDefinition] = []
+    ) -> FunctionCall {
+        var domain: String?
+        if case .object(let outer) = call.input,
+           case .object(let arguments)? = outer["arguments"],
+           case .string(let value)? = arguments["domain"] {
+            domain = value
+        }
         guard call.name == Standard.Tools.CallCapability.identifier.rawValue,
               case .object(var outer) = call.input,
               case .object(let arguments)? = outer["arguments"],
               case .string(let identifier)? = arguments["identifier"],
-              let name = name(dispatchedAs: identifier),
+              let name = name(dispatchedAs: identifier, domain: domain, domains: domains),
               name != call.name
         else { return call }
         var input = arguments["input"] ?? .object([:])
