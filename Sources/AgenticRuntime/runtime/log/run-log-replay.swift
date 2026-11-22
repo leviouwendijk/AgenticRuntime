@@ -22,7 +22,7 @@ public extension Run.Log {
             /// `call` and `response`.
             case message(role: MessageRole, text: String)
             /// `via` names the tool the model called it through
-            /// (`standard_tool_call_capability`), when not by its own name.
+            /// (`capabilities_tool_call`), when not by its own name.
             case call(FunctionCall.Reference, input: JSONValue, via: String?)
             case response(FunctionCall.Reference, output: JSONValue, isError: Bool)
             /// A delegated run started from `parent`.
@@ -102,7 +102,7 @@ public extension Run.Log.Store {
             .joined(separator: " ")
         let calls = message.content.blocks.compactMap { block -> String? in
             guard case .call(let call) = block else { return nil }
-            return "→ " + (call.dispatchedIdentifier.map { $0 + " via standard_tool_call_capability" } ?? call.name)
+            return "→ " + (call.dispatchedIdentifier.map { $0 + " via capabilities_tool_call" } ?? call.name)
         }
         let preview = text.count > 120 ? String(text.prefix(119)) + "…" : text
         return ([message.role.rawValue, preview] + calls)
@@ -128,7 +128,7 @@ private extension Run.Log.Store {
             return .call(
                 call.call,
                 input: try payload(call.input, as: JSONValue.self, session: session),
-                via: dispatched.contains(call.call.id) ? Standard.Tools.CallCapability.identifier.rawValue : nil
+                via: dispatched.contains(call.call.id) ? Capabilities.Tools.Call.identifier.rawValue : nil
             )
         case .response(let stored):
             let response = try payload(stored.digest, as: FunctionCall.Response.self, session: session)

@@ -152,7 +152,7 @@ extension AgentLoop {
         )
     }
 
-    static let inspector = Standard.Tools.InspectCapability.identifier
+    static let inspector = Capabilities.Tools.Inspect.identifier
 
     /// What each grant adds in this run, or nil when its condition does
     /// not hold. Installation bounds it in `applyGrants`.
@@ -163,7 +163,7 @@ extension AgentLoop {
         case .ambient:
             return .ambient
         case .discovery:
-            return .init(tools: Standard.Tools.discovery)
+            return .init(tools: Capabilities.Tools.discovery)
         case .session_readers:
             guard configuration.contextMode == .dynamic else { return nil }
             return .init(tools: ContextWindow.Compactor.requiredTools)

@@ -105,8 +105,8 @@ extension AgenticProgramRuntimeFlowTesting {
         }
         let inspect = FunctionCall(
             id: "c-inspect",
-            name: Standard.Tools.InspectCapability.identifier.rawValue,
-            input: try arguments(Standard.Tools.InspectCapability.Input(kind: .tool, identifier: echo.rawValue))
+            name: Capabilities.Tools.Inspect.identifier.rawValue,
+            input: try arguments(Capabilities.Tools.Inspect.Input(kind: .tool, identifier: echo.rawValue))
         )
 
         struct Outcome {
@@ -124,7 +124,7 @@ extension AgenticProgramRuntimeFlowTesting {
             session: String
         ) async throws -> Outcome {
             let requests = UndeclaredRequests()
-            let installed = AgentCapabilitySet(tools: [echo] + Standard.Tools.discovery)
+            let installed = AgentCapabilitySet(tools: [echo] + Capabilities.Tools.discovery)
             let state = AgentCapabilityState(
                 installed: installed,
                 available: available ?? installed,
@@ -143,10 +143,9 @@ extension AgenticProgramRuntimeFlowTesting {
                 ),
                 tooling: .init(registry: try ToolRegistry {
                     UndeclaredEchoTool()
-                    Standard.Tools.ListCapabilities()
-                    Standard.Tools.SearchCapabilities()
-                    Standard.Tools.InspectCapability()
-                    Standard.Tools.CallCapability()
+                    Capabilities.Tools.Search()
+                    Capabilities.Tools.Inspect()
+                    Capabilities.Tools.Call()
                 }),
                 capabilityState: state
             )
@@ -182,7 +181,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.false(byName.tools[0].contains(echo.rawValue), "the echo is not declared")
         try Expect.false(byName.visible.tools.contains(echo), "inspection reveals nothing")
         let inspected = try Expect.notNil(response("c-inspect", in: byName.result), "the contract was returned")
-        try Expect.true(inspected.modelText.contains("standard_tool_call_capability"), "and says to call it through the dispatcher")
+        try Expect.true(inspected.modelText.contains("capabilities_tool_call"), "and says to call it through the dispatcher")
         try Expect.false(
             byName.result.events.contains { ($0.capabilityChanges ?? []).contains { $0.source == .tool_reveal } },
             "no reveal is recorded"
@@ -196,8 +195,8 @@ extension AgenticProgramRuntimeFlowTesting {
         // Through the dispatcher it runs as the echo itself.
         let dispatched = FunctionCall(
             id: "c-dispatch",
-            name: Standard.Tools.CallCapability.identifier.rawValue,
-            input: try arguments(Standard.Tools.CallCapability.Input(
+            name: Capabilities.Tools.Call.identifier.rawValue,
+            input: try arguments(Capabilities.Tools.Call.Input(
                 identifier: echo.rawValue,
                 input: .object(["value": .string("hi")])
             ))
@@ -235,7 +234,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let nudge = silent.result.state.messages.last { $0.role == .user }?.content.text ?? ""
         try Expect.true(
-            nudge.contains("Your last reply was empty") && nudge.contains("standard_tool_call_capability"),
+            nudge.contains("Your last reply was empty") && nudge.contains("capabilities_tool_call"),
             "the run says how to reach it: \(nudge)"
         )
         try Expect.false(
@@ -257,12 +256,12 @@ extension AgenticProgramRuntimeFlowTesting {
         // A dispatch naming nothing callable is answered by the dispatcher.
         let unknown = FunctionCall(
             id: "c-unknown",
-            name: Standard.Tools.CallCapability.identifier.rawValue,
-            input: try arguments(Standard.Tools.CallCapability.Input(identifier: "fixture.nothing", input: .object([:])))
+            name: Capabilities.Tools.Call.identifier.rawValue,
+            input: try arguments(Capabilities.Tools.Call.Input(identifier: "fixture.nothing", input: .object([:])))
         )
         let refused = try await run([unknown], session: "unknown")
         let refusal = try Expect.notNil(response("c-unknown", in: refused.result), "the dispatch was answered")
-        try Expect.true(refusal.isError && refusal.modelText.contains("standard_tool_inspect_capability"), "with how to find it: \(refusal.modelText)")
+        try Expect.true(refusal.isError && refusal.modelText.contains("capabilities_tool_inspect"), "with how to find it: \(refusal.modelText)")
 
         // A later turn after the operator selected the echo: the definitions
         // stay as the earlier run declared them, and the echo is pending.
@@ -299,7 +298,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
         let nowhereAnswer = try Expect.notNil(response("c-nowhere", in: taught.result), "the unknown name was answered")
         try Expect.true(
-            nowhereAnswer.isError && nowhereAnswer.modelText.contains("standard_tool_search_capabilities"),
+            nowhereAnswer.isError && nowhereAnswer.modelText.contains("capabilities_tool_search"),
             "with how to find a capability: \(nowhereAnswer.modelText)"
         )
         // A declared tool's misfit gets no contract: its definition has it.
@@ -336,7 +335,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let withdrawnCall = FunctionCall(id: "c-withdrawn", name: echo.rawValue, input: try arguments(UndeclaredEchoValue(value: "hi")))
         let withdrawn = try await run(
             [withdrawnCall],
-            available: AgentCapabilitySet(tools: Standard.Tools.discovery),
+            available: AgentCapabilitySet(tools: Capabilities.Tools.discovery),
             declared: earlier + [echoReference],
             session: "withdrawn"
         )

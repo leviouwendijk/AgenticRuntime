@@ -24,7 +24,7 @@ public extension Run.Event {
             /// (2026-11-19): a reveal an earlier run carried over.
             case carried
             /// Recorded by runs before inspection became read-only
-            /// (2026-11-19): `standard_tool_inspect_capability` revealed it.
+            /// (2026-11-19): `capabilities_tool_inspect` revealed it.
             case tool_reveal
             /// Anything outside the loop: the host, an operator, settings.
             case other
@@ -115,8 +115,8 @@ public extension Run.Event {
         public let reason: Reason
         public let entries: [Entry]
         /// Available capabilities callable without a definition: by name or
-        /// through `standard_tool_call_capability`, their contracts from
-        /// `standard_tool_inspect_capability`.
+        /// through `capabilities_tool_call`, their contracts from
+        /// `capabilities_tool_inspect`.
         public let callable: Int
         public let pending: Pending?
         /// This request rebuilt the definitions from the visible set,

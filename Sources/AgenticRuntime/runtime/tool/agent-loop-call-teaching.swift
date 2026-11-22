@@ -19,9 +19,9 @@ extension AgentLoop {
         guard let projection = checkpoint.lastAdvertisedCapabilities else { return nil }
         guard let target = projection.target(named: call.name) else {
             return "No capability named '\(call.name)' can be called here: find one with "
-                    + "\(Standard.Tools.SearchCapabilities.identifier.rawValue) or "
-                    + "\(Standard.Tools.ListCapabilities.identifier.rawValue), then read its contract with "
-                    + "\(Standard.Tools.InspectCapability.identifier.rawValue)."
+                    + "\(Capabilities.Tools.Search.identifier.rawValue) or "
+                    + "\(Capabilities.Tools.Search.identifier.rawValue), then read its contract with "
+                    + "\(Capabilities.Tools.Inspect.identifier.rawValue)."
         }
         guard projection.callable[call.name] != nil,
               Self.isInputError(error),
@@ -31,7 +31,7 @@ extension AgentLoop {
         else {
             return nil
         }
-        return "Its input, as \(Standard.Tools.InspectCapability.identifier.rawValue) gives it "
+        return "Its input, as \(Capabilities.Tools.Inspect.identifier.rawValue) gives it "
             + "(required fields in full; inspect it for the rest): "
             + String(decoding: data, as: UTF8.self)
     }

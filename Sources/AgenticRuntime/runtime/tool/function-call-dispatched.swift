@@ -3,11 +3,11 @@ import AgenticStandard
 import Primitives
 
 public extension FunctionCall {
-    /// For a `standard_tool_call_capability` call, the capability it names: the runtime
+    /// For a `capabilities_tool_call` call, the capability it names: the runtime
     /// runs it as that capability's own call, under the same id, so it is
     /// shown by that name. Nil for any other call.
     var dispatchedIdentifier: String? {
-        guard name == Standard.Tools.CallCapability.identifier.rawValue,
+        guard name == Capabilities.Tools.Call.identifier.rawValue,
               case .object(let outer) = input,
               case .object(let arguments)? = outer["arguments"],
               case .string(let identifier)? = arguments["identifier"]
@@ -17,7 +17,7 @@ public extension FunctionCall {
 }
 
 public extension Sequence where Element == Message {
-    /// The ids of the calls these messages made through `standard_tool_call_capability`.
+    /// The ids of the calls these messages made through `capabilities_tool_call`.
     var dispatchedCallIDs: Set<String> {
         Set(flatMap(\.content.blocks).compactMap { block -> String? in
             guard case .call(let call) = block, call.dispatchedIdentifier != nil else { return nil }
@@ -27,7 +27,7 @@ public extension Sequence where Element == Message {
 }
 
 extension AgentLoop {
-    /// A tool among the definitions called through `standard_tool_call_capability` still
+    /// A tool among the definitions called through `capabilities_tool_call` still
     /// runs, but its result says to call it by name: a few tokens once, and
     /// the model stops paying the wrapper on every call.
     func dispatchNoted(
@@ -46,7 +46,7 @@ extension AgentLoop {
         }
         return result.rendered(
             result.modelText + "\n[`\(call.name)` is among your tools: call it by its own name, "
-                + "not through \(Standard.Tools.CallCapability.identifier.rawValue).]"
+                + "not through \(Capabilities.Tools.Call.identifier.rawValue).]"
         )
     }
 }

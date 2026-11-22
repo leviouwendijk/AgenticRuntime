@@ -10,7 +10,7 @@ extension AgenticProgramRuntimeFlowTesting {
     static func runCoreSchemas() async throws -> [TestDiagnostic] {
         var registry = ToolRegistry()
         try registry.register(SystemIO.Tools.Mutate())
-        try registry.register(Standard.Tools.InspectCapability())
+        try registry.register(Capabilities.Tools.Inspect())
         let full = try Expect.notNil(
             try registry.modelFacingDefinitions(
                 for: [SystemIO.Tools.Mutate.identifier]
@@ -25,7 +25,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let fullSize = try size(full)
         let coreSize = try size(core)
         try Expect.true(coreSize * 4 < fullSize * 3, "Core schema drops at least a quarter")
-        try Expect.true(core.description.contains("standard_tool_inspect_capability"), "Core schema says where the rest is")
+        try Expect.true(core.description.contains("capabilities_tool_inspect"), "Core schema says where the rest is")
         try Expect.equal(core.core, core, "Projection is idempotent")
 
         let coreText = String(decoding: try JSONEncoder().encode(core.input), as: UTF8.self)
@@ -41,9 +41,9 @@ extension AgenticProgramRuntimeFlowTesting {
 
         // Inspection returns the full contract and changes nothing.
         let state = AgentCapabilityState(
-            installed: .init(tools: [SystemIO.Tools.Mutate.identifier, Standard.Tools.InspectCapability.identifier]),
-            available: .init(tools: [SystemIO.Tools.Mutate.identifier, Standard.Tools.InspectCapability.identifier]),
-            visible: .init(tools: [Standard.Tools.InspectCapability.identifier])
+            installed: .init(tools: [SystemIO.Tools.Mutate.identifier, Capabilities.Tools.Inspect.identifier]),
+            available: .init(tools: [SystemIO.Tools.Mutate.identifier, Capabilities.Tools.Inspect.identifier]),
+            visible: .init(tools: [Capabilities.Tools.Inspect.identifier])
         )
         let installed = InstalledCapabilities(tools: registry)
         let context = ToolContext(
@@ -51,7 +51,7 @@ extension AgenticProgramRuntimeFlowTesting {
             inspections: installed.capabilityInspections(),
             services: ToolServices()
         )
-        let inspected = try await Standard.Tools.InspectCapability().call(
+        let inspected = try await Capabilities.Tools.Inspect().call(
             .init(kind: .tool, identifier: SystemIO.Tools.Mutate.identifier.rawValue),
             in: context
         )

@@ -44,7 +44,7 @@ extension AgentLoop {
         }
         // Some providers refuse an empty assistant turn in the history.
         checkpoint.state.messages.removeLast()
-        let dispatcher = Standard.Tools.CallCapability.identifier
+        let dispatcher = Capabilities.Tools.Call.identifier
         var note = "[Your last reply was empty. Continue the task"
         if !route.route.profile.capabilities.contains(.undeclared_calls),
            await capabilityState.snapshot().visible.tools.contains(dispatcher) {
