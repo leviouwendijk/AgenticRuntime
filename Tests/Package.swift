@@ -21,27 +21,27 @@ let package = Package(
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/Workspace.git",
+            url: "https://github.com/swift-lco/Workspace.git",
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/Primitives.git",
+            url: "https://github.com/swift-lco/Primitives.git",
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/Difference.git",
+            url: "https://github.com/swift-lco/Difference.git",
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/Schema.git",
+            url: "https://github.com/swift-lco/Schema.git",
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/Macros.git",
+            url: "https://github.com/swift-lco/Macros.git",
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/Path.git",
+            url: "https://github.com/swift-lco/Path.git",
             branch: "master"
         ),
         .package(
@@ -49,7 +49,7 @@ let package = Package(
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/IO.git",
+            url: "https://github.com/swift-lco/IO.git",
             branch: "master"
         ),
         .package(
