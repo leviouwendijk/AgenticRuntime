@@ -25,7 +25,7 @@ let package = Package(
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/Tokens.git",
+            url: "https://github.com/swift-langs/Tokens.git",
             branch: "master"
         ),
         .package(
@@ -69,7 +69,7 @@ let package = Package(
             branch: "master"
         ),
         .package(
-            url: "https://github.com/leviouwendijk/Frame.git",
+            url: "https://github.com/lco-langs/Frame.git",
             branch: "master"
         ),
         .package(
