@@ -139,7 +139,7 @@
     {
       "identity" : "guidelines",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/leviouwendijk/Guidelines.git",
+      "location" : "https://github.com/swift-tooling/Guidelines.git",
       "state" : {
         "branch" : "master",
         "revision" : "e6215dfa9f34fb219c17fcd2f9c652c80bd28ed5"
@@ -148,7 +148,7 @@
     {
       "identity" : "guidelinessearch",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/leviouwendijk/GuidelinesSearch.git",
+      "location" : "https://github.com/swift-tooling/GuidelinesSearch.git",
       "state" : {
         "branch" : "master",
         "revision" : "05837f1ba6b1eb3284f12918d665e091cab368c2"
@@ -400,7 +400,7 @@
     {
       "identity" : "testing",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/leviouwendijk/Testing.git",
+      "location" : "https://github.com/swift-tooling/Testing.git",
       "state" : {
         "branch" : "master",
         "revision" : "abe024a50cfbe3ebab5e538e023d30616a35d3a2"
