@@ -1,5 +1,6 @@
 import Agentic
 import AgenticContextWindow
+import Surface
 import Workspace
 import Foundation
 
@@ -189,7 +190,7 @@ public actor AgentExecutor {
 
     public func resume(
         sessionID: String,
-        answer: UserInputAnswer,
+        answer: SurfaceAnswer,
         metadata: [String: String] = [:]
     ) async throws -> AgentExecutor.Result {
         try await resume(

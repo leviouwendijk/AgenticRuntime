@@ -1,5 +1,6 @@
 import Agentic
 import AgenticContextWindow
+import Surface
 import Workspace
 import Foundation
 
@@ -154,7 +155,7 @@ internal struct AgentLoop: Sendable {
 
     func resume(
         _ checkpoint: AgentExecutor.Checkpoint,
-        answer: UserInputAnswer,
+        answer: SurfaceAnswer,
         metadata: [String: String] = [:]
     ) async throws -> AgentExecutor.Result {
         try await resumeWithUserInput(

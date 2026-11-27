@@ -21,6 +21,10 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/swift-lco/Surface.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/swift-lco/Workspace.git",
             branch: "master"
         ),
@@ -89,6 +93,10 @@ let package = Package(
         .target(
             name: "AgenticRuntime",
             dependencies: [
+                .product(
+                    name: "Surface",
+                    package: "Surface"
+                ),
                 .product(
                     name: "Agentic",
                     package: "Agentic"

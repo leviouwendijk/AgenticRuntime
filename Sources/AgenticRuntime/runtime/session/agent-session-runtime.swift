@@ -1,5 +1,6 @@
 import Agentic
 import AgenticSessions
+import Surface
 import Foundation
 
 public struct AgentSessionRuntime: Sendable {
@@ -227,7 +228,7 @@ public struct AgentSessionRuntime: Sendable {
     }
 
     public func resume(
-        answer: UserInputAnswer,
+        answer: SurfaceAnswer,
         model: RuntimeServices.Model,
         configuration: AgentExecutor.Configuration = .default,
         capabilityState: AgentCapabilityState,

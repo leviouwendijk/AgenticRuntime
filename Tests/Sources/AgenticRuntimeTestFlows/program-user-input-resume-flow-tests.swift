@@ -1,6 +1,7 @@
 import Agentic
 import AgenticRuntime
 import Primitives
+import Surface
 import TestFlows
 
 private struct ProgramUserInputResumeFixture: Program {
@@ -127,7 +128,7 @@ extension AgenticProgramRuntimeFlowTesting {
                     )
                 )
             )
-        } catch UserInputError.requiredInputCannotBeSkipped {
+        } catch SurfaceQuestion.Error.requiredInputCannotBeSkipped {
             requiredSkipRejected = true
         }
 

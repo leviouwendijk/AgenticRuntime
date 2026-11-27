@@ -1,6 +1,7 @@
 import Agentic
 import AgenticRuntime
 import Primitives
+import Surface
 import TestFlows
 
 private actor ProgramCaughtToolFailureProbe {
@@ -74,7 +75,7 @@ private struct ProgramCaughtToolFailureResumeFixture:
                 UserInputRequest(
                     prompt: "Continue after the caught tool failure?",
                     input: .confirmation(
-                        ConfirmationUserInput(
+                        SurfaceConfirmation(
                             defaultValue: false,
                             confirmLabel: "Continue",
                             cancelLabel: "Stop"

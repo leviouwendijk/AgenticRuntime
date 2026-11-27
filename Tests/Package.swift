@@ -21,6 +21,10 @@ let package = Package(
             branch: "master"
         ),
         .package(
+            url: "https://github.com/swift-lco/Surface.git",
+            branch: "master"
+        ),
+        .package(
             url: "https://github.com/swift-lco/Workspace.git",
             branch: "master"
         ),
@@ -66,6 +70,10 @@ let package = Package(
         .executableTarget(
             name: "AgenticRuntimeTestFlows",
             dependencies: [
+                .product(
+                    name: "Surface",
+                    package: "Surface"
+                ),
                 .product(name: "AgenticRuntime", package: "AgenticRuntime"),
                 .product(
                     name: "Agentic",

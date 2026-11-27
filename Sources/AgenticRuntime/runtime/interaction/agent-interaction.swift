@@ -1,4 +1,5 @@
 import Agentic
+import Surface
 import Foundation
 
 public extension Run {
@@ -148,7 +149,7 @@ public extension Run {
                         self = .user_input(
                             .answer(
                                 try container.decode(
-                                    UserInputAnswer.self,
+                                    SurfaceAnswer.self,
                                     forKey: .user_input
                                 )
                             )
