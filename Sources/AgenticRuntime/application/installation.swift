@@ -96,30 +96,6 @@ public struct Installation:
 
     public static let none = Self()
 
-    /// The tools this installation binds, as the model's tool definitions describe them
-    /// (a tool without a model-facing schema is described without one). A Loa catalog is
-    /// built from these, so programs and native calls see the same tools.
-    public var toolDescriptors: [ToolDescriptor] {
-        components.flatMap { component -> [ToolDescriptor] in
-            guard case .tools(let bindings) = component else { return [] }
-            return bindings.map { binding in
-                binding.modelFacingDescriptor ?? ToolDescriptor(
-                    identifier: binding.definition.identifier,
-                    description: binding.definition.purpose,
-                    risk: binding.definition.risk
-                )
-            }
-        }
-    }
-
-    /// The domains this installation declares: names and aliases.
-    public var domainDefinitions: [DomainDefinition] {
-        components.flatMap { component -> [DomainDefinition] in
-            guard case .catalog(let catalog) = component else { return [] }
-            return catalog.domains
-        }
-    }
-
     public static func + (
         lhs: Self,
         rhs: Self
