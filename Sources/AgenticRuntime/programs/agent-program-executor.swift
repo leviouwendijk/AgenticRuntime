@@ -118,6 +118,7 @@ public struct ProgramExecutor: Sendable {
         }
 
         let context = ProgramContext(
+            capability: services.program.capability ?? .init(),
             inference: inference,
             tools: tools,
             programs: programs,

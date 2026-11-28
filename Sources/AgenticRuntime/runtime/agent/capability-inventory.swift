@@ -32,8 +32,11 @@ public actor CapabilityInventory {
     public var revision: UInt64 { revisionNumber }
     public func tools() -> ToolRegistry { entries.tools }
     public func catalog() -> Catalog { entries.catalog }
-    public func capabilityInspections() -> [CapabilityInspection] {
-        entries.capabilityInspections()
+    /// Inspections of the capabilities this agent may invoke now: installed and available.
+    /// What a capability's context carries.
+    public func availableInspections() async -> [CapabilityInspection] {
+        let available = await state.snapshot().available
+        return entries.capabilityInspections().filter { $0.reference.isVisible(in: available) }
     }
 
     /// Canonical model function projection over this Agent's executable view:

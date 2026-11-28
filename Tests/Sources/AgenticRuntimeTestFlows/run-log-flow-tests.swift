@@ -112,7 +112,7 @@ extension AgenticProgramRuntimeFlowTesting {
         )
 
         // Self-review through the Sessions tools.
-        let context = ToolContext(services: try ToolServices().inserting(log as any Sessions.LogReading))
+        let context = CapabilityContext(services: try CapabilityServices().inserting(log as any Sessions.LogReading))
         let denials = try await Sessions.Tools.Log().call(
             .init(kinds: [.state]),
             in: context
@@ -153,7 +153,7 @@ extension AgenticProgramRuntimeFlowTesting {
         try Expect.equal(summaries[0].firstPrompt, "Tidy the folder.", "Summary shows the first prompt")
         try Expect.equal(summaries[1].firstPrompt, "Read the readme.", "Older logs summarize too")
         // The logs are the host's session catalog: what it actually recorded.
-        let catalogContext = ToolContext(services: try ToolServices().inserting(store as any Sessions.CatalogReading))
+        let catalogContext = CapabilityContext(services: try CapabilityServices().inserting(store as any Sessions.CatalogReading))
         let listed = try await Sessions.Tools.List().call(.init(), in: catalogContext)
         try Expect.equal(listed.sessions.map(\.id), ["s2-session", "s1"], "The catalog lists logged sessions")
         try Expect.equal(listed.sessions[0].metadata.title, "Tidy the folder.", "A session is titled by its first prompt")

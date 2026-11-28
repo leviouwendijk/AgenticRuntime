@@ -272,7 +272,7 @@ private struct ProgramReplayMutationTool:
 
     func preflight(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> ToolPreflight {
         _ = input
         let revision = await probe.revision()
@@ -281,7 +281,7 @@ private struct ProgramReplayMutationTool:
 
     func prepare(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> CapabilityPreparation<ToolPreflight> {
         let revision = await probe.revision()
         let plan = ProgramReplayMutationPlan(
@@ -299,7 +299,7 @@ private struct ProgramReplayMutationTool:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         _ = input
         throw ToolPreparationError.prepared_operation_required
@@ -308,7 +308,7 @@ private struct ProgramReplayMutationTool:
     func call(
         _ input: Input,
         prepared operation: PreparedOperation.Envelope?,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         guard let operation else {
             throw ToolPreparationError.prepared_operation_required
@@ -352,7 +352,7 @@ private struct ProgramReplayTailTool:
 
     func preflight(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> ToolPreflight {
         _ = input
 
@@ -365,7 +365,7 @@ private struct ProgramReplayTailTool:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         await probe.recordTail()
 

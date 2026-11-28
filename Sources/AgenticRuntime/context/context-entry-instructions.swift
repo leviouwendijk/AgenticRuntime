@@ -19,7 +19,7 @@ public struct ContextEntrySummary: Sendable, Hashable {
     public let problems: [String]
 }
 
-public extension ToolServices {
+public extension CapabilityServices {
     /// The application's context store; nil when it supplies none.
     var contextStore: Context.Store? {
         try? require(Context.Store.self)

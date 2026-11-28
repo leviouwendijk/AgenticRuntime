@@ -136,7 +136,7 @@ private struct ProgramToolRecoveryFixtureTool: Tool {
 
     func preflight(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> ToolPreflight {
         _ = input
         await probe.recordPreflight()
@@ -150,7 +150,7 @@ private struct ProgramToolRecoveryFixtureTool: Tool {
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         _ = input
         let number = await probe.recordCall()
@@ -225,7 +225,7 @@ private struct ProgramToolRecoveryFixtureTool: Tool {
     func reconcile(
         _ input: Input,
         after failure: ToolExecution.Failure,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> ToolExecution.Reconciliation<Output>? {
         _ = input
 

@@ -7,7 +7,7 @@
       "location" : "https://github.com/swift-agentic/Agentic.git",
       "state" : {
         "branch" : "master",
-        "revision" : "b8b87328a793afa12eebe5b471eb33bc4df07e82"
+        "revision" : "55d0e894ae117856393be12ff23555a23fc6efd0"
       }
     },
     {
@@ -16,7 +16,7 @@
       "location" : "https://github.com/swift-agentic/AgenticIO.git",
       "state" : {
         "branch" : "master",
-        "revision" : "3aa2f7f066676d16a87681efba342bd00240c25b"
+        "revision" : "f7c633be9813457d30e2d7de7f6711d7e196ef63"
       }
     },
     {
@@ -403,7 +403,7 @@
       "location" : "https://github.com/swift-lco/Terminal.git",
       "state" : {
         "branch" : "master",
-        "revision" : "c83d36e41b456f21f30aa6fee1c207181a736a96"
+        "revision" : "f77be6e94db37f19a0150458d95ec3f91062f71a"
       }
     },
     {

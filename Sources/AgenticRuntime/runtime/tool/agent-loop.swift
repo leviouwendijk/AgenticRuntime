@@ -65,11 +65,12 @@ internal struct AgentLoop: Sendable {
             // that runs on any model.
             defaultAdapterIdentifier: .json
         )
+        let capabilityContext = await makeCapabilityContext()
         let programTools = GovernedProgramToolExecutor(
             registry: await inventory.tools(),
             policy: configuration.toolExecutionPolicy,
             recovery: configuration.recovery,
-            context: await makeToolContext(),
+            context: capabilityContext,
             approvalHandler: tooling.approvalHandler
         )
         return CapabilityDispatcher(
@@ -80,7 +81,8 @@ internal struct AgentLoop: Sendable {
                 recording: recording,
                 program: .init(
                     inference: inferenceExecutor,
-                    tools: programTools
+                    tools: programTools,
+                    capability: capabilityContext
                 )
             ),
             delegation: delegation,

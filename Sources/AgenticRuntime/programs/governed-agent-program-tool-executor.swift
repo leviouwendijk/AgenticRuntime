@@ -41,14 +41,14 @@ public struct GovernedProgramToolExecutor:
     Sendable
 {
     public let tools: ToolExecutor
-    public let context: ToolContext
+    public let context: CapabilityContext
     public let approvalHandler: (any ToolApprovalHandler)?
 
     public init(
         registry: ToolRegistry,
         policy: ToolExecutionPolicy,
         recovery: Recovery.Policy? = nil,
-        context: ToolContext = .init(),
+        context: CapabilityContext = .init(),
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
         self.init(
@@ -64,7 +64,7 @@ public struct GovernedProgramToolExecutor:
 
     public init(
         tools: ToolExecutor,
-        context: ToolContext = .init(),
+        context: CapabilityContext = .init(),
         approvalHandler: (any ToolApprovalHandler)? = nil
     ) {
         self.tools = tools

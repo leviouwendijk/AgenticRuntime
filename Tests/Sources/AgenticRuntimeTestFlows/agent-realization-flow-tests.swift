@@ -43,7 +43,7 @@ private struct AgentRealizationToolFixture:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         input
     }

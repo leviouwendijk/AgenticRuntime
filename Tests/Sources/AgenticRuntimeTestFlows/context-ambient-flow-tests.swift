@@ -29,7 +29,7 @@ private struct ContextAmbientToolFixture:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         input
     }
@@ -197,9 +197,9 @@ extension AgenticProgramRuntimeFlowTesting {
             directory: root.appendingPathComponent("context", isDirectory: true),
             archiveDirectory: root.appendingPathComponent("archive", isDirectory: true)
         )
-        let services = try ToolServices().inserting(store)
+        let services = try CapabilityServices().inserting(store)
 
-        try Expect.true(ToolServices().contextEntries == nil, "no store, no message")
+        try Expect.true(CapabilityServices().contextEntries == nil, "no store, no message")
         try Expect.true(services.contextEntries == nil, "no entries, no message")
 
         _ = try store.save(ContextFrame.example, to: "business.frame")

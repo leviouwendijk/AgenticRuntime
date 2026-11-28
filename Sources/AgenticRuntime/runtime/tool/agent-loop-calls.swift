@@ -355,7 +355,7 @@ extension AgentLoop {
                 recovery: configuration.recovery
             ).review(
                 invocation,
-                context: await makeToolContext()
+                context: await makeCapabilityContext()
             )
         } catch {
             if let request = accessRequest(for: error) {

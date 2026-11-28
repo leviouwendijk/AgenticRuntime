@@ -58,7 +58,7 @@ extension AgenticProgramRuntimeFlowTesting {
             ),
             tooling: .init(
                 registry: registry,
-                services: try ToolServices().inserting(log)
+                services: try CapabilityServices().inserting(log)
             ),
             capabilityState: AgentCapabilityState(
                 installed: .init(tools: tools),
@@ -181,11 +181,11 @@ private struct BudgetListingTool: Tool {
         risk: .observe
     )
 
-    func preflight(_ input: Input, in context: ToolContext) async throws -> ToolPreflight {
+    func preflight(_ input: Input, in context: CapabilityContext) async throws -> ToolPreflight {
         ToolPreflight(tool: Self.definition.identifier, risk: .observe, summary: "List lines.")
     }
 
-    func call(_ input: Input, in context: ToolContext) async throws -> Int {
+    func call(_ input: Input, in context: CapabilityContext) async throws -> Int {
         400
     }
 

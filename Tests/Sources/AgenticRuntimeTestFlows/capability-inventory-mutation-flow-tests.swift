@@ -20,7 +20,7 @@ private struct InventoryTool: Tool {
         risk: .observe
     )
 
-    func call(_ input: Input, in _: ToolContext) async throws -> Output {
+    func call(_ input: Input, in _: CapabilityContext) async throws -> Output {
         input
     }
 }

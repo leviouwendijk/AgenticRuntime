@@ -28,7 +28,7 @@ private struct AuthoredVisibleSearchTool:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         input
     }
@@ -48,7 +48,7 @@ private struct AuthoredVisibleReadTool:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         input
     }
@@ -68,7 +68,7 @@ private struct AuthoredVisibleMutateTool:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         input
     }
@@ -88,7 +88,7 @@ private struct AuthoredVisibleBuildTool:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         input
     }

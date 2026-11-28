@@ -125,7 +125,7 @@ private struct MutationRecoveryFixtureTool: Tool {
 
     func preflight(
         _ input: Input,
-        in context: ToolContext
+        in context: CapabilityContext
     ) async throws -> ToolPreflight {
         _ = input
         _ = context
@@ -140,7 +140,7 @@ private struct MutationRecoveryFixtureTool: Tool {
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         _ = input
         let call = await probe.recordCall()
@@ -190,7 +190,7 @@ private struct MutationRecoveryFixtureTool: Tool {
     func reconcile(
         _ input: Input,
         after failure: ToolExecution.Failure,
-        in context: ToolContext
+        in context: CapabilityContext
     ) async throws -> ToolExecution.Reconciliation<Output>? {
         _ = input
         _ = context

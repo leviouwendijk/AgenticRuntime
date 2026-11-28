@@ -44,7 +44,7 @@ public struct RuntimeServices: Sendable {
         public var workspace: WorkspaceContext?
         public var catalog: Catalog
         public var approvalHandler: (any ToolApprovalHandler)?
-        public var services: ToolServices
+        public var services: CapabilityServices
         /// Roots added with ask access: a call refused there asks the
         /// operator for a grant instead of failing.
         public var askRoots: Set<PathAccessRootIdentifier>
@@ -54,7 +54,7 @@ public struct RuntimeServices: Sendable {
             workspace: WorkspaceContext? = nil,
             catalog: Catalog = .none,
             approvalHandler: (any ToolApprovalHandler)? = nil,
-            services: ToolServices = .init(),
+            services: CapabilityServices = .init(),
             askRoots: Set<PathAccessRootIdentifier> = []
         ) {
             self.askRoots = askRoots
@@ -104,7 +104,7 @@ public struct RuntimeServices: Sendable {
             )
         }
 
-        public func using(services: ToolServices) -> Self {
+        public func using(services: CapabilityServices) -> Self {
             .init(
                 registry: registry,
                 workspace: workspace,
@@ -159,13 +159,17 @@ public struct RuntimeServices: Sendable {
         public var tools: (any GovernedToolExecuting)?
         public var programs: (any ProgramExecuting)?
         public var interruption: Run.Control?
+        /// What a running program sees: the same context its tool calls run with.
+        public var capability: CapabilityContext?
 
         public init(
             inference: (any InferenceExecuting)? = nil,
             tools: (any GovernedToolExecuting)? = nil,
             programs: (any ProgramExecuting)? = nil,
-            interruption: Run.Control? = nil
+            interruption: Run.Control? = nil,
+            capability: CapabilityContext? = nil
         ) {
+            self.capability = capability
             self.inference = inference
             self.tools = tools
             self.programs = programs

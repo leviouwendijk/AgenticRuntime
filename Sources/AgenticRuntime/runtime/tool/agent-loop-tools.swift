@@ -130,7 +130,7 @@ extension AgentLoop {
         )
         let invocation = try await invoker.invoke(
             review,
-            context: await makeToolContext(),
+            context: await makeCapabilityContext(),
             approvalHandler: RuntimeResolvedToolApprovalHandler(
                 decision: .approved
             )
@@ -143,12 +143,12 @@ extension AgentLoop {
         return execution
     }
 
-    func makeToolContext() async -> ToolContext {
-        ToolContext(
+    func makeCapabilityContext() async -> CapabilityContext {
+        CapabilityContext(
             workspace: tooling.workspace,
             catalog: await inventory.catalog(),
             capabilities: capabilityState,
-            inspections: await inventory.capabilityInspections(),
+            inspections: await inventory.availableInspections(),
             services: await intentServices(
                 tooling.services.archivingResults().calling(await served.callForm)
             )
@@ -158,8 +158,8 @@ extension AgentLoop {
     /// Where the host installed an intents manager, approved intents run
     /// through this run's tools and policy.
     private func intentServices(
-        _ services: ToolServices
-    ) async -> ToolServices {
+        _ services: CapabilityServices
+    ) async -> CapabilityServices {
         guard let manager = try? services.require(Intents.Manager.self),
               (try? services.require(Intents.Executor.self)) == nil
         else {
@@ -264,15 +264,15 @@ private struct RuntimeResolvedToolApprovalHandler:
     }
 }
 
-extension ToolServices {
+extension CapabilityServices {
     /// These services plus how the model reaches capabilities outside its
     /// definitions.
-    func calling(_ form: UndeclaredCallForm) -> ToolServices {
+    func calling(_ form: UndeclaredCallForm) -> CapabilityServices {
         (try? inserting(form)) ?? self
     }
 
     /// These services plus the result archive over the session log.
-    func archivingResults() -> ToolServices {
+    func archivingResults() -> CapabilityServices {
         guard let log = try? require(Run.Log.self) else {
             return self
         }

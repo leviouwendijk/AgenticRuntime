@@ -88,7 +88,7 @@ private struct GovernedObserveProgramTool:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         await probe.record()
 
@@ -114,7 +114,7 @@ private struct GovernedMutationProgramTool:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         await probe.record()
 

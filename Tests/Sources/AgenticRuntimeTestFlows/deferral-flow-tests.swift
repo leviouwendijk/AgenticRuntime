@@ -24,7 +24,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let result = try await deferralExecutor(
             registry: registry,
             state: state,
-            services: try ToolServices().inserting(manager)
+            services: try CapabilityServices().inserting(manager)
         ).run(
             AgentRequest(messages: [Message(role: .user, text: "Write it.")]),
             sessionID: "deferral"
@@ -65,7 +65,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let executed = try await Intents.Executor(
             manager: manager,
             tools: ToolExecutor(registry: registry, policy: .init(autonomyMode: .auto_observe))
-        ).execute(intent.id, in: ToolContext())
+        ).execute(intent.id, in: CapabilityContext())
 
         try Expect.equal(executed.status, .executed, "The approved intent runs")
         try Expect.equal(await probe.values(), ["notes"], "exactly the prepared plan, once")
@@ -78,7 +78,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let result = try await deferralExecutor(
             registry: try ToolRegistry { DeferralFixtureTool(probe: probe) },
             state: DeferralModelState(),
-            services: ToolServices()
+            services: CapabilityServices()
         ).run(
             AgentRequest(messages: [Message(role: .user, text: "Write it.")]),
             sessionID: "deferral-fallback"
@@ -102,7 +102,7 @@ extension AgenticProgramRuntimeFlowTesting {
 private func deferralExecutor(
     registry: ToolRegistry,
     state: DeferralModelState,
-    services: ToolServices
+    services: CapabilityServices
 ) -> AgentExecutor {
     let tools = [DeferralFixtureTool.definition.identifier]
     return AgentExecutor(
@@ -183,7 +183,7 @@ private struct DeferralFixtureTool: Tool {
 
     func prepare(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> CapabilityPreparation<ToolPreflight> {
         .init(
             review: .init(
@@ -197,7 +197,7 @@ private struct DeferralFixtureTool: Tool {
 
     func call(
         _: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         throw ToolPreparationError.prepared_operation_required
     }
@@ -205,7 +205,7 @@ private struct DeferralFixtureTool: Tool {
     func call(
         _: Input,
         prepared operation: PreparedOperation.Envelope?,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         guard let operation else {
             throw ToolPreparationError.prepared_operation_required

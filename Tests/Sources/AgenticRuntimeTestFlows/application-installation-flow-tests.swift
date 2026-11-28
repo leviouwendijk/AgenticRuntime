@@ -28,7 +28,7 @@ private struct InstallationToolFixture:
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         input
     }
@@ -44,7 +44,7 @@ private struct ProviderToolFixture: Tool {
         risk: .observe
     )
 
-    func call(_ input: Input, in _: ToolContext) async throws -> Output {
+    func call(_ input: Input, in _: CapabilityContext) async throws -> Output {
         input
     }
 }

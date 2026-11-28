@@ -60,7 +60,7 @@ private struct ProjectionContractTool: Tool {
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         .string(input.message)
     }

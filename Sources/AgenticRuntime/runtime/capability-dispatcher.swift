@@ -188,19 +188,21 @@ public struct CapabilityDispatcher: Sendable {
             }
             let inspections: [CapabilityInspection]
             if let inventory {
-                inspections = await inventory.capabilityInspections()
+                inspections = await inventory.availableInspections()
             } else {
                 guard let runtime else {
                     throw CapabilityInvocationError.notInstalled(target)
                 }
-                inspections = runtime.installed.capabilityInspections()
+                inspections = runtime.installed.capabilityInspections().filter {
+                    $0.reference.isVisible(in: snapshot.available)
+                }
             }
             let governed = GovernedFunctionCallResolver(
                 registry: tools,
                 visibleToolIdentifiers: [ToolIdentifier(call.name)],
                 policy: configuration.toolExecutionPolicy,
                 recovery: configuration.recovery,
-                context: ToolContext(
+                context: CapabilityContext(
                     workspace: services.tooling.workspace,
                     catalog: effectiveCatalog,
                     capabilities: capabilityState,

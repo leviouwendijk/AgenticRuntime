@@ -36,7 +36,7 @@ extension InstallationCatalogDomainFixture.Tools {
 
         func call(
             _ input: Input,
-            in _: ToolContext
+            in _: CapabilityContext
         ) async throws -> Output {
             _ = input
 
@@ -79,7 +79,7 @@ extension InstallationCatalogDomainFixture.Tools {
 
         func call(
             _ input: Input,
-            in _: ToolContext
+            in _: CapabilityContext
         ) async throws -> Output {
             _ = input
 
@@ -141,7 +141,7 @@ struct InstallationCatalogUnscopedToolFixture: Tool {
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         _ = input
 

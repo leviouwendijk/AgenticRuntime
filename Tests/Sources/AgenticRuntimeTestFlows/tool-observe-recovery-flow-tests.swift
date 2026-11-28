@@ -52,7 +52,7 @@ private struct ObserveRecoveryFixtureTool: Tool {
 
     func call(
         _ input: Input,
-        in _: ToolContext
+        in _: CapabilityContext
     ) async throws -> Output {
         _ = input
 

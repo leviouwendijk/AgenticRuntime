@@ -46,10 +46,10 @@ extension AgenticProgramRuntimeFlowTesting {
             visible: .init(tools: [Capabilities.Tools.Inspect.identifier])
         )
         let installed = InstalledCapabilities(tools: registry)
-        let context = ToolContext(
+        let context = CapabilityContext(
             capabilities: state,
             inspections: installed.capabilityInspections(),
-            services: ToolServices()
+            services: CapabilityServices()
         )
         let inspected = try await Capabilities.Tools.Inspect().call(
             .init(kind: .tool, identifier: SystemIO.Tools.Mutate.identifier.rawValue),

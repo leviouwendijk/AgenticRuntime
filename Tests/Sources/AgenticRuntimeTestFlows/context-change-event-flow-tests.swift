@@ -156,7 +156,7 @@ extension AgenticProgramRuntimeFlowTesting {
         let pointer = await ledger.compactions.first?.pointers.first
         let read = try await Sessions.Tools.History().call(
             .init(fromMessageID: pointer?.messageID, throughMessageID: pointer?.messageID),
-            in: ToolContext(services: try ToolServices().inserting(history))
+            in: CapabilityContext(services: try CapabilityServices().inserting(history))
         )
         try Expect.equal(read.sessionID, "context-pause", "the session is found from the message")
         try Expect.true(
